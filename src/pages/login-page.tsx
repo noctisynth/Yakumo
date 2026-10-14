@@ -21,6 +21,13 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAccounts } from '@/hooks/use-accounts';
 import { nativeAccountsAvailable } from '@/services/account-service';
 import { useAccountsStore } from '@/stores/accounts-store';
@@ -178,14 +185,22 @@ export function LoginPage() {
             <form onSubmit={submit} className='space-y-5' aria-busy={pending}>
               <div className='space-y-2'>
                 <Label htmlFor={`${formId}-school`}>学校</Label>
-                <select
-                  id={`${formId}-school`}
-                  disabled={disabled}
-                  className='h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50'
+                <Select value='swpu' disabled={disabled}>
+                  <SelectTrigger
+                    id={`${formId}-school`}
+                    className='h-11 w-full bg-background text-foreground data-[size=default]:h-11'
+                    aria-describedby={`${formId}-school-help`}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position='popper'>
+                    <SelectItem value='swpu'>西南石油大学</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p
+                  id={`${formId}-school-help`}
+                  className='text-xs leading-5 text-muted-foreground'
                 >
-                  <option value='swpu'>西南石油大学</option>
-                </select>
-                <p className='text-xs leading-5 text-muted-foreground'>
                   目前仅此学校的协议有验证依据。
                 </p>
               </div>
