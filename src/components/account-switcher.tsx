@@ -8,41 +8,10 @@ import {
 } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
 import { Link } from 'react-router';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { AccountAvatar } from '@/components/account-avatar';
 import { useAccounts } from '@/hooks/use-accounts';
 import { cn } from '@/lib/utils';
 import { nativeAccountsAvailable } from '@/services/account-service';
-
-function AccountAvatar({
-  username,
-  avatarUrl,
-  className,
-}: {
-  username?: string;
-  avatarUrl?: string | null;
-  className?: string;
-}) {
-  return (
-    <Avatar
-      aria-hidden='true'
-      className={cn(
-        'flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary',
-        className,
-      )}
-    >
-      {avatarUrl && (
-        <AvatarImage src={avatarUrl} alt='' referrerPolicy='no-referrer' />
-      )}
-      <AvatarFallback className='text-inherit'>
-        {username ? (
-          Array.from(username)[0]?.toLocaleUpperCase()
-        ) : (
-          <UserRound className='size-4' />
-        )}
-      </AvatarFallback>
-    </Avatar>
-  );
-}
 
 const itemClassName =
   'flex cursor-default items-center gap-3 rounded-lg px-3 py-2.5 text-sm outline-none select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-45';
@@ -72,7 +41,6 @@ export function AccountSwitcher() {
         >
           <AccountAvatar
             key={active?.id ?? 'signed-out'}
-            username={active?.username}
             avatarUrl={active?.avatarUrl}
           />
           <span className='min-w-0 flex-1'>
@@ -124,7 +92,6 @@ export function AccountSwitcher() {
                 aria-label={`切换到 ${account.username}${account.expired ? '，登录已过期' : ''}`}
               >
                 <AccountAvatar
-                  username={account.username}
                   avatarUrl={account.avatarUrl}
                   className='size-8 rounded-lg text-xs'
                 />

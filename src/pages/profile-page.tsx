@@ -1,35 +1,15 @@
 import { RefreshCw, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { AccountAvatar } from '@/components/account-avatar';
 import { AccountRequired } from '@/components/account-required';
 import { DataFeedback } from '@/components/data-feedback';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useDashboardAccount } from '@/hooks/use-dashboard-account';
 import { object, text } from '@/lib/exercise-data';
+import { profileField, profileGroups } from '@/lib/profile-fields';
 import { useDashboardStore } from '@/stores/dashboard-store';
 
-const labels: Record<string, string> = {
-  realName: '姓名',
-  name: '姓名',
-  username: '账号',
-  userId: '用户标识',
-  id: '标识',
-  sex: '性别（原值）',
-  phone: '手机号码',
-  email: '电子邮箱',
-  schoolName: '学校',
-  collegeName: '学院',
-  majorName: '专业',
-  className: '班级',
-  studentNumber: '学号',
-  grade: '年级',
-  birthday: '出生日期',
-  height: '身高（原值）',
-  weight: '体重（原值）',
-  createTime: '创建时间',
-  updateTime: '更新时间',
-};
 export function ProfilePage() {
   const { active, ready } = useDashboardAccount();
   const { profile, read } = useDashboardStore();
@@ -49,7 +29,7 @@ export function ProfilePage() {
   const fields = Object.entries(object(profile.data));
   const query = search.trim().toLowerCase();
   const visible = fields.filter(([key, value]) =>
-    `${labels[key] ?? ''} ${key} ${JSON.stringify(value)}`
+    `${profileField(key).label} ${profileField(key).group} ${key} ${JSON.stringify(value)}`
       .toLowerCase()
       .includes(query),
   );
@@ -75,15 +55,20 @@ export function ProfilePage() {
         </Button>
       </div>
       <section className='flex items-center gap-5 rounded-xl border border-border bg-card p-6'>
-        <Avatar className='size-16 rounded-xl'>
-          {active?.avatarUrl && <AvatarImage src={active.avatarUrl} alt='' />}
-          <AvatarFallback>
-            {Array.from(active?.username ?? '我')[0]}
-          </AvatarFallback>
-        </Avatar>
+        <AccountAvatar
+          key={active?.id}
+          avatarUrl={active?.avatarUrl}
+          className='size-16 rounded-xl'
+        />
         <div className='min-w-0'>
           <h2 className='break-words text-xl font-semibold'>
-            {text(object(profile.data).realName, active?.username)}
+            {text(
+              object(profile.data).realName,
+              text(
+                object(profile.data).name,
+                text(object(profile.data).nickName, active?.username),
+              ),
+            )}
           </h2>
           <p className='mt-2 text-xs text-muted-foreground'>
             {active?.schoolName} · {active?.username}
@@ -98,13 +83,13 @@ export function ProfilePage() {
         <div className='flex flex-wrap items-center justify-between gap-4 border-b border-border p-5'>
           <div>
             <h2 className='text-sm font-semibold'>
-              全部资料字段{' '}
+              账号资料{' '}
               <span className='ml-2 text-xs font-normal text-muted-foreground'>
                 {fields.length} 项
               </span>
             </h2>
             <p className='mt-1 text-xs text-muted-foreground'>
-              保留学校原始字段名、空值与未识别内容；凭据及敏感协议材料已排除。
+              按资料类别整理；状态含义未确认时保留学校原值。
             </p>
           </div>
           <label className='relative' htmlFor='profile-search'>
@@ -119,34 +104,89 @@ export function ProfilePage() {
             />
           </label>
         </div>
-        <dl className='grid sm:grid-cols-2'>
-          {visible.map(([key, value]) => (
-            <div key={key} className='min-w-0 border-b border-border p-5'>
-              <dt className='text-xs text-muted-foreground'>
-                {labels[key] ?? key}
-                {labels[key] && (
-                  <span className='ml-2 text-[10px] opacity-70'>{key}</span>
-                )}
-              </dt>
-              <dd className='mt-2 break-words text-sm'>
-                {value === null ? (
-                  <span className='text-muted-foreground'>未提供（null）</span>
-                ) : typeof value === 'object' ? (
-                  <details>
-                    <summary className='cursor-pointer text-primary'>
-                      查看嵌套内容
-                    </summary>
-                    <pre className='mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs'>
-                      {JSON.stringify(value, null, 2)}
-                    </pre>
-                  </details>
-                ) : (
-                  String(value) || '空字符串'
-                )}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        {profileGroups.map((group) => {
+          const groupFields = visible.filter(
+            ([key]) => profileField(key).group === group,
+          );
+          if (!groupFields.length) return null;
+          const content = (
+            <dl key={group} className='grid sm:grid-cols-2'>
+              {groupFields.map(([key, value]) => {
+                const field = profileField(key);
+                return (
+                  <div
+                    key={key}
+                    className='min-w-0 border-t border-border/60 p-5'
+                  >
+                    <dt className='text-xs text-muted-foreground'>
+                      {field.label}
+                    </dt>
+                    <dd className='mt-2 break-words text-sm'>
+                      {value === null ? (
+                        <span className='text-muted-foreground'>
+                          学校未提供
+                        </span>
+                      ) : typeof value === 'object' ? (
+                        <details>
+                          <summary className='cursor-pointer text-primary'>
+                            查看详细内容
+                          </summary>
+                          <pre className='mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs'>
+                            {JSON.stringify(value, null, 2)}
+                          </pre>
+                        </details>
+                      ) : (
+                        String(value) || (
+                          <span className='text-muted-foreground'>未填写</span>
+                        )
+                      )}
+                    </dd>
+                    {field.hint && (
+                      <p className='mt-2 text-[11px] leading-5 text-muted-foreground'>
+                        {field.hint}
+                      </p>
+                    )}
+                    <details className='mt-2 text-[10px] text-muted-foreground'>
+                      <summary className='w-fit cursor-pointer hover:text-foreground'>
+                        来源字段
+                      </summary>
+                      <code className='mt-1 block break-all'>{key}</code>
+                    </details>
+                  </div>
+                );
+              })}
+            </dl>
+          );
+          return group === '系统标识' ? (
+            <details
+              key={group}
+              open={query ? true : undefined}
+              className='border-t border-border'
+            >
+              <summary className='cursor-pointer px-5 py-4 text-sm font-medium'>
+                系统标识{' '}
+                <span className='ml-2 text-xs font-normal text-muted-foreground'>
+                  {groupFields.length} 项 · 按需查看
+                </span>
+              </summary>
+              {content}
+            </details>
+          ) : (
+            <section
+              key={group}
+              aria-label={group}
+              className='border-t border-border'
+            >
+              <h3 className='px-5 py-4 text-sm font-medium'>
+                {group}{' '}
+                <span className='ml-2 text-xs font-normal text-muted-foreground'>
+                  {groupFields.length} 项
+                </span>
+              </h3>
+              {content}
+            </section>
+          );
+        })}
         {!visible.length && (
           <p className='p-8 text-center text-sm text-muted-foreground'>
             {profile.loading
