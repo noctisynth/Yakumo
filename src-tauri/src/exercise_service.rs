@@ -91,7 +91,7 @@ pub struct ExerciseResponse {
     pub data: Value,
 }
 
-fn signature_metadata() -> ExerciseResult<String> {
+pub(crate) fn signature_metadata() -> ExerciseResult<String> {
     let material: Value =
         serde_json::from_str(include_str!("../resources/protocol-materials.json"))
             .map_err(|_| error("protocol_encoding", "兼容材料不可用。"))?;

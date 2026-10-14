@@ -15,7 +15,6 @@ import { useAccountsStore } from '@/stores/accounts-store';
 import { usePreferencesStore } from '@/stores/preferences-store';
 
 const navigation = [
-  { to: '/studio', label: '生成工作室', detail: 'Studio', icon: WandSparkles },
   { to: '/', label: '数据大盘', detail: 'Overview', icon: LayoutDashboard },
   { to: '/records', label: '运动记录', detail: 'Activity', icon: Footprints },
   {
@@ -24,6 +23,7 @@ const navigation = [
     detail: 'School',
     icon: SlidersHorizontal,
   },
+  { to: '/studio', label: '生成工作室', detail: 'Studio', icon: WandSparkles },
   {
     to: '/settings',
     label: '偏好设置',

@@ -232,7 +232,7 @@ export function AccountsPage() {
                   {confirmId === account.id && (
                     <div className='space-y-3 rounded-lg bg-muted p-3'>
                       <p className='text-xs leading-6'>
-                        移除此账号的本地会话？学校服务端的登录状态不会因此撤销。
+                        移除此账号的本地会话？学校服务端的登录状态不会因此撤销。为避免重复提交，加密回执与防重记录会保留，重新添加同一账号后仍可查看。
                       </p>
                       <div className='flex gap-2'>
                         <Button

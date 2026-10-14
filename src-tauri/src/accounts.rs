@@ -93,6 +93,73 @@ mod tests {
         }
     }
 
+    #[test]
+    fn submission_journal_survives_restart_isolates_users_and_blocks_duplicates() {
+        let storage = TestStorage::default();
+        let mut app = manager(&storage);
+        let id = app
+            .login(input("synthetic-a", "one"), 100)
+            .expect("login")
+            .active_id
+            .expect("id");
+        let ticket = crate::run_submission::Ticket {
+            account_id: id.clone(),
+            digest: "a".repeat(64),
+            identify: "synthetic-identify".into(),
+            payload: serde_json::json!({}),
+            created_at: 100000,
+        };
+        storage.fail.store(true, Ordering::SeqCst);
+        assert!(app.reserve(&id, &ticket, 100000).is_err());
+        assert!(app.receipts(&id, 100).expect("empty").is_empty());
+        storage.fail.store(false, Ordering::SeqCst);
+        let (_, mut receipt) = app.reserve(&id, &ticket, 100000).expect("reserve");
+        assert!(app.reserve(&id, &ticket, 100000).is_err());
+        let mut restarted = manager(&storage);
+        assert!(restarted.reserve(&id, &ticket, 100000).is_err());
+        assert_eq!(
+            restarted.receipts(&id, 100).expect("history")[0].state,
+            "unknown"
+        );
+        let b = restarted
+            .login(input("synthetic-b", "two"), 100)
+            .expect("b")
+            .active_id
+            .expect("id");
+        assert!(restarted.receipts(&b, 100).expect("b history").is_empty());
+        restarted.switch(&id, 100).expect("switch");
+        receipt.state = "accepted".into();
+        receipt.record_id = Some("synthetic-record".into());
+        storage.fail.store(true, Ordering::SeqCst);
+        assert!(
+            restarted
+                .finish_submission(receipt.clone(), 100000)
+                .is_err()
+        );
+        assert_eq!(
+            restarted.receipts(&id, 100).expect("uncertain")[0].state,
+            "unknown"
+        );
+        storage.fail.store(false, Ordering::SeqCst);
+        assert_eq!(
+            manager(&storage)
+                .receipts(&id, 100)
+                .expect("durable uncertain")[0]
+                .state,
+            "unknown"
+        );
+        restarted
+            .finish_submission(receipt, 100000)
+            .expect("finish");
+        assert!(restarted.reserve(&id, &ticket, 100000).is_err());
+        assert_eq!(
+            manager(&storage).receipts(&id, 100).expect("restored")[0]
+                .record_id
+                .as_deref(),
+            Some("synthetic-record")
+        );
+    }
+
     fn manager(storage: &TestStorage) -> AccountManager {
         AccountManager::new(Box::new(storage.clone()), Box::new(TestAuthentication))
     }
@@ -368,6 +435,8 @@ pub struct AccountData {
     version: u8,
     active_id: Option<String>,
     accounts: Vec<Account>,
+    #[serde(default)]
+    attempts: Vec<crate::run_submission::Attempt>,
 }
 
 impl Default for AccountData {
@@ -376,6 +445,7 @@ impl Default for AccountData {
             version: 1,
             active_id: None,
             accounts: Vec::new(),
+            attempts: Vec::new(),
         }
     }
 }
@@ -384,6 +454,7 @@ impl AccountData {
     pub fn validate(&self) -> AccountResult<()> {
         if self.version != 1
             || self.accounts.len() > MAX_ACCOUNTS
+            || self.attempts.len() > 5000
             || self
                 .active_id
                 .as_ref()
@@ -530,6 +601,80 @@ impl AccountManager {
             ));
         }
         Ok(account.session.clone())
+    }
+
+    fn owner(session: &Session) -> String {
+        use sha2::{Digest, Sha256};
+        format!("{:x}", Sha256::digest(format!("swpu:{}", session.user_id)))
+    }
+    pub fn receipts(
+        &mut self,
+        id: &str,
+        now: u64,
+    ) -> AccountResult<Vec<crate::run_submission::Receipt>> {
+        let session = self.active_session(id, now)?;
+        let owner = Self::owner(&session);
+        Ok(self
+            .data()?
+            .attempts
+            .iter()
+            .filter(|a| a.owner == owner)
+            .map(|a| a.receipt.clone())
+            .rev()
+            .collect())
+    }
+    pub fn reserve(
+        &mut self,
+        id: &str,
+        ticket: &crate::run_submission::Ticket,
+        now: u64,
+    ) -> AccountResult<(Session, crate::run_submission::Receipt)> {
+        let session = self.active_session(id, now / 1000)?;
+        let owner = Self::owner(&session);
+        let mut data = self.data()?.clone();
+        if data.attempts.iter().any(|a| {
+            a.owner == owner
+                && (a.receipt.digest == ticket.digest
+                    || a.receipt.identify == ticket.identify
+                    || a.receipt.state == "unknown")
+        }) {
+            return Err(AccountError::new(
+                "duplicate_submission",
+                "同一草稿或关联运动已提交，或有结果不确定的提交；请先核对记录，禁止重传。",
+            ));
+        }
+        let receipt = crate::run_submission::Receipt {
+            id: Uuid::new_v4().to_string(),
+            digest: ticket.digest.clone(),
+            identify: ticket.identify.clone(),
+            state: "unknown".into(),
+            message: "提交意图已保存；结果尚未确认，请勿重传。".into(),
+            record_id: None,
+            created_at: now,
+            algorithm: "circle-v1".into(),
+            source: "synthetic".into(),
+        };
+        data.attempts.push(crate::run_submission::Attempt {
+            owner,
+            receipt: receipt.clone(),
+        });
+        self.commit(data, now / 1000)?;
+        Ok((session, receipt))
+    }
+    pub fn finish_submission(
+        &mut self,
+        receipt: crate::run_submission::Receipt,
+        now: u64,
+    ) -> AccountResult<()> {
+        let mut data = self.data()?.clone();
+        let attempt = data
+            .attempts
+            .iter_mut()
+            .find(|a| a.receipt.id == receipt.id)
+            .ok_or_else(AccountError::storage)?;
+        attempt.receipt = receipt;
+        self.commit(data, now / 1000)?;
+        Ok(())
     }
 
     fn enrich_avatar(&mut self, data: &mut AccountData, id: &str, now: u64) -> bool {

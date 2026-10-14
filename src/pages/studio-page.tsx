@@ -1,6 +1,7 @@
 import { Download, WandSparkles } from 'lucide-react';
 import { useState } from 'react';
 import { AccountRequired } from '@/components/account-required';
+import { SubmissionPanel } from '@/components/submission-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -63,15 +64,20 @@ function RoutePreview({ preview }: { preview: RunPreview }) {
 }
 function StudioContent() {
   const studio = useStudioStore();
-  const [values, setValues] = useState({
-    latitude: '',
-    longitude: '',
-    distanceM: '2000',
-    durationS: '900',
-    steps: '2400',
-    laps: '5',
-    seed: 'yakumo-1',
-    start: new Date(Date.now() - 900000).toISOString().slice(0, 19),
+  const [values, setValues] = useState(() => {
+    const input = studio.preview?.input;
+    return {
+      latitude: input ? String(input.latitude) : '',
+      longitude: input ? String(input.longitude) : '',
+      distanceM: String(input?.distanceM ?? 2000),
+      durationS: String(input?.durationS ?? 900),
+      steps: String(input?.steps ?? 2400),
+      laps: String(input?.laps ?? 5),
+      seed: input?.seed ?? 'yakumo-1',
+      start: new Date(input?.startTime ?? Date.now() - 900000)
+        .toISOString()
+        .slice(0, 19),
+    };
   });
   const preview = studio.preview;
   function exportPreview() {
@@ -95,7 +101,7 @@ function StudioContent() {
         </p>
         <h1 className='mt-3 text-3xl font-semibold'>让每个参数，都有依据。</h1>
         <p className='mt-3 text-sm text-muted-foreground'>
-          输入参数 → 生成轨迹 → 检查预览。此阶段不会发送运动记录。
+          输入参数 → 生成轨迹 → 检查预览 → 明确确认后提交。
         </p>
       </header>
       <div className='grid items-start gap-6 xl:grid-cols-[340px_1fr]'>
@@ -250,6 +256,7 @@ function StudioContent() {
               </p>
             </div>
           )}
+          <SubmissionPanel key={preview?.digest ?? 'empty'} preview={preview} />
         </section>
       </div>
     </div>
