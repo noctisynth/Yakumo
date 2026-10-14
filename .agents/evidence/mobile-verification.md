@@ -7,3 +7,28 @@
 手机底栏四项可见且触控高度至少 44 像素，桌面侧栏隐藏；桌面恢复侧栏且隐藏底栏。
 深浅主题、个人入口导航和未登录卡片圆角检查通过。安全区域由 viewport-fit 与环境变量预留。
 真实 Android 软键盘和原生能力尚未验证，不能以此认定 Android 客户端已经可用。
+
+
+云端阶段首轮结果：Cross-platform build preview 运行 38634400407 的 Windows x64、Linux x64、
+macOS arm64、macOS x64 四个发布包均构建成功；该运行整体因最初 Android 工具链步骤失败，
+不将其整体结论写为成功。后续修复显式 SDK 初始化，并移除已经下线的旧 tools 包。
+对应三系统 Quality、版本及发布逻辑检查通过。
+
+Android 签名构建运行 38635650358 成功，来源提交 a356dad。产出通用 APK 与 AAB，包含
+arm64-v8a 和 x86_64。验证报告确认 APK v2/v3、预期发布证书、AAB 签名以及 ZIP/ELF 16 KB 对齐。
+APK SHA-256 为 0d45df4ee65fd9618cc12a4b124c9de84cfca01992d6e0dd4b22a49123435c36。
+API 35 模拟器安装、冷启动及同签名覆盖安装通过；没有真实学校登录或运动提交。
+首次运行未覆盖实际键盘和所有 Android 业务，后续 UI 验收独立记录。
+
+固定发布证书 SHA-256：09da0e23d9f21c9c5ee85b383342ab2e74fba4d372b8a07258205cd425c46da8。
+私钥仅保存于 GitHub secrets 和本机加密备份，密码用原用户 DPAPI 保护；公开源码仅含证书及指纹。
+3 项构建配置测试、13 个断言通过，覆盖覆层、签名输入及缺失凭据时拒绝继续。
+所有 Android SDK/NDK、编译和模拟器均在线运行，本机仅执行前端、桌面和配置测试。
+
+公开运行记录：
+https://github.com/noctisynth/Yakumo/actions/runs/38634400407
+https://github.com/noctisynth/Yakumo/actions/runs/38635650358
+
+最新界面复验运行 38637986156 的 APK/AAB 构建、签名和对齐均通过，但 UI 步骤因未先滚动到账号
+管理入口而点中了底栏，未找到输入框而失败。模拟器截图同时发现 WebView 的 CSS safe-area 值未
+包含 Android 系统栏，已改为原生 WindowInsets 优先并同步键盘状态；修改后的原生 UI 需再次复验。

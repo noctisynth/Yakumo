@@ -57,3 +57,10 @@ pub fn export(
         )
         .map_err(|_| AccountError::new("export_failed", "无法保存预览，请重试。"))
 }
+
+pub fn appearance(app: &tauri::AppHandle, dark: bool) -> AccountResult<serde_json::Value> {
+    app.state::<Vault<tauri::Wry>>()
+        .0
+        .run_mobile_plugin("appearance", serde_json::json!({"dark":dark}))
+        .map_err(|_| AccountError::new("appearance_unavailable", "无法同步系统显示区域。"))
+}

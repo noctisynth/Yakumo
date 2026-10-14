@@ -35,3 +35,7 @@ DPAPI 保护，不纳入 Git。三个 secret 名称为 ANDROID_KEY_BASE64、ANDR
 正式发布须等待桌面矩阵与已验证签名 Android job 均成功，合并到统一附件集合后才执行发布。
 手动验证仅上传 Actions 附件，不创建 Release，不消费 changeset，不自动合并发布分支。
 Android 签名依据：https://v2.tauri.app/distribute/sign/android/ 。
+
+Android 15+ 的边到边窗口由原生 WindowInsets 提供系统栏和刘海边距，前端使用原生值优先于 Web
+safe-area 环境变量；同步系统栏图标深浅，键盘出现时收起底栏。此接口仅返回显示区域与键盘状态，
+不返回密钥或账号材料。真实模拟器 UI 验证需滚动到可见控件再点击，避免将遮挡位置误判为页面失败。

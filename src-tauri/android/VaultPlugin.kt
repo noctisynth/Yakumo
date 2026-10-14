@@ -7,6 +7,9 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.activity.result.ActivityResult
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -21,6 +24,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+@InvokeArg class AppearanceArgs { var dark: Boolean = false }
 @InvokeArg class KeyArgs { var create: Boolean = false }
 @InvokeArg class ExportArgs { lateinit var filename: String; lateinit var content: String }
 
@@ -28,6 +32,22 @@ import javax.crypto.spec.GCMParameterSpec
 class VaultPlugin(private val host: Activity): Plugin(host) {
     private val alias = "app.yakumo.vault.wrap.v1"
     private var exportContent: String? = null
+    @Command
+    fun appearance(invoke: Invoke) {
+        try {
+            val dark = invoke.parseArgs(AppearanceArgs::class.java).dark
+            val decor = host.window.decorView
+            val insets = ViewCompat.getRootWindowInsets(decor)
+            val bars = insets?.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            val density = host.resources.displayMetrics.density.toDouble()
+            val controller = WindowInsetsControllerCompat(host.window, decor)
+            controller.isAppearanceLightStatusBars = !dark
+            controller.isAppearanceLightNavigationBars = !dark
+            invoke.resolve(JSObject().put("top", (bars?.top ?: 0) / density).put("bottom", (bars?.bottom ?: 0) / density)
+                .put("left", (bars?.left ?: 0) / density).put("right", (bars?.right ?: 0) / density)
+                .put("keyboard", insets?.isVisible(WindowInsetsCompat.Type.ime()) == true))
+        } catch (_: Exception) { invoke.reject("Appearance unavailable") }
+    }
     @Command @Synchronized
     fun key(invoke: Invoke) {
         var plaintext: ByteArray? = null

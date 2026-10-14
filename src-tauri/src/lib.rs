@@ -129,6 +129,24 @@ async fn preview_run(input: run_generator::RunInput) -> AccountResult<run_genera
 }
 
 #[tauri::command]
+async fn sync_mobile_appearance(
+    app: tauri::AppHandle,
+    dark: bool,
+) -> AccountResult<Option<serde_json::Value>> {
+    #[cfg(target_os = "android")]
+    return tauri::async_runtime::spawn_blocking(move || {
+        mobile_vault::appearance(&app, dark).map(Some)
+    })
+    .await
+    .map_err(|_| AccountError::storage())?;
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, dark);
+        Ok(None)
+    }
+}
+
+#[tauri::command]
 fn mobile_platform() -> bool {
     cfg!(target_os = "android")
 }
@@ -365,6 +383,7 @@ pub fn run() {
             submit_run,
             submission_history,
             link_submission,
+            sync_mobile_appearance,
             mobile_platform,
             export_mobile_preview,
             preview_run,

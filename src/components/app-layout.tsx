@@ -44,7 +44,7 @@ export function AppLayout() {
       : location.pathname.startsWith(item.to),
   );
   return (
-    <div className='min-h-svh bg-background text-foreground'>
+    <div className='min-h-svh bg-background pl-[var(--native-safe-left,env(safe-area-inset-left))] pr-[var(--native-safe-right,env(safe-area-inset-right))] text-foreground'>
       <button
         type='button'
         onClick={() => document.getElementById('main-content')?.focus()}
@@ -122,8 +122,8 @@ export function AppLayout() {
             <AccountSwitcher />
           </div>
         </aside>
-        <div className='min-w-0 flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] desktop:pb-0'>
-          <header className='flex h-[calc(4rem+env(safe-area-inset-top))] items-center pt-[env(safe-area-inset-top)] desktop:h-16 desktop:pt-0 justify-between gap-3 border-b border-border px-5 desktop:px-9 lg:px-12'>
+        <div className='min-w-0 flex-1 pb-[calc(5rem+var(--native-safe-bottom,env(safe-area-inset-bottom)))] desktop:pb-0'>
+          <header className='flex h-[calc(4rem+var(--native-safe-top,env(safe-area-inset-top)))] items-center pt-[var(--native-safe-top,env(safe-area-inset-top))] desktop:h-16 desktop:pt-0 justify-between gap-3 border-b border-border px-5 desktop:px-9 lg:px-12'>
             <Link
               to='/'
               aria-label='八云爱首页'
@@ -191,7 +191,7 @@ export function AppLayout() {
       </div>
       <nav
         aria-label='移动端导航'
-        className='fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-border bg-card px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] desktop:hidden'
+        className='fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-border bg-card pt-1 pl-[calc(0.5rem+var(--native-safe-left,env(safe-area-inset-left)))] pr-[calc(0.5rem+var(--native-safe-right,env(safe-area-inset-right)))] pb-[max(0.5rem,var(--native-safe-bottom,env(safe-area-inset-bottom)))] desktop:hidden keyboard-open:hidden'
       >
         {[
           { to: '/', label: '大盘', icon: LayoutDashboard },

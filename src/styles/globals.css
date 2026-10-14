@@ -4,6 +4,7 @@
 @import '@fontsource-variable/geist';
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant keyboard-open (&:is(html[data-keyboard='open'] *));
 @custom-variant desktop (
   @media (min-width: 48rem) and (hover: hover) and (pointer: fine)
 );
