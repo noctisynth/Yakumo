@@ -1,0 +1,289 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Observed client field union from one sample, not server requirements. No required list. additionalProperties=false describes the observed sample only. contentSchema is descriptive and may not be enforced by validators.",
+  "type": "object",
+  "properties": {
+    "sportType": {
+      "type": "integer",
+      "description": "运动模式；来源：m85$a: settings.runType，默认 1；完整枚举未知",
+      "x-server-required": null
+    },
+    "startTime": {
+      "type": "integer",
+      "description": "跑步开始时刻；来源：m85.F → z65$a.D；V4SportActivity.h0 初始化",
+      "x-server-required": null
+    },
+    "endTime": {
+      "type": "integer",
+      "description": "跑步结束时刻；来源：m85.F → z65$a.h → A：服务端基准 + elapsedRealtime 增量，否则 currentTimeMillis",
+      "x-server-required": null
+    },
+    "sportTime": {
+      "type": "integer",
+      "description": "有效运动时长；来源：m85.F → z65$a.e；StepObserver.l 每秒加 1，暂停不累计",
+      "x-server-required": null
+    },
+    "sportRange": {
+      "type": "string",
+      "description": "复核后的运动距离；来源：te1.c(z65$a.g())；米 / 1000 后 DecimalFormat(0.00)、FLOOR",
+      "x-server-required": null
+    },
+    "speed": {
+      "type": "string",
+      "description": "每公里配速，字段名容易误读；来源：z65$a.y；由 te1.b(distanceMeters,durationSeconds) 生成",
+      "x-server-required": null
+    },
+    "avgSpeed": {
+      "type": "string",
+      "description": "平均速度；来源：z65$a.d；由 te1.a(distanceMeters,durationSeconds) 生成",
+      "x-server-required": null
+    },
+    "brand": {
+      "type": "string",
+      "description": "设备制造商；来源：aj5.d → Build.MANUFACTURER，首字母大写",
+      "x-server-required": null
+    },
+    "model": {
+      "type": "string",
+      "description": "设备型号；来源：aj5.e → Build.MODEL",
+      "x-server-required": null
+    },
+    "system": {
+      "type": "string",
+      "description": "系统名称；来源：aj5.f → Android 或 HarmonyOS",
+      "x-server-required": null
+    },
+    "version": {
+      "type": "string",
+      "description": "系统版本；来源：aj5.c → Build.VERSION.RELEASE 或 HarmonyOS 信息",
+      "x-server-required": null
+    },
+    "appVersion": {
+      "type": "string",
+      "description": "应用版本名；来源：aj5.h → PackageInfo.versionName；异常默认 1.0",
+      "x-server-required": null
+    },
+    "pointList": {
+      "type": "string",
+      "description": "配置的必经点列表，内含 JSON 数组；来源：m85.F 读取 settings.list；FastJSON.toJSONString；保留服务端 Map 中额外字段",
+      "x-server-required": null,
+      "contentMediaType": "application/json",
+      "contentSchema": {
+        "type": "array"
+      }
+    },
+    "stepNumbers": {
+      "type": "string",
+      "description": "每分钟步数分桶，内含 JSON 整数数组；来源：z65$a.m：复制 H 的分钟桶，再将未满一分钟的剩余步数补到尾部；FastJSON.toJSONString",
+      "x-server-required": null,
+      "contentMediaType": "application/json",
+      "contentSchema": {
+        "type": "array",
+        "items": {
+          "type": "integer"
+        }
+      }
+    },
+    "isSequencePoint": {
+      "type": "string",
+      "description": "必经点是否要求顺序；来源：c92.t(settings,isSequencePoint)；完整取值范围待确认",
+      "x-server-required": null
+    },
+    "gitudeLatitude": {
+      "type": "string",
+      "description": "轨迹，内含 JSON PointData 数组；保留原拼写；来源：new Gson().toJson(z65$a.s())",
+      "x-server-required": null,
+      "contentMediaType": "application/json",
+      "contentSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/PointData"
+        }
+      }
+    },
+    "okPointList": {
+      "type": "string",
+      "description": "实际通过的必经点，内含 JSON 数组；来源：FastJSON.toJSONString(z65$a.x())；PassPoint2Observer.k 创建 6 个键",
+      "x-server-required": null,
+      "contentMediaType": "application/json",
+      "contentSchema": {
+        "type": "array"
+      }
+    },
+    "isFaceStatus": {
+      "type": "string",
+      "description": "本地人脸状态标记；来源：z65$a.k().value == true 时为 \"1\"，否则 \"0\"；不能当作服务端认可",
+      "x-server-required": null
+    },
+    "uploadType": {
+      "type": "integer",
+      "description": "上传状态/类型；来源：由本地 sports.uploadType 字符串转 int；serverUnavailable==true 时强制 8；其他枚举未闭合",
+      "x-server-required": null
+    },
+    "identify": {
+      "type": "string",
+      "description": "单次运动关联标识；来源：m85.F 优先 settings.identify，否则 UUID.randomUUID；关联缓存和重试",
+      "x-server-required": null
+    },
+    "geofence": {
+      "type": "string",
+      "description": "配置的围栏，内含 JSON 多边形数组；来源：FastJSON.toJSONString(c92.n(settings,geofence))；消费者使用每个顶点的 lat/lng",
+      "x-server-required": null,
+      "contentMediaType": "application/json",
+      "contentSchema": {
+        "type": "array"
+      }
+    },
+    "limitSpeed": {
+      "type": "string",
+      "description": "配速边界，不能直接当 km/h；来源：settings.limitSpeed 浮点值转字符串；默认 a75$a.j(uw0$a.l()) = 1000/(60*速度m/s)",
+      "x-server-required": null
+    },
+    "limitStride": {
+      "type": "string",
+      "description": "步幅边界；来源：settings.endStride；默认 String.valueOf(uw0$a.n())",
+      "x-server-required": null
+    },
+    "limitStepFrequency": {
+      "type": "string",
+      "description": "步频边界；来源：settings.endLimitStepFrequency；默认 String.valueOf(uw0$a.j())",
+      "x-server-required": null
+    },
+    "gpsDistance": {
+      "type": "string",
+      "description": "轨迹累计距离；来源：te1.c(z65$a.o())，与 sportRange 是两个独立距离",
+      "x-server-required": null
+    },
+    "appType": {
+      "type": "string",
+      "description": "客户端平台；来源：ce: 固定 Android",
+      "x-server-required": null
+    },
+    "versionCode": {
+      "type": "integer",
+      "description": "安装包版本号；来源：ce → a22.o → PackageInfo.versionCode；本样本 20240",
+      "x-server-required": null
+    },
+    "versionName": {
+      "type": "string",
+      "description": "安装包版本名；来源：ce → a22.p；本样本 2.0.24",
+      "x-server-required": null
+    },
+    "signatureMD5": {
+      "type": "string",
+      "description": "签名摘要相关公共参数；来源：ce → a22.h → Transform.INSTANCE.a；与 native v 的证书 SHA256 不可混淆",
+      "x-server-required": null
+    },
+    "uniqueCode": {
+      "type": "string",
+      "description": "公共设备标识；来源：ce → ia.d；涉及 vl3.a 与 LH.getId、MD5 及缓存；精确依赖/失败分支仍待完整核对",
+      "x-server-required": null
+    },
+    "d": {
+      "type": "integer",
+      "description": "开发环境与确认计数的组合；来源：(userOpenDevelop ? 1 : 0) + parseInt(confirmCount字符串)，空字符串不加；确认计数来自 z65$a.I",
+      "x-server-required": null
+    },
+    "f": {
+      "type": "integer",
+      "description": "轨迹中 Android isFromMockProvider 为真 的点数；来源：FastJSON.parseArray(gitudeLatitude,PointData) 后统计 getF()==true；列表解析为 null 时计数对象为 null",
+      "x-server-required": null
+    },
+    "m": {
+      "type": "integer",
+      "description": "轨迹中 AMap isMock 为真 的点数；来源：FastJSON.parseArray(gitudeLatitude,PointData) 后统计 getM()==true；列表解析为 null 时计数对象为 null",
+      "x-server-required": null
+    },
+    "h": {
+      "type": "integer",
+      "description": "轨迹中 AMap 高风险模拟定位应用标记为真 的点数；来源：FastJSON.parseArray(gitudeLatitude,PointData) 后统计 getH()==true；列表解析为 null 时计数对象为 null",
+      "x-server-required": null
+    },
+    "remarkId": {
+      "type": "string",
+      "description": "缓存的复核/备注关联值；来源：AppDatabase.z → v55.r：SELECT remarkId FROM sports WHERE identify=:identity",
+      "x-server-required": null
+    },
+    "isValid": {
+      "type": "integer",
+      "description": "本地 momentIsValid 标记；来源：AppDatabase.z → v55.e：SELECT momentIsValid FROM sports WHERE identify=:identity；不是 sports.isValid 文本列",
+      "x-server-required": null
+    },
+    "environment": {
+      "type": "object",
+      "description": "本地缓存的设备环境信息；来源：AppDatabase.w → i21.d → o21；子键 deviceId/oppo/safe，都是字符串",
+      "x-server-required": null,
+      "properties": {
+        "deviceId": {
+          "type": "string"
+        },
+        "oppo": {
+          "type": "string"
+        },
+        "safe": {
+          "type": "string"
+        }
+      }
+    },
+    "v": {
+      "type": "string",
+      "description": "原生包装时追加的证书校验材料；来源：aesRsaEncrypt；算法见 upload_reverse_engineering.json",
+      "x-server-required": null
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "PointData": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "number",
+          "description": "纬度"
+        },
+        "o": {
+          "type": "number",
+          "description": "经度"
+        },
+        "t": {
+          "type": "integer",
+          "description": "Location.getTime 时间"
+        },
+        "s": {
+          "type": "number",
+          "description": "初始 Location.getSpeed；后续可能覆盖为两点距离 / 时间差"
+        },
+        "i": {
+          "type": "boolean",
+          "description": "z65$a.K 的暂停/停止累计状态"
+        },
+        "l": {
+          "type": "integer",
+          "description": "AMapLocation.getLocationType；完整枚举未知"
+        },
+        "c": {
+          "type": "integer",
+          "description": "z65$a.e 有效运动时长"
+        },
+        "e": {
+          "type": "integer",
+          "description": "z65$a.G 有效累计步数"
+        },
+        "f": {
+          "type": "boolean",
+          "description": "isFromMockProvider 为真时置 true；默认 null"
+        },
+        "m": {
+          "type": "boolean",
+          "description": "isMock 为真时置 true；默认 null"
+        },
+        "h": {
+          "type": "boolean",
+          "description": "isInstalledHighDangerMockApp 为真时置 true；默认 null"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "x-document-id": "DATA-002",
+  "x-evidence-id": "EV-06"
+}

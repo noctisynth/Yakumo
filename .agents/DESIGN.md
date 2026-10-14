@@ -1,0 +1,63 @@
+# 八云爱（yakumo）工程设计索引
+
+文档编号：DESIGN-001。状态：Active。更新：2026-10-14。
+
+## 产品方向
+
+项目名为“八云爱”，英文标识为 yakumo，命名灵感来自东方 Project 的《yakumo ai!》跑酷游戏。
+
+建立跨平台的跑步数据客户端：用户可登录、读取配置和记录、查看统计，在软件内生成、
+检查并提交跑步数据，查询服务端处理结果。采用 stable Rust 与 Tauri，以及 React、
+Zustand、React Router、shadcn/ui、Biome。隐私最小化、无广告、无无关数据上报属于产品目标。
+
+当前交付范围是工程上下文。应用、协议移植、生成器、界面、打包和跨平台验证均未实现。
+历史 Android 真实定位和计步流程作为兼容性证据保存，不替代本轮“生成数据并上报”的目标。
+是否增加真实运动采集能力及移动后台服务仍属后续范围，不作为当前目标的隐式前置条件。
+
+## 文档注册表
+
+文档以编号定位，文件名仅为检索辅助，不使用本地路径或文件链接。
+
+| 编号 | 文件名 | 类型 | 责任 |
+|---|---|---|---|
+| README-001 | README.md | 项目介绍 | 名称、目标、当前进度与工程入口 |
+| GOV-001 | AGENTS.md | Active 约定 | 协作、事实、隐私与验证纪律 |
+| DESIGN-001 | DESIGN.md | Active 索引 | 方向、边界、阅读顺序 |
+| SPEC-001 | product-baseline.md | Active Spec | 用户已确定范围及工程约束 |
+| FACT-001 | evidence-baseline.md | Verified facts | 样本与验证成熟度、历史冲突消解 |
+| FACT-002 | protocol.md | Verified facts | 身份、路由、签名、封包、编码 |
+| FACT-003 | upload-fields.md | Verified facts | 38 个顶层字段和嵌套数据 |
+| FACT-004 | lifecycle.md | Verified facts | 配置、状态、生成实验和结果核对 |
+| FACT-005 | privacy.md | Verified facts | 权限、明文传输、第三方证据范围 |
+| EVIDENCE-001 | evidence-register.md | Evidence register | 证据编号、摘要和来源哈希 |
+| DATA-001 | evidence-snapshot.json | Sanitized evidence | 原始材料精选的类型及验证结果 |
+| DATA-002 | upload-observation.schema.json | Observed schema | 客户端字段并集；非服务端校验规范 |
+| RFC-0000 | README.md | Active 流程 | 提案状态与接受条件 |
+| RFC-0001 | 0001-implementation-choices.md | Draft RFC | 平台、存储、生成及协议实现选项 |
+| TODO-001 | TODO.md | Active 索引 | 路由当前实施清单 |
+| TASK-001 | project.md | Active 清单 | 已确认目标与实现差距 |
+
+## 责任边界
+
+以下是后续实现的分层基线，具体命令签名、crate 拆分及存储方案仍待设计。
+
+| 层 | 职责 | 边界 |
+|---|---|---|
+| React 页面和组件 | 登录流程、配置呈现、生成预览、提交反馈、历史记录 | 不持有服务端令牌，不实现密码学 |
+| Zustand 与 React Router | 界面共享状态和导航 | 不把前端缓存当作服务端完成事实 |
+| Tauri 应用边界 | 校验命令输入，协调会话、生成、上传及结果核对 | 使用最小权限，不开放任意网络代理 |
+| Rust 领域逻辑 | 生成数据、单位和一致性检查、本地状态模型 | 不依赖视图；合成来源与服务端判定分开 |
+| Rust 协议适配 | 学校配置、登录、签名、JSON、加密、HTTP、响应解释 | 精确保留协议类型与未知值 |
+| 平台服务 | 凭据保护、可恢复状态和打包 | 不将单平台机制当跨平台保证 |
+
+调用方向为界面到应用边界，再到领域逻辑、协议适配及平台服务。纯数据生成与请求构造可离线运行；
+发送行为由应用流程显式发起。数据来源、提交状态和服务端有效判定是三种不同属性。
+
+## 当前可复用基线
+
+已恢复完整的两版 DEX 样本，验证新版登录、四个只读接口、原版 22 条 GET 签名、上传封包与
+双层表单编码。已取得一条合成测试记录的接收、详情有效状态、有效列表及统计变化证据。
+这些足以启动有边界的协议移植，不等于完成全部业务规则或完整 Android 生命周期。
+
+阅读顺序：GOV-001 → SPEC-001 → FACT-001 → FACT-002 至 FACT-005 → EVIDENCE-001 → TASK-001。
+新增跨层决策先更新本索引；待决项通过 RFC-0000 推进。工程事实不依赖其他工作区可用。

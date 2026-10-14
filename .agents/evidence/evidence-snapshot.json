@@ -1,0 +1,889 @@
+{
+  "document_id": "DATA-001",
+  "updated": "2026-10-14",
+  "scope": "Sanitized selected observations, not complete original artifacts or a universal server schema.",
+  "provenance": "Source artifacts are identified only by logical evidence ID and SHA-256. Private responses, accounts, device values, coordinates and local paths are excluded.",
+  "source_register": [
+    {
+      "id": "EV-01",
+      "subject": "APK 恢复、接口与权限比较",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "bfaf45334d9f385d979eb0a6bfa57fa89375c24c48073e2eac20dd4e23f91100"
+        }
+      ]
+    },
+    {
+      "id": "EV-02",
+      "subject": "新版八份 DEX 原始校验",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "9d3875ffa81a896d5da172d8354c423552feb34709eeead606338035a4a8da4f"
+        }
+      ]
+    },
+    {
+      "id": "EV-03",
+      "subject": "新版登录和学校 appId 服务验证",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "0fc4d9ac31054df33268fd6dee5cd64b241e71fc099ca6e0ed37b5bea731182c"
+        },
+        {
+          "part": 2,
+          "sha256": "462a348ae1c250f90954be16d9e220d460c4835f07c778e27575800be78610e5"
+        }
+      ]
+    },
+    {
+      "id": "EV-04",
+      "subject": "签名服务验证和四个只读接口",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "42f603a5ae1a7ef0e93d5a3c37f492d86ffd237d5af760bd2ec22fd3497a0529"
+        },
+        {
+          "part": 2,
+          "sha256": "e679ee60cc5759e7fcba42e14092d978e4b1b8aaf728502f4dbb90a756b71683"
+        },
+        {
+          "part": 3,
+          "sha256": "e990e83a1ecc150c137178981c8c7d8661d336db2317affaf2a7234d826f5c86"
+        },
+        {
+          "part": 4,
+          "sha256": "827c83bb08fa3405e2f14617d196734f82b8bc1c110e4ef9f613a4f097be6369"
+        }
+      ]
+    },
+    {
+      "id": "EV-05",
+      "subject": "HTTP 正文、原版 GET 签名和隐私观察",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "6ba3b6f11096a26d8232f8dbe88bc8d0dd8460304902ba3fe7aeb7af28c3bcd8"
+        }
+      ]
+    },
+    {
+      "id": "EV-06",
+      "subject": "上传字段字典与客户端观察 Schema",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "a04a7d5607a0de768fe19a2ad02a25ebfda0cbc2c2515e7b2b6102e02d1ea28d"
+        },
+        {
+          "part": 2,
+          "sha256": "0faf5706d8023c168e54b5247365a6a2c4279b2c52981c4386d31a9c826042fd"
+        }
+      ]
+    },
+    {
+      "id": "EV-07",
+      "subject": "上传传输和原生 canonical 对照",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "f024069117ffcd086a6cb3a65401d35fce2a3d8821714c22bc22eb8613e5593b"
+        },
+        {
+          "part": 2,
+          "sha256": "a7a3510b0f17b90c8c3a643adde2a8b3014762b1f72df90737a8c07f2f8b258e"
+        }
+      ]
+    },
+    {
+      "id": "EV-08",
+      "subject": "原生 JSON 七组封包对照",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "d4bdf9e5094b90138c4042765cf02ea42f1010d1a1b8b5a240fb9caa33d5db84"
+        }
+      ]
+    },
+    {
+      "id": "EV-09",
+      "subject": "原版 HAR 请求、设置及响应缺失复核",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "8d3a07f7b90f5dae94ee336711a4d25d4be94f936216ee0f78f901cd5992d589"
+        },
+        {
+          "part": 2,
+          "sha256": "f307cd7aacf429e302cffeef8f37b838dd1d0680b17f280e68d396a3fb7fe152"
+        }
+      ]
+    },
+    {
+      "id": "EV-10",
+      "subject": "首次合成提交、详情与有效性核对",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "90f78783fb6c2cb1b5444877f18e48494418221410532563d9f136c6f8542adc"
+        },
+        {
+          "part": 2,
+          "sha256": "7eb40fce7c95576d19a6fa5296030dfb51a252b43fc4406ce3811e1fb9b38d51"
+        }
+      ]
+    },
+    {
+      "id": "EV-11",
+      "subject": "人脸状态比较与本地状态实验实现",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "d7a6a4b8130b3380c32875266e1f568f33d502cbd457d76ebc3bba4ba1eec7ec"
+        },
+        {
+          "part": 2,
+          "sha256": "d7774817237fca0fd0e504061b679b7d2f85d2a6d736f02dee86d9f2e1fd6e0f"
+        }
+      ]
+    },
+    {
+      "id": "EV-12",
+      "subject": "第二次本地状态校验和提交回执",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "af015eec171b88d7dc748ab97253e36ccfcb1f916365587bf5886beef7c1bfa6"
+        },
+        {
+          "part": 2,
+          "sha256": "90f78783fb6c2cb1b5444877f18e48494418221410532563d9f136c6f8542adc"
+        }
+      ]
+    },
+    {
+      "id": "EV-13",
+      "subject": "第二次详情、有效列表及汇总复核",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "fba4a5f320b221548fe9ac86996405cca4afa06f891e39fd1476f802349b23fd"
+        }
+      ]
+    },
+    {
+      "id": "EV-14",
+      "subject": "第二次有效汇总变化",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "7994474a09350647cd16b00e7397165426a84813d3b52c60bf9a976594f6894f"
+        }
+      ]
+    },
+    {
+      "id": "EV-15",
+      "subject": "公开签名证书、上传公钥及指纹核对",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "5a671786a43150c79bcc1e20cf08d457b2002910bc15ac9afb5f10f97d21ee12"
+        },
+        {
+          "part": 2,
+          "sha256": "6d6e4a6ac2c7a3ba9d3182c7d10ba4147edd057fa23b0c963ad5550c066b64c8"
+        },
+        {
+          "part": 3,
+          "sha256": "04fc3aad470822045d180049cf87185564d2b721c839f4e73398262053d279ca"
+        }
+      ]
+    },
+    {
+      "id": "EV-16",
+      "subject": "两批真机连接元数据分析",
+      "source_fingerprints": [
+        {
+          "part": 1,
+          "sha256": "96163dd963aba3778d0abe2b287d25e1cb99f84d78c991df4c3430f89bf15c00"
+        },
+        {
+          "part": 2,
+          "sha256": "e0594e14e55790424758529decf13ca861b99ff36455ab8a1ad33341af105f3b"
+        }
+      ]
+    }
+  ],
+  "dex_validation": [
+    {
+      "dex": 1,
+      "size": 12086944,
+      "original_sha1_valid": true,
+      "original_adler32_valid": true,
+      "sha256": "5dd90dd8f5644e0b9cb8dad90bcc87ce269d53041a90d60e292750b2df3d327e",
+      "matches_prior_reconstruction": true
+    },
+    {
+      "dex": 2,
+      "size": 12151116,
+      "original_sha1_valid": true,
+      "original_adler32_valid": true,
+      "sha256": "aaaa5c8821b6d0264bbedc5b8ad11d172298da665be39592aa06cf9045c8841d",
+      "matches_prior_reconstruction": true
+    },
+    {
+      "dex": 3,
+      "size": 11979956,
+      "original_sha1_valid": true,
+      "original_adler32_valid": true,
+      "sha256": "b2ff19ade957709ccb49b5369ecf07c916426a074dd90f16287c1dbe1bbb4490",
+      "matches_prior_reconstruction": true
+    },
+    {
+      "dex": 4,
+      "size": 11263276,
+      "original_sha1_valid": true,
+      "original_adler32_valid": true,
+      "sha256": "626799151f1d7ebcfe35099b3a133653fa136fd578fd14c25a7d3cd09bb3aabe",
+      "matches_prior_reconstruction": true
+    },
+    {
+      "dex": 5,
+      "size": 11926344,
+      "original_sha1_valid": true,
+      "original_adler32_valid": true,
+      "sha256": "8695ad60e33e364f955cc1a4ede629ad4905ccaef993e2da649390134eb99e7b",
+      "matches_prior_reconstruction": true
+    },
+    {
+      "dex": 6,
+      "size": 11325580,
+      "original_sha1_valid": true,
+      "original_adler32_valid": true,
+      "sha256": "ba914d393a543c907ab7fe019d3860a57b41b653b84dcca7eb49e5902afb110e",
+      "matches_prior_reconstruction": true
+    },
+    {
+      "dex": 7,
+      "size": 6057068,
+      "original_sha1_valid": true,
+      "original_adler32_valid": true,
+      "sha256": "a1c806be50ae65f1160050403707420233e4744e9a21db556ddd60b51d2c20dc",
+      "matches_prior_reconstruction": false
+    },
+    {
+      "dex": 8,
+      "size": 326168,
+      "original_sha1_valid": true,
+      "original_adler32_valid": true,
+      "sha256": "622638c69fd60ba50710383914b34c977b8f9f07bf8c9cdfdf315ee68b986b72",
+      "matches_prior_reconstruction": false
+    }
+  ],
+  "settings_observation": {
+    "evidence_id": "EV-09",
+    "declared_field_count": 49,
+    "schema": {
+      "countAlertMsg": "str",
+      "startQualifiedTime": "int",
+      "endQualifiedTime": "int",
+      "runType": "str",
+      "isStartFace": "str",
+      "isEndFace": "str",
+      "middleFaces": {
+        "type": "array",
+        "count": 0,
+        "item_variants": []
+      },
+      "needRegisterFace": "str",
+      "faceUrl": "str",
+      "isClock": "int",
+      "totalRange": "int",
+      "identify": "str",
+      "faceTimeout": "int",
+      "faceDistanceOut": "int",
+      "pattern": "str",
+      "isSequencePoint": "str",
+      "geofence": {
+        "type": "array",
+        "count": 0,
+        "item_variants": []
+      },
+      "list": {
+        "type": "array",
+        "count": 0,
+        "item_variants": []
+      },
+      "context": "str",
+      "contextV2": "str",
+      "surplusNum": "int",
+      "step": "int",
+      "takePicture": "str",
+      "limitWeather": "str",
+      "limitAirQuality": "int",
+      "minSaveRange": "float",
+      "startStride": "str",
+      "endStride": "str",
+      "startStepFrequency": "int",
+      "endStepFrequency": "int",
+      "limitSpeed": "str",
+      "timeCountRule": "str",
+      "startLimitStepFrequency": "str",
+      "endLimitStepFrequency": "str",
+      "avgStride": "str",
+      "gpsAccuracy": "str",
+      "locateTimeInterval": "str",
+      "stepCheckDistance": "str",
+      "livingFace": "str",
+      "lastExerciseExplanationDate": "str",
+      "coefficient": "str",
+      "pointShowMode": "int",
+      "pointShowDistance": "int",
+      "isMidwayFace": "str",
+      "isSmallProgram": "str",
+      "isStepRecursion": "str",
+      "faceOutCanContinue": "str",
+      "isSpeedRangeCheck": "str",
+      "isRemark": "str"
+    },
+    "observed_rule_values": {
+      "runType": "1",
+      "totalRange": 1,
+      "minSaveRange": 0.1,
+      "startQualifiedTime": 4,
+      "endQualifiedTime": 20,
+      "startStride": "0.6",
+      "endStride": "2.3",
+      "startStepFrequency": 0,
+      "endStepFrequency": 359,
+      "startLimitStepFrequency": "80",
+      "endLimitStepFrequency": "300",
+      "limitSpeed": "3.33",
+      "gpsAccuracy": "1",
+      "locateTimeInterval": "1",
+      "isSequencePoint": "0",
+      "isStartFace": "0",
+      "isEndFace": "0",
+      "middleFaces": [],
+      "isMidwayFace": "0",
+      "isClock": 0,
+      "isSpeedRangeCheck": "0",
+      "isRemark": "0",
+      "timeCountRule": "1",
+      "stepCheckDistance": "0",
+      "coefficient": "1"
+    },
+    "limitation": "One school and capture context; empty arrays do not establish an item schema or universal absence of requirements."
+  },
+  "first_submission": {
+    "evidence_id": "EV-10",
+    "result": {
+      "http_status": 200,
+      "schema": {
+        "exerciseRecordId": "str",
+        "msg": "str",
+        "code": "int",
+        "data": "bool"
+      },
+      "code": 0,
+      "msg": "提交成功",
+      "record_id_present": true,
+      "synthetic": true
+    },
+    "queries": [
+      {
+        "name": "detail",
+        "http_status": 200,
+        "code": 0,
+        "schema": {
+          "code": "int",
+          "msg": "NoneType",
+          "data": {
+            "totalCountZong": "int",
+            "addTime": "str",
+            "gitudeLatitude": {
+              "type": "array",
+              "count": 900,
+              "first_item": {
+                "a": "float",
+                "s": "float",
+                "c": "int",
+                "t": "int",
+                "e": "int",
+                "i": "bool",
+                "l": "int",
+                "o": "float"
+              }
+            },
+            "avgspeed": "str",
+            "sportTime": "str",
+            "leaveTotalCountZong": "int",
+            "remark": "str",
+            "stride": "str",
+            "recordBreaking": "str",
+            "speed": "str",
+            "termId": "str",
+            "limitStride": "str",
+            "sportRange": "str",
+            "sportStatus": "str",
+            "avgStep": "int",
+            "rate": "str",
+            "startQualifiedTimeSetting": "int",
+            "enable": "str",
+            "endQualifiedTimeSetting": "int",
+            "okPointList": {
+              "type": "array",
+              "count": 0,
+              "first_item": null
+            },
+            "limitStepFrequency": "str",
+            "startTime": "str",
+            "id": "str",
+            "rangeSetting": "str",
+            "stepNumbers": "str",
+            "limitSpeed": "str",
+            "geofence": {
+              "type": "array",
+              "count": 0,
+              "first_item": null
+            },
+            "sportType": "str",
+            "nickName": "str",
+            "isMax": "bool",
+            "qualifyTotalCount": "int",
+            "va": "str",
+            "userName": "str",
+            "totalRange": "str",
+            "totalDay": "int",
+            "exerciseStatistics": "str",
+            "pointList": {
+              "type": "array",
+              "count": 0,
+              "first_item": null
+            },
+            "heartRate": "str",
+            "isSequencePoint": "str",
+            "calorie": "str",
+            "qualifyTotalRange": "float",
+            "step": "int",
+            "stepSetting": "int",
+            "endTime": "str",
+            "totalTimeZong": "NoneType",
+            "status": "str"
+          }
+        },
+        "observed_values": {
+          "sportTime": "899",
+          "remark": "人脸对比超出规定范围15",
+          "speed": "7'25\"",
+          "sportRange": "2.020",
+          "status": "0"
+        }
+      },
+      {
+        "name": "valid_list",
+        "http_status": 200,
+        "code": 0,
+        "schema": {
+          "code": "int",
+          "msg": "NoneType",
+          "data": {
+            "isShowMorningRun": "str",
+            "isShowSunRun": "str",
+            "isShowExerciseSite": "str",
+            "isShowIndoorRun": "str",
+            "records": {
+              "type": "array",
+              "count": 11,
+              "first_item": {
+                "isFaceStatus": "str",
+                "appVersion": "str",
+                "week": "int",
+                "sportTypeName": "str",
+                "sportTime": "str",
+                "remark": "str",
+                "speed": "str",
+                "sportRange": "str",
+                "enable": "str",
+                "basTermId": "str",
+                "uploadType": "str",
+                "okPointList": "str",
+                "model": "str",
+                "startTime": "str",
+                "id": "str",
+                "stepNumbers": "str",
+                "brand": "str",
+                "identify": "str",
+                "sportType": "str",
+                "remarkExp": "str",
+                "va": "str",
+                "version": "str",
+                "avgSpeed": "str",
+                "reachRange": "str",
+                "system": "str",
+                "step": "int",
+                "basUserId": "str",
+                "endTime": "str",
+                "status": "str"
+              }
+            },
+            "isShowFreedom": "str",
+            "noSucceed": "int",
+            "totalTime": "float",
+            "succeed": "int",
+            "count": "int",
+            "dates": {
+              "type": "array",
+              "count": 4,
+              "first_item": {
+                "date": "str",
+                "totalRange": "str",
+                "count": "str",
+                "totalTime": "str"
+              }
+            },
+            "totalRange": "float"
+          }
+        },
+        "returned_record_id_found": false
+      },
+      {
+        "name": "summary",
+        "http_status": 200,
+        "code": 0,
+        "schema": {
+          "code": "int",
+          "msg": "NoneType",
+          "data": {
+            "directionRun": {
+              "sumTime": "str",
+              "sportType": "str",
+              "succeed": "int",
+              "runSportRange": "str",
+              "isShow": "str"
+            },
+            "IndoorRun": {
+              "sumTime": "str",
+              "sportType": "str",
+              "succeed": "int",
+              "runSportRange": "str",
+              "isShow": "str"
+            },
+            "morningRun": {
+              "sumTime": "str",
+              "sportType": "str",
+              "succeed": "int",
+              "runSportRange": "str",
+              "isShow": "str"
+            },
+            "freedomRun": {
+              "sumTime": "str",
+              "sportType": "str",
+              "succeed": "int",
+              "runSportRange": "str",
+              "isShow": "str"
+            },
+            "exerciseSite": {
+              "sumTime": "str",
+              "sportType": "str",
+              "succeed": "int",
+              "runSportRange": "str",
+              "isShow": "str"
+            },
+            "sunRun": {
+              "sumTime": "str",
+              "sportType": "str",
+              "succeed": "int",
+              "runSportRange": "str",
+              "isShow": "str"
+            }
+          }
+        },
+        "changed": false
+      }
+    ]
+  },
+  "accepted_submission": {
+    "evidence_ids": [
+      "EV-12",
+      "EV-13",
+      "EV-14"
+    ],
+    "local_state_checks": {
+      "synthetic": true,
+      "isFaceStatus": "1",
+      "isValid": 1,
+      "checks": {
+        "time_check": true,
+        "distance_check": true,
+        "step_check": true,
+        "required_steps": 1000,
+        "observed_steps": 2397,
+        "dynamic_end_minutes": 41
+      },
+      "new_identify": true,
+      "corrected_payload_roundtrip": true,
+      "corrected_form_encoding": true,
+      "full_real_lifecycle": false,
+      "server_start_endpoint_called": false,
+      "experiment_limit": "Two state fields changed together; new identify and timestamps. Not a one-variable causal test."
+    },
+    "result": {
+      "http_status": 200,
+      "schema": {
+        "exerciseRecordId": "str",
+        "msg": "str",
+        "code": "int",
+        "data": "bool"
+      },
+      "code": 0,
+      "msg": "提交成功",
+      "record_id_present": true,
+      "synthetic": true
+    },
+    "queries": [
+      {
+        "name": "detail",
+        "http_status": 200,
+        "code": 0,
+        "schema": {
+          "code": "int",
+          "msg": "NoneType",
+          "data": {
+            "totalCountZong": "int",
+            "addTime": "str",
+            "gitudeLatitude": {
+              "type": "array",
+              "count": 900,
+              "first_item": {
+                "a": "float",
+                "s": "float",
+                "c": "int",
+                "t": "int",
+                "e": "int",
+                "i": "bool",
+                "l": "int",
+                "o": "float"
+              }
+            },
+            "leaveTotalRangeZong": "str",
+            "avgspeed": "str",
+            "sportTime": "str",
+            "leaveTotalCountZong": "int",
+            "remark": "str",
+            "stride": "str",
+            "recordBreaking": "str",
+            "speed": "str",
+            "termId": "str",
+            "limitStride": "str",
+            "sportRange": "str",
+            "sportStatus": "str",
+            "avgStep": "int",
+            "rate": "str",
+            "startQualifiedTimeSetting": "int",
+            "enable": "str",
+            "endQualifiedTimeSetting": "int",
+            "okPointList": {
+              "type": "array",
+              "count": 0,
+              "first_item": null
+            },
+            "limitStepFrequency": "str",
+            "startTime": "str",
+            "id": "str",
+            "rangeSetting": "str",
+            "stepNumbers": "str",
+            "limitSpeed": "str",
+            "geofence": {
+              "type": "array",
+              "count": 0,
+              "first_item": null
+            },
+            "sportType": "str",
+            "nickName": "str",
+            "isMax": "bool",
+            "qualifyTotalCount": "int",
+            "va": "str",
+            "userName": "str",
+            "totalRange": "str",
+            "totalDay": "int",
+            "exerciseStatistics": "str",
+            "pointList": {
+              "type": "array",
+              "count": 0,
+              "first_item": null
+            },
+            "heartRate": "str",
+            "isSequencePoint": "str",
+            "calorie": "str",
+            "qualifyTotalRange": "float",
+            "step": "int",
+            "stepSetting": "int",
+            "endTime": "str",
+            "totalTimeZong": "str",
+            "totalRangeZong": "str",
+            "status": "str"
+          }
+        },
+        "observed_values": {
+          "status": "1",
+          "remark": "合格15",
+          "sportRange": "2.020",
+          "sportTime": "899",
+          "speed": "7'25\"",
+          "step": 2397
+        }
+      },
+      {
+        "name": "summary",
+        "http_status": 200,
+        "code": 0,
+        "schema": {
+          "code": "int",
+          "msg": "NoneType",
+          "data": {
+            "directionRun": {
+              "sumTime": "str",
+              "sportType": "str",
+              "succeed": "int",
+              "runSportRange": "str",
+              "isShow": "str"
+            },
+            "IndoorRun": {
+              "sumTime": "str",
+              "sportType": "str",
+              "succeed": "int",
+              "runSportRange": "str",
+              "isShow": "str"
+            },
+            "morningRun": {
+              "sumTime": "str",
+              "sportType": "str",
+              "succeed": "int",
+              "runSportRange": "str",
+              "isShow": "str"
+            },
+            "freedomRun": {
+              "sumTime": "str",
+              "sportType": "str",
+              "succeed": "int",
+              "runSportRange": "str",
+              "isShow": "str"
+            },
+            "exerciseSite": {
+              "sumTime": "str",
+              "sportType": "str",
+              "succeed": "int",
+              "runSportRange": "str",
+              "isShow": "str"
+            },
+            "sunRun": {
+              "sumTime": "str",
+              "sportType": "str",
+              "succeed": "int",
+              "runSportRange": "str",
+              "isShow": "str"
+            }
+          }
+        },
+        "changed": true
+      },
+      {
+        "name": "valid_list",
+        "http_status": 200,
+        "code": 0,
+        "schema": {
+          "code": "int",
+          "msg": "NoneType",
+          "data": {
+            "isShowMorningRun": "str",
+            "isShowSunRun": "str",
+            "isShowExerciseSite": "str",
+            "isShowIndoorRun": "str",
+            "records": {
+              "type": "array",
+              "count": 1,
+              "first_item": {
+                "isFaceStatus": "str",
+                "appVersion": "str",
+                "week": "int",
+                "sportTypeName": "str",
+                "sportTime": "str",
+                "remark": "str",
+                "speed": "str",
+                "sportRange": "str",
+                "enable": "str",
+                "basTermId": "str",
+                "uploadType": "str",
+                "okPointList": "str",
+                "model": "str",
+                "startTime": "str",
+                "id": "str",
+                "stepNumbers": "str",
+                "brand": "str",
+                "identify": "str",
+                "sportType": "str",
+                "remarkExp": "str",
+                "va": "str",
+                "version": "str",
+                "avgSpeed": "str",
+                "reachRange": "str",
+                "system": "str",
+                "step": "int",
+                "basUserId": "str",
+                "endTime": "str",
+                "status": "str"
+              }
+            },
+            "isShowFreedom": "str",
+            "noSucceed": "int",
+            "totalTime": "float",
+            "succeed": "int",
+            "count": "int",
+            "dates": {
+              "type": "array",
+              "count": 5,
+              "first_item": {
+                "date": "str",
+                "totalRange": "str",
+                "count": "str",
+                "totalTime": "str"
+              }
+            },
+            "totalRange": "float"
+          }
+        },
+        "record_found": true
+      }
+    ],
+    "summary_changes": [
+      {
+        "field": ".data.sunRun.sumTime",
+        "before": "0.00",
+        "after": "0.25"
+      },
+      {
+        "field": ".data.sunRun.succeed",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "field": ".data.sunRun.runSportRange",
+        "before": "0.0",
+        "after": "2.02"
+      }
+    ]
+  },
+  "public_protocol_materials": {
+    "evidence_id": "EV-15",
+    "certificate_der_base64": "MIIDdzCCAl+gAwIBAgIEGJHR0TANBgkqhkiG9w0BAQsFADBsMQ4wDAYDVQQGEwVjaGluYTEPMA0GA1UECBMGc2hhbnhpMQ0wCwYDVQQHEwR4aWFuMRIwEAYDVQQKEwlib3hpbmtlamkxEjAQBgNVBAsTCWJveGlua2VqaTESMBAGA1UEAxMJYm94aW5rZWppMB4XDTE3MDQyMDA3NTU1M1oXDTQyMDQxNDA3NTU1M1owbDEOMAwGA1UEBhMFY2hpbmExDzANBgNVBAgTBnNoYW54aTENMAsGA1UEBxMEeGlhbjESMBAGA1UEChMJYm94aW5rZWppMRIwEAYDVQQLEwlib3hpbmtlamkxEjAQBgNVBAMTCWJveGlua2VqaTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAKmOQ8WphmuqJyCywmPsdJE7QLDvGoERRmi9S2HlkjYmTV4FonKGJrUnNAnmlX4KTYhSaycgn6s7WhmwcgHfMWof2nzmxcm3i3ppa/QtW2qVgMvfwZBDgCQzeaXX+Gq05xzteKpBCl4M7btiN/L94AyeDXQwYIPtyaKCGLvaNRlTDbUaXsnhKeadnNAlD3Jbf/XxCQy4o5dDgMZMGoBC/BA++mSU3ySxAHKZiU3ZIftGRI6InuRuEhOrpqJPUX61z+EMSY+sie2Z8GhVbW6haTpUWiT3376pw7vRusqsaOSBiFFqVg0I5JXwbFvtM2JywEQL3/cPdJzNKXFiVnwUkA8CAwEAAaMhMB8wHQYDVR0OBBYEFCJWxYl2Ha0CZ9WHgRuWhk6FimN5MA0GCSqGSIb3DQEBCwUAA4IBAQCOOz202ybtNVvDQY1AY592HJ3+HlLCVbOiqUCsYKAAzFyX0sXuRgQIBh9AWFREHKH+ibIUHPv7hcVXqJN7qsS6jNG9JX7dXyJDEuwADjsunY00HWXgCMkBpHKKmYAWkaGYSpsfOjZ1yLXs0fq3ZL9ZNjtCY8EdYmRWdEWL7eXtd7Y+/BwuiYEZ4ZX54ODz5QYUtXpTz3ZAPcJ7UBvMsu4AqVk5MkH7wRhRrVDrnPKlQh2YjwQHgoe7+ZxJ/EaeCVGreAEf4KqsswIOyCwkQaRVaJeLmuQxAndiU7k2EQvZXj9/Ie6hCMIMOW7N1y6QvNAIBumaCY8VHuIMe9aTko9e",
+    "certificate_sha256": "5a671786a43150c79bcc1e20cf08d457b2002910bc15ac9afb5f10f97d21ee12",
+    "certificate_formatted_fingerprint": "5A:67:17:86:A4:31:50:C7:9B:CC:1E:20:CF:08:D4:57:B2:00:29:10:BC:15:AC:9A:FB:5F:10:F9:7D:21:EE:12",
+    "upload_public_key_der_base64": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAgzQ7BYqBZ5LTjoOb9aHO8fI0hbww9YRW2lnqIdDyIjBwmhthTR+EmiKNm4yFKg6Vz2GW5ix3IdUQdaAq3ZZ7se/dCOTpu3dk15ZgkO6ZImUE7gqzSXXJ0NaACudk4yJwk3Q69kB4m3xIKxiOlG2HtbEed01LrUmLag9VOP96BuSao2sP4Als5hA/8C6KqdihTOcZF1RT+lqrT3Qvja7q+qI5QZw9d7NrFFycQs8jk8O49f9mkvLZRZCCWEbwzuCPTlMy/ZNAsMeU/gNSRKUnquOiPboc2KUhsvY4cK0GeuS9vuIrMGE01L/BCc+rUrautq3n3WiIVJwnwWiJtgk33QIDAQAB",
+    "upload_public_key_sha256": "6d6e4a6ac2c7a3ba9d3182c7d10ba4147edd057fa23b0c963ad5550c066b64c8",
+    "notice": "Public APK certificate and public upload key only. No private key or user session. Login public key has a separate purpose."
+  }
+}
