@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAccounts } from '@/hooks/use-accounts';
 import { useDashboardStore } from '@/stores/dashboard-store';
+import { useStudioStore } from '@/stores/studio-store';
 
 export function useDashboardAccount() {
   const { accounts, activeId, initialized } = useAccounts();
@@ -9,6 +10,7 @@ export function useDashboardAccount() {
   const boundId = useDashboardStore((state) => state.accountId);
   useEffect(() => {
     useDashboardStore.getState().activate(ready ? activeId : null);
+    useStudioStore.getState().activate(ready ? activeId : null);
   }, [ready, activeId]);
   return { active, ready: ready && boundId === activeId, initialized };
 }

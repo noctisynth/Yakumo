@@ -12,6 +12,7 @@ mod account_vault;
 mod accounts;
 pub mod exercise_protocol;
 mod exercise_service;
+mod run_generator;
 
 use account_error::{AccountError, AccountResult};
 use accounts::{AccountManager, AccountSnapshot, LoginInput};
@@ -117,6 +118,13 @@ async fn read_exercise(
     })?
 }
 
+#[tauri::command]
+async fn preview_run(input: run_generator::RunInput) -> AccountResult<run_generator::RunPreview> {
+    tauri::async_runtime::spawn_blocking(move || run_generator::generate(input))
+        .await
+        .map_err(|_| AccountError::new("internal_error", "生成未能完成。"))?
+}
+
 #[derive(Serialize)]
 struct ApplicationInfo {
     name: &'static str,
@@ -149,6 +157,7 @@ pub fn run() {
             login_account,
             switch_account,
             remove_account,
+            preview_run,
             read_exercise
         ])
         .run(tauri::generate_context!())

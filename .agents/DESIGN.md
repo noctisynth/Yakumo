@@ -33,6 +33,7 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 | SPEC-004 | accounts.md | Active Spec | 多账号登录、切换、加密会话和传输边界 |
 | SPEC-005 | exercise-protocol.md | Active Spec | 运动签名、JSON、封包和表单离线适配 |
 | SPEC-006 | dashboard.md | Active Spec | 学校只读接口、数据大盘和账号隔离 |
+| CHECK-008 | run-workflow-verification.md | 验证记录 | 账号资料、生成及提交分阶段验证 |
 | SPEC-008 | run-workflow.md | Active Spec | 账号资料、合成生成与显式提交 |
 | SPEC-007 | visual-identity.md | Active Spec | 角色品牌、视觉与独立记录和配置页面 |
 | CHECK-007 | visual-verification.md | 验证记录 | 角色图标、导航和响应式视觉验证 |

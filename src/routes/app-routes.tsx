@@ -9,12 +9,14 @@ import { RecordDetailPage } from '@/pages/record-detail-page';
 import { RecordsPage } from '@/pages/records-page';
 import { SchoolPage } from '@/pages/school-page';
 import { SettingsPage } from '@/pages/settings-page';
+import { StudioPage } from '@/pages/studio-page';
 
 export function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<HomePage />} />
+        <Route path='studio' element={<StudioPage />} />
         <Route path='profile' element={<ProfilePage />} />
         <Route path='accounts' element={<AccountsPage />} />
         <Route path='records' element={<RecordsPage />} />
