@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   ArrowUpRight,
   Eye,
   EyeOff,
@@ -10,8 +9,8 @@ import {
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { useNavigate, useSearchParams } from 'react-router';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -82,16 +81,6 @@ export function LoginPage() {
 
   return (
     <div className='space-y-7 lg:space-y-9'>
-      <Link
-        to='/accounts'
-        className={buttonVariants({
-          variant: 'ghost',
-          className: '-ml-3 gap-2 text-muted-foreground',
-        })}
-      >
-        <ArrowLeft className='size-4' aria-hidden='true' />
-        返回账号管理
-      </Link>
       <section>
         <p className='text-[10px] tracking-[0.25em] text-muted-foreground'>
           ACCOUNT / CONNECT
@@ -253,8 +242,7 @@ export function LoginPage() {
               </div>
               <div className='rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-xs leading-6'>
                 <p id={`${formId}-transport`}>
-                  学校已验证入口使用 HTTP。密码经 RSA
-                  加密，但连接无法验证服务端身份，会话令牌仍可能被窃听。请仅在可信网络登录。
+                  学校登录连接存在隐私风险，请仅在可信网络使用。
                 </p>
                 <label
                   htmlFor={`${formId}-consent`}

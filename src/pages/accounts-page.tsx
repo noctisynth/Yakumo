@@ -37,7 +37,7 @@ export function AccountsPage() {
         </div>
         <div className='flex flex-wrap items-center gap-3'>
           <Button asChild>
-            <Link to='/login'>
+            <Link to='/accounts/login'>
               <Plus className='size-4' aria-hidden='true' />
               添加账号
             </Link>
@@ -119,7 +119,7 @@ export function AccountsPage() {
                 登录后可保留多个会话，随时选择当前账号。
               </p>
               <Button asChild className='mt-5'>
-                <Link to='/login'>登录第一个账号</Link>
+                <Link to='/accounts/login'>登录第一个账号</Link>
               </Button>
             </div>
           ) : (
@@ -176,7 +176,7 @@ export function AccountsPage() {
                       disabled={disabled}
                       onClick={() => {
                         navigate(
-                          `/login?account=${encodeURIComponent(account.id)}`,
+                          `/accounts/login?account=${encodeURIComponent(account.id)}`,
                         );
                       }}
                     >

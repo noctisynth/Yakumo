@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router';
+import { Navigate, Route, Routes, useLocation } from 'react-router';
 
 import { AppLayout } from '@/components/app-layout';
 import { AccountsPage } from '@/pages/accounts-page';
@@ -13,6 +13,11 @@ import { SchoolPage } from '@/pages/school-page';
 import { SettingsPage } from '@/pages/settings-page';
 import { StudioPage } from '@/pages/studio-page';
 
+function LegacyLoginRedirect() {
+  const location = useLocation();
+  return <Navigate to={`/accounts/login${location.search}`} replace />;
+}
+
 export function AppRoutes() {
   return (
     <Routes>
@@ -21,8 +26,11 @@ export function AppRoutes() {
         <Route path='me' element={<MePage />} />
         <Route path='studio' element={<StudioPage />} />
         <Route path='profile' element={<ProfilePage />} />
-        <Route path='login' element={<LoginPage />} />
-        <Route path='accounts' element={<AccountsPage />} />
+        <Route path='login' element={<LegacyLoginRedirect />} />
+        <Route path='accounts'>
+          <Route index element={<AccountsPage />} />
+          <Route path='login' element={<LoginPage />} />
+        </Route>
         <Route path='records' element={<RecordsPage />} />
         <Route path='school' element={<SchoolPage />} />
         <Route path='records/:recordId' element={<RecordDetailPage />} />
