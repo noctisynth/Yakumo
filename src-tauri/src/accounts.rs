@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
@@ -20,6 +21,7 @@ pub struct Account {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use base64::Engine;
     use std::sync::{
         Arc, Mutex,
         atomic::{AtomicBool, Ordering},
@@ -54,6 +56,20 @@ mod tests {
 
     struct TestAuthentication;
     impl Authentication for TestAuthentication {
+        fn avatar(&self, session: &Session, _now: u64) -> AccountResult<Option<String>> {
+            if session.username == "avatar-failure" {
+                return Err(AccountError::protocol());
+            }
+            if session.username.starts_with("avatar-") {
+                return Ok(Some(format!(
+                    "data:image/png;base64,{}",
+                    base64::engine::general_purpose::STANDARD.encode(
+                        [b"\x89PNG\r\n\x1a\n".as_slice(), session.username.as_bytes()].concat()
+                    )
+                )));
+            }
+            Ok(None)
+        }
         fn login(
             &self,
             username: &str,
@@ -72,6 +88,7 @@ mod tests {
                 device_id: device_id.to_string(),
                 raw_app_id: "synthetic-app".into(),
                 expires_at: now + 3600,
+                avatar_url: None,
             })
         }
     }
@@ -211,6 +228,113 @@ mod tests {
         assert!(app.login(request, 100).is_err());
         assert!(app.list(100).expect("empty").accounts.is_empty());
     }
+
+    #[test]
+    fn avatars_are_isolated_persisted_and_optional_without_blocking_login() {
+        let storage = TestStorage::default();
+        let mut app = manager(&storage);
+        let first = app.login(input("avatar-a", "one"), 100).expect("login a");
+        let avatar_a = first.accounts[0].avatar_url.clone().expect("avatar a");
+        let second = app.login(input("avatar-b", "two"), 100).expect("login b");
+        assert_ne!(second.accounts[1].avatar_url.as_ref(), Some(&avatar_a));
+        let id = first.active_id.expect("first id");
+        assert_eq!(
+            app.switch(&id, 100).expect("switch").accounts[0]
+                .avatar_url
+                .as_ref(),
+            Some(&avatar_a)
+        );
+        assert_eq!(
+            manager(&storage).list(100).expect("restored").accounts[0]
+                .avatar_url
+                .as_ref(),
+            Some(&avatar_a)
+        );
+        let failed = app
+            .login(input("avatar-failure", "one"), 100)
+            .expect("avatar failure does not reject login");
+        assert!(failed.accounts[2].avatar_url.is_none());
+        let persisted = storage.data.lock().expect("storage").clone().expect("data");
+        let mut old = serde_json::to_value(persisted).expect("json");
+        for account in old["accounts"].as_array_mut().expect("accounts") {
+            account["session"]
+                .as_object_mut()
+                .expect("session")
+                .remove("avatar_url");
+        }
+        let migrated: AccountData = serde_json::from_value(old).expect("old format");
+        migrated.validate().expect("backward compatible");
+        assert!(
+            migrated
+                .accounts
+                .iter()
+                .all(|account| account.session.avatar_url.is_none())
+        );
+        app.remove(&id, 100).expect("remove a");
+        let saved = serde_json::to_string(&*storage.data.lock().expect("storage")).expect("json");
+        assert!(!saved.contains(&avatar_a));
+    }
+
+    #[test]
+    fn legacy_current_account_is_hydrated_once_and_expired_accounts_do_not_fetch() {
+        use std::sync::atomic::AtomicUsize;
+        struct CountingAuthentication(Arc<AtomicUsize>);
+        impl Authentication for CountingAuthentication {
+            fn login(
+                &self,
+                username: &str,
+                password: &str,
+                device_id: &str,
+                now: u64,
+            ) -> AccountResult<Session> {
+                TestAuthentication.login(username, password, device_id, now)
+            }
+            fn avatar(&self, session: &Session, now: u64) -> AccountResult<Option<String>> {
+                self.0.fetch_add(1, Ordering::SeqCst);
+                TestAuthentication.avatar(session, now)
+            }
+        }
+        let storage = TestStorage::default();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let mut app = AccountManager::new(
+            Box::new(storage.clone()),
+            Box::new(CountingAuthentication(calls.clone())),
+        );
+        let id = app
+            .login(input("avatar-a", "one"), 100)
+            .expect("login")
+            .active_id
+            .expect("id");
+        app.list(100).expect("list");
+        app.switch(&id, 100).expect("switch");
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        storage
+            .data
+            .lock()
+            .expect("data")
+            .as_mut()
+            .expect("stored")
+            .accounts[0]
+            .session
+            .avatar_url = None;
+        let mut restarted = AccountManager::new(
+            Box::new(storage.clone()),
+            Box::new(CountingAuthentication(calls.clone())),
+        );
+        assert!(
+            restarted.list(100).expect("hydrate old data").accounts[0]
+                .avatar_url
+                .is_some()
+        );
+        restarted.list(100).expect("second read");
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+        let mut expired = AccountManager::new(
+            Box::new(storage),
+            Box::new(CountingAuthentication(calls.clone())),
+        );
+        assert!(expired.list(4000).expect("expired").accounts[0].expired);
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -249,6 +373,11 @@ impl AccountData {
                 || account.session.access_token.is_empty()
                 || account.session.refresh_token.is_empty()
                 || account.session.raw_app_id.is_empty()
+                || account
+                    .session
+                    .avatar_url
+                    .as_ref()
+                    .is_some_and(|avatar| !crate::account_avatar::valid_cached_avatar(avatar))
                 || Uuid::parse_str(&account.session.device_id).is_err()
                 || self.accounts[..index].iter().any(|other| {
                     other.id == account.id
@@ -275,6 +404,7 @@ impl AccountData {
                     username: account.session.username.clone(),
                     expires_at: account.session.expires_at,
                     expired: account.session.expires_at <= now,
+                    avatar_url: account.session.avatar_url.clone(),
                 })
                 .collect(),
         }
@@ -290,6 +420,7 @@ pub struct AccountSummary {
     pub username: String,
     pub expires_at: u64,
     pub expired: bool,
+    pub avatar_url: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -312,6 +443,7 @@ pub struct AccountManager {
     storage: Box<dyn AccountStorage>,
     authentication: Box<dyn Authentication>,
     data: Option<AccountData>,
+    avatar_checked: HashSet<String>,
 }
 
 impl AccountManager {
@@ -320,6 +452,7 @@ impl AccountManager {
             storage,
             authentication,
             data: None,
+            avatar_checked: HashSet::new(),
         }
     }
 
@@ -341,7 +474,35 @@ impl AccountManager {
     }
 
     pub fn list(&mut self, now: u64) -> AccountResult<AccountSnapshot> {
+        let mut data = self.data()?.clone();
+        if let Some(id) = data.active_id.clone()
+            && self.enrich_avatar(&mut data, &id, now)
+            && self.storage.save(&data).is_ok()
+        {
+            self.data = Some(data);
+        }
         Ok(self.data()?.snapshot(now))
+    }
+
+    fn enrich_avatar(&mut self, data: &mut AccountData, id: &str, now: u64) -> bool {
+        let Some(account) = data.accounts.iter_mut().find(|account| account.id == id) else {
+            return false;
+        };
+        if account.session.expires_at <= now || !self.avatar_checked.insert(id.to_string()) {
+            return false;
+        }
+        let Ok(avatar) = self.authentication.avatar(&account.session, now) else {
+            return false;
+        };
+        if avatar
+            .as_ref()
+            .is_some_and(|value| !crate::account_avatar::valid_cached_avatar(value))
+            || account.session.avatar_url == avatar
+        {
+            return false;
+        }
+        account.session.avatar_url = avatar;
+        true
     }
 
     pub fn login(&mut self, input: LoginInput, now: u64) -> AccountResult<AccountSnapshot> {
@@ -388,6 +549,8 @@ impl AccountManager {
             });
             id
         };
+        self.avatar_checked.remove(&id);
+        self.enrich_avatar(&mut data, &id, now);
         data.active_id = Some(id);
         self.commit(data, now)
     }
@@ -408,6 +571,7 @@ impl AccountManager {
             ));
         }
         data.active_id = Some(id.to_string());
+        self.enrich_avatar(&mut data, id, now);
         self.commit(data, now)
     }
 

@@ -5,6 +5,7 @@ export interface AccountSummary {
   username: string;
   expiresAt: number;
   expired: boolean;
+  avatarUrl?: string | null;
 }
 
 export interface AccountSnapshot {

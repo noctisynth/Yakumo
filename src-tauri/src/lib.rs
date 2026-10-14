@@ -5,6 +5,7 @@ use std::{
 };
 use tauri::Manager;
 
+mod account_avatar;
 mod account_error;
 mod account_protocol;
 mod account_vault;

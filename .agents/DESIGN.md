@@ -13,7 +13,7 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 
 当前已完成应用骨架初始化：使用 Tauri 2、Vite、React TypeScript 和 Bun，Rust 固定 stable 通道。
 已建立页面、导航、界面状态、基础组件及检查命令；当前增加多账号登录与会话管理，见 SPEC-004。
-运动签名、生成器和业务上传仍未实现。
+头像所需无业务 Query 的 GET 签名已接入；完整运动签名、生成器和业务上传仍未实现。
 历史 Android 真实定位和计步流程作为兼容性证据保存，不替代本轮“生成数据并上报”的目标。
 是否增加真实运动采集能力及移动后台服务仍属后续范围，不作为当前目标的隐式前置条件。
 
@@ -31,6 +31,7 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 | SPEC-003 | release-automation.md | Active Spec | Semifold、版本同步、桌面 CI/CD 和公开仓库 |
 | SPEC-004 | accounts.md | Active Spec | 多账号登录、切换、加密会话和传输边界 |
 | CHECK-003 | accounts-verification.md | 验证记录 | 多账号隔离、协议、存储及交互验证 |
+| CHECK-004 | avatars-verification.md | 验证记录 | 用户头像读取、账号隔离、图片边界与占位验证 |
 | CHECK-001 | scaffold-verification.md | 验证记录 | 初始化版本、检查结果及平台覆盖 |
 | CHECK-002 | release-verification.md | 验证记录 | Semifold 预演、发布脚本与工作流检查 |
 | FACT-001 | evidence-baseline.md | Verified facts | 样本与验证成熟度、历史冲突消解 |
@@ -38,6 +39,7 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 | FACT-003 | upload-fields.md | Verified facts | 38 个顶层字段和嵌套数据 |
 | FACT-004 | lifecycle.md | Verified facts | 配置、状态、生成实验和结果核对 |
 | FACT-005 | privacy.md | Verified facts | 权限、明文传输、第三方证据范围 |
+| FACT-006 | avatars.md | Verified facts | 新版头像字段、空值及写入证据边界 |
 | EVIDENCE-001 | evidence-register.md | Evidence register | 证据编号、摘要和来源哈希 |
 | DATA-001 | evidence-snapshot.json | Sanitized evidence | 原始材料精选的类型及验证结果 |
 | DATA-002 | upload-observation.schema.json | Observed schema | 客户端字段并集；非服务端校验规范 |

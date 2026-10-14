@@ -8,31 +8,39 @@ import {
 } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
 import { Link } from 'react-router';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAccounts } from '@/hooks/use-accounts';
 import { cn } from '@/lib/utils';
 import { nativeAccountsAvailable } from '@/services/account-service';
 
 function AccountAvatar({
   username,
+  avatarUrl,
   className,
 }: {
   username?: string;
+  avatarUrl?: string | null;
   className?: string;
 }) {
   return (
-    <span
+    <Avatar
       aria-hidden='true'
       className={cn(
         'flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary',
         className,
       )}
     >
-      {username ? (
-        Array.from(username)[0]?.toLocaleUpperCase()
-      ) : (
-        <UserRound className='size-4' />
+      {avatarUrl && (
+        <AvatarImage src={avatarUrl} alt='' referrerPolicy='no-referrer' />
       )}
-    </span>
+      <AvatarFallback className='text-inherit'>
+        {username ? (
+          Array.from(username)[0]?.toLocaleUpperCase()
+        ) : (
+          <UserRound className='size-4' />
+        )}
+      </AvatarFallback>
+    </Avatar>
   );
 }
 
@@ -62,7 +70,11 @@ export function AccountSwitcher() {
           disabled={pending}
           className='flex w-full min-w-0 items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 text-left transition-colors outline-none hover:bg-accent/70 focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-accent disabled:opacity-60'
         >
-          <AccountAvatar username={active?.username} />
+          <AccountAvatar
+            key={active?.id ?? 'signed-out'}
+            username={active?.username}
+            avatarUrl={active?.avatarUrl}
+          />
           <span className='min-w-0 flex-1'>
             <span className='block truncate text-sm font-medium'>
               {active?.username ?? '未登录账号'}
@@ -113,6 +125,7 @@ export function AccountSwitcher() {
               >
                 <AccountAvatar
                   username={account.username}
+                  avatarUrl={account.avatarUrl}
                   className='size-8 rounded-lg text-xs'
                 />
                 <span className='min-w-0 flex-1'>

@@ -13,7 +13,7 @@ use crate::{
 };
 
 const AAD: &[u8] = b"app.yakumo.client/accounts/v1";
-const MAX_VAULT_SIZE: u64 = 4 * 1024 * 1024;
+const MAX_VAULT_SIZE: u64 = 16 * 1024 * 1024;
 
 pub trait AccountStorage: Send {
     fn load(&self) -> AccountResult<AccountData>;

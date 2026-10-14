@@ -24,9 +24,12 @@ pub struct Session {
     pub raw_app_id: String,
     pub device_id: String,
     pub expires_at: u64,
+    #[serde(default)]
+    pub avatar_url: Option<String>,
 }
 
 pub trait Authentication: Send {
+    fn avatar(&self, session: &Session, now: u64) -> AccountResult<Option<String>>;
     fn login(
         &self,
         username: &str,
@@ -60,7 +63,7 @@ fn client() -> AccountResult<Client> {
         .map_err(network_error)
 }
 
-fn headers(device_id: &str, basic: bool) -> AccountResult<header::HeaderMap> {
+pub(crate) fn headers(device_id: &str, basic: bool) -> AccountResult<header::HeaderMap> {
     let mut headers = header::HeaderMap::new();
     headers.insert("school", header::HeaderValue::from_static("swpu"));
     headers.insert(
@@ -89,7 +92,7 @@ fn headers(device_id: &str, basic: bool) -> AccountResult<header::HeaderMap> {
     Ok(headers)
 }
 
-fn response(request: reqwest::blocking::RequestBuilder) -> AccountResult<Value> {
+pub(crate) fn response(request: reqwest::blocking::RequestBuilder) -> AccountResult<Value> {
     let response = request.send().map_err(network_error)?;
     let status = response.status();
     if status.as_u16() == 401 || status.as_u16() == 403 {
@@ -186,10 +189,14 @@ fn parse_session(
         raw_app_id: String::new(),
         device_id: device_id.to_string(),
         expires_at,
+        avatar_url: None,
     })
 }
 
 impl Authentication for SchoolAuthentication {
+    fn avatar(&self, session: &Session, now: u64) -> AccountResult<Option<String>> {
+        crate::account_avatar::AvatarReader::new(SCHOOL_ORIGIN).read(session, now)
+    }
     fn login(
         &self,
         username: &str,
