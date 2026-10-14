@@ -2,16 +2,18 @@ import { Cloud, House, Settings2 } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 
 import { AccountSwitcher } from '@/components/account-switcher';
+import { useDashboardAccount } from '@/hooks/use-dashboard-account';
 import { cn } from '@/lib/utils';
 import { useAccountsStore } from '@/stores/accounts-store';
 import { usePreferencesStore } from '@/stores/preferences-store';
 
 const navigation = [
-  { to: '/', label: '概览', icon: House },
+  { to: '/', label: '数据大盘', icon: House },
   { to: '/settings', label: '偏好设置', icon: Settings2 },
 ];
 
 export function AppLayout() {
+  useDashboardAccount();
   const compact = usePreferencesStore((state) => state.compact);
   const accountError = useAccountsStore((state) => state.error);
   const location = useLocation();

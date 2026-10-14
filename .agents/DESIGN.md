@@ -13,7 +13,8 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 
 当前已完成应用骨架初始化：使用 Tauri 2、Vite、React TypeScript 和 Bun，Rust 固定 stable 通道。
 已建立页面、导航、界面状态、基础组件及检查命令；当前增加多账号登录与会话管理，见 SPEC-004。
-头像所需无业务 Query 的 GET 签名已接入；完整运动签名、生成器和业务上传仍未实现。
+运动签名、封包、JSON 与双层表单已完成离线适配，见 SPEC-005。
+当前学校的配置、记录、详情和统计已接入只读数据大盘，见 SPEC-006；生成器和业务上传仍未实现。
 历史 Android 真实定位和计步流程作为兼容性证据保存，不替代本轮“生成数据并上报”的目标。
 是否增加真实运动采集能力及移动后台服务仍属后续范围，不作为当前目标的隐式前置条件。
 
@@ -31,6 +32,8 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 | SPEC-003 | release-automation.md | Active Spec | Semifold、版本同步、桌面 CI/CD 和公开仓库 |
 | SPEC-004 | accounts.md | Active Spec | 多账号登录、切换、加密会话和传输边界 |
 | SPEC-005 | exercise-protocol.md | Active Spec | 运动签名、JSON、封包和表单离线适配 |
+| SPEC-006 | dashboard.md | Active Spec | 学校只读接口、数据大盘和账号隔离 |
+| CHECK-006 | dashboard-verification.md | 验证记录 | 学校接口模拟、大盘交互和平台构建 |
 | CHECK-005 | exercise-protocol-verification.md | 验证记录 | 原生协议合成向量与封包回读 |
 | CHECK-003 | accounts-verification.md | 验证记录 | 多账号隔离、协议、存储及交互验证 |
 | CHECK-004 | avatars-verification.md | 验证记录 | 用户头像读取、账号隔离、图片边界与占位验证 |

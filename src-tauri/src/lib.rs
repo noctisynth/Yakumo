@@ -11,6 +11,7 @@ mod account_protocol;
 mod account_vault;
 mod accounts;
 pub mod exercise_protocol;
+mod exercise_service;
 
 use account_error::{AccountError, AccountResult};
 use accounts::{AccountManager, AccountSnapshot, LoginInput};
@@ -63,6 +64,59 @@ async fn remove_account(
     with_accounts(state, move |manager, now| manager.remove(&id, now)).await
 }
 
+#[tauri::command]
+async fn read_exercise(
+    state: tauri::State<'_, Accounts>,
+    account_id: String,
+    query: exercise_service::ExerciseQuery,
+) -> exercise_service::ExerciseResult<exercise_service::ExerciseResponse> {
+    let state = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        query.validate()?;
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| exercise_service::ExerciseError {
+                code: "clock_error",
+                message: "系统时间异常。",
+                http_status: None,
+                business_code: None,
+            })?
+            .as_millis() as u64;
+        let session = {
+            let mut manager = state.lock().map_err(|_| exercise_service::ExerciseError {
+                code: "storage_unavailable",
+                message: "账号状态不可用。",
+                http_status: None,
+                business_code: None,
+            })?;
+            manager
+                .active_session(&account_id, timestamp / 1000)
+                .map_err(|error| exercise_service::ExerciseError {
+                    code: error.code,
+                    message: error.message,
+                    http_status: None,
+                    business_code: None,
+                })?
+        };
+        let data = exercise_service::ExerciseClient {
+            origin: "http://tygl.swpu.edu.cn/",
+        }
+        .read(&session, &query, timestamp)?;
+        Ok(exercise_service::ExerciseResponse {
+            account_id,
+            fetched_at: timestamp,
+            data,
+        })
+    })
+    .await
+    .map_err(|_| exercise_service::ExerciseError {
+        code: "internal_error",
+        message: "数据读取未能完成，请重试。",
+        http_status: None,
+        business_code: None,
+    })?
+}
+
 #[derive(Serialize)]
 struct ApplicationInfo {
     name: &'static str,
@@ -94,7 +148,8 @@ pub fn run() {
             list_accounts,
             login_account,
             switch_account,
-            remove_account
+            remove_account,
+            read_exercise
         ])
         .run(tauri::generate_context!())
     {

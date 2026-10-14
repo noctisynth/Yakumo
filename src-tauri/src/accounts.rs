@@ -230,6 +230,32 @@ mod tests {
     }
 
     #[test]
+    fn reads_use_an_immutable_active_account_snapshot() {
+        let storage = TestStorage::default();
+        let mut app = manager(&storage);
+        let a = app
+            .login(input("synthetic-a", "one"), 100)
+            .expect("login")
+            .active_id
+            .expect("id");
+        let snapshot = app.active_session(&a, 100).expect("snapshot");
+        let b = app
+            .login(input("synthetic-b", "two"), 100)
+            .expect("login")
+            .active_id
+            .expect("id");
+        assert_eq!(snapshot.user_id, "synthetic-a");
+        assert_eq!(
+            app.active_session(&a, 100).err().expect("changed").code,
+            "account_changed"
+        );
+        assert_eq!(
+            app.active_session(&b, 4000).err().expect("expired").code,
+            "session_expired"
+        );
+    }
+
+    #[test]
     fn avatars_are_isolated_persisted_and_optional_without_blocking_login() {
         let storage = TestStorage::default();
         let mut app = manager(&storage);
@@ -482,6 +508,28 @@ impl AccountManager {
             self.data = Some(data);
         }
         Ok(self.data()?.snapshot(now))
+    }
+
+    pub fn active_session(&mut self, id: &str, now: u64) -> AccountResult<Session> {
+        let data = self.data()?;
+        if data.active_id.as_deref() != Some(id) {
+            return Err(AccountError::new(
+                "account_changed",
+                "当前账号已切换，请重新读取。",
+            ));
+        }
+        let account = data
+            .accounts
+            .iter()
+            .find(|account| account.id == id)
+            .ok_or_else(|| AccountError::new("account_not_found", "账号已不存在。"))?;
+        if account.session.expires_at <= now {
+            return Err(AccountError::new(
+                "session_expired",
+                "登录已过期，请重新登录。",
+            ));
+        }
+        Ok(account.session.clone())
     }
 
     fn enrich_avatar(&mut self, data: &mut AccountData, id: &str, now: u64) -> bool {

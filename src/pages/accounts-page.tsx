@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useId, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +25,7 @@ import { useAccounts } from '@/hooks/use-accounts';
 import { nativeAccountsAvailable } from '@/services/account-service';
 
 export function AccountsPage() {
+  const navigate = useNavigate();
   const {
     accounts,
     activeId,
@@ -62,6 +64,7 @@ export function AccountsPage() {
     if (success) {
       setUsername('');
       setNotice('登录成功，已设为当前账号。');
+      navigate('/');
     }
   }
 
@@ -346,7 +349,7 @@ export function AccountsPage() {
                 ) : (
                   <LogIn className='size-4' aria-hidden='true' />
                 )}
-                {pending ? '正在处理…' : '登录并设为当前账号'}
+                {pending ? '正在处理…' : '登录并进入数据大盘'}
               </Button>
               <p className='flex items-start gap-2 text-xs leading-6 text-muted-foreground'>
                 <ShieldCheck
