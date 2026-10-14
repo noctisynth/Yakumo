@@ -22,7 +22,10 @@ pub trait AccountStorage: Send {
 
 pub struct EncryptedVault {
     directory: PathBuf,
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     key_account: String,
+    #[cfg(target_os = "android")]
+    mobile: Option<tauri::AppHandle>,
 }
 
 fn damaged() -> AccountError {
@@ -71,10 +74,31 @@ impl EncryptedVault {
     pub fn new(directory: PathBuf) -> Self {
         Self {
             directory,
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             key_account: "accounts-v1-key".into(),
+            #[cfg(target_os = "android")]
+            mobile: None,
         }
     }
 
+    #[cfg(target_os = "android")]
+    pub fn new_android(directory: PathBuf, app: tauri::AppHandle) -> Self {
+        let mut vault = Self::new(directory);
+        vault.mobile = Some(app);
+        vault
+    }
+    #[cfg(target_os = "android")]
+    fn key(&self, create: bool) -> AccountResult<Zeroizing<Vec<u8>>> {
+        crate::mobile_vault::key(
+            self.mobile.as_ref().ok_or_else(AccountError::storage)?,
+            create,
+        )
+    }
+    #[cfg(target_os = "ios")]
+    fn key(&self, _create: bool) -> AccountResult<Zeroizing<Vec<u8>>> {
+        Err(AccountError::storage())
+    }
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     fn key(&self, create: bool) -> AccountResult<Zeroizing<Vec<u8>>> {
         // Never fall back to keyring's mock backend on unsupported platforms.
         if !cfg!(any(

@@ -11,3 +11,15 @@
 
 Android 编译、安装与签名检查仅在 GitHub Actions 执行，本机不安装 SDK/NDK 或构建 Android。
 原生能力和签名维护在实施前补充本规范，实际平台覆盖以 TASK-003 及验证记录为准。
+
+Android 安全存储通过原生 Kotlin 桥接调用 Keystore，AES-GCM 包装随机主密钥，原有账号及回执
+仍使用 ChaCha20-Poly1305 加密。包装密钥不可导出，损坏或遗失时明确报错，不生成替代密钥覆盖旧数据。
+原生密钥方法不注册前端命令；仅 Rust 存储边界可取解包主密钥。Android 禁止应用备份，避免只恢复密文。
+导出使用系统文档选择器，不申请全盘文件权限；桌面依赖按目标平台隔离。iOS 安全存储尚未实现，
+不输出 iOS 安装包或将其标成已支持。
+
+云端按锁定 CLI 初始化 Android 工程并应用版本控制中的原生及配置覆层。使用 SDK 36、NDK r28、
+stable Rust，首批包含 arm64 与 x86_64，原生链接按 16 KB 页大小配置。学校 HTTP 入口继续显式确认。
+跨平台预览仅生成 Actions 附件，不自动创建 Release；Android debug 附件明确标识为测试版本。
+正式发布签名及安装验证在下一阶段完成后才纳入 Release 门槛。
+原生桥接依据：https://v2.tauri.app/develop/plugins/develop-mobile/ 。

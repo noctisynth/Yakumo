@@ -12,6 +12,8 @@ mod account_vault;
 mod accounts;
 pub mod exercise_protocol;
 mod exercise_service;
+#[cfg(target_os = "android")]
+mod mobile_vault;
 mod run_generator;
 mod run_submission;
 
@@ -124,6 +126,32 @@ async fn preview_run(input: run_generator::RunInput) -> AccountResult<run_genera
     tauri::async_runtime::spawn_blocking(move || run_generator::generate(input))
         .await
         .map_err(|_| AccountError::new("internal_error", "生成未能完成。"))?
+}
+
+#[tauri::command]
+fn mobile_platform() -> bool {
+    cfg!(target_os = "android")
+}
+#[tauri::command]
+async fn export_mobile_preview(
+    app: tauri::AppHandle,
+    input: run_generator::RunInput,
+) -> AccountResult<serde_json::Value> {
+    #[cfg(target_os = "android")]
+    return tauri::async_runtime::spawn_blocking(move || {
+        mobile_vault::export(&app, input)
+            .and_then(|r| serde_json::to_value(r).map_err(|_| AccountError::storage()))
+    })
+    .await
+    .map_err(|_| AccountError::storage())?;
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, input);
+        Err(AccountError::new(
+            "unsupported_platform",
+            "此命令仅用于 Android 保存预览。",
+        ))
+    }
 }
 
 type Prepared = Arc<Mutex<run_submission::PreparedRuns>>;
@@ -306,15 +334,23 @@ fn get_application_info(app: tauri::AppHandle) -> ApplicationInfo {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    if let Err(error) = tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
+    let builder = tauri::Builder::default();
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|_, _, _| {}));
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(mobile_vault::init());
+    if let Err(error) = builder
         .setup(|app| {
             let directory = app.path().app_local_data_dir()?;
             app.manage(Arc::new(
                 Mutex::new(run_submission::PreparedRuns::default()),
             ));
+            #[cfg(target_os = "android")]
+            let vault = account_vault::EncryptedVault::new_android(directory, app.handle().clone());
+            #[cfg(not(target_os = "android"))]
+            let vault = account_vault::EncryptedVault::new(directory);
             app.manage(Arc::new(Mutex::new(AccountManager::new(
-                Box::new(account_vault::EncryptedVault::new(directory)),
+                Box::new(vault),
                 Box::new(account_protocol::SchoolAuthentication),
             ))));
             Ok(())
@@ -329,6 +365,8 @@ pub fn run() {
             submit_run,
             submission_history,
             link_submission,
+            mobile_platform,
+            export_mobile_preview,
             preview_run,
             read_exercise
         ])

@@ -1,0 +1,10 @@
+name: Cross-platform build preview
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    uses: ./.github/workflows/desktop-build.yaml
+  android:
+    uses: ./.github/workflows/android-build.yaml

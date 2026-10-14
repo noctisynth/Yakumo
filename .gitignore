@@ -13,3 +13,10 @@ artifacts/
 .DS_Store
 .idea/
 .vscode/
+
+# Android build products and signing material
+src-tauri/gen/
+*.jks
+*.keystore
+*.p12
+keystore.properties

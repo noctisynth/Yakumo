@@ -1,3 +1,4 @@
+import { invoke, isTauri } from '@tauri-apps/api/core';
 import { Download, WandSparkles } from 'lucide-react';
 import { useState } from 'react';
 import { AccountRequired } from '@/components/account-required';
@@ -80,8 +81,18 @@ function StudioContent() {
     };
   });
   const preview = studio.preview;
-  function exportPreview() {
+  async function exportPreview() {
     if (!preview) return;
+    try {
+      if (isTauri() && (await invoke<boolean>('mobile_platform'))) {
+        await invoke('export_mobile_preview', { input: preview.input });
+        return;
+      }
+    } catch {
+      useStudioStore.setState({ error: '无法保存预览，请重试。' });
+      return;
+    }
+
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(preview, null, 2)], {
         type: 'application/json',
