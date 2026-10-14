@@ -51,9 +51,9 @@ export function RecordDetailPage() {
   return (
     <div className='space-y-6'>
       <Button asChild variant='ghost'>
-        <Link to='/'>
+        <Link to='/records'>
           <ArrowLeft className='size-4' aria-hidden='true' />
-          返回数据大盘
+          返回运动记录
         </Link>
       </Button>
       <div className='flex flex-wrap items-start justify-between gap-4'>

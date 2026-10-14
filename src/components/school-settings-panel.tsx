@@ -41,8 +41,11 @@ export function SchoolSettingsPanel() {
     });
   }
   return (
-    <details className='rounded-2xl border border-border/70 bg-card p-5 md:p-6'>
-      <summary className='cursor-pointer list-none'>
+    <section
+      className='rounded-xl border border-border bg-card p-5 md:p-7'
+      aria-label='学校运动配置'
+    >
+      <div>
         <span className='flex items-center gap-3'>
           <SlidersHorizontal
             className='size-5 text-primary'
@@ -54,9 +57,8 @@ export function SchoolSettingsPanel() {
               输入本次查询坐标，读取运动类型 1 的当前要求。
             </span>
           </span>
-          <span className='text-xs text-primary'>展开</span>
         </span>
-      </summary>
+      </div>
       <div className='mt-6 space-y-5'>
         <form
           onSubmit={submit}
@@ -119,6 +121,6 @@ export function SchoolSettingsPanel() {
           </>
         )}
       </div>
-    </details>
+    </section>
   );
 }
