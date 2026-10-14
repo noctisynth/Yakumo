@@ -30,6 +30,8 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 | SPEC-002 | application-scaffold.md | Active Spec | 应用骨架、工具配置、职责与初始化验收 |
 | SPEC-003 | release-automation.md | Active Spec | Semifold、版本同步、桌面 CI/CD 和公开仓库 |
 | SPEC-004 | accounts.md | Active Spec | 多账号登录、切换、加密会话和传输边界 |
+| SPEC-005 | exercise-protocol.md | Active Spec | 运动签名、JSON、封包和表单离线适配 |
+| CHECK-005 | exercise-protocol-verification.md | 验证记录 | 原生协议合成向量与封包回读 |
 | CHECK-003 | accounts-verification.md | 验证记录 | 多账号隔离、协议、存储及交互验证 |
 | CHECK-004 | avatars-verification.md | 验证记录 | 用户头像读取、账号隔离、图片边界与占位验证 |
 | CHECK-001 | scaffold-verification.md | 验证记录 | 初始化版本、检查结果及平台覆盖 |

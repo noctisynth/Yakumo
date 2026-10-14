@@ -4,9 +4,8 @@ use std::{
     time::Duration,
 };
 
-use aes::cipher::{BlockEncryptMut, KeyIvInit, block_padding::Pkcs7};
 use base64::{Engine, engine::general_purpose::STANDARD};
-use md5::{Digest, Md5};
+
 use reqwest::{Url, blocking::Client, redirect::Policy};
 
 use crate::{
@@ -20,31 +19,8 @@ fn unavailable() -> AccountError {
     AccountError::new("avatar_unavailable", "头像暂时无法读取，已保留账号占位。")
 }
 
-fn fingerprint(text: &str, token: &str) -> AccountResult<String> {
-    let digest = format!("{:x}", Md5::digest(token.as_bytes()));
-    let mut buffer = vec![0; text.len() + 16];
-    buffer[..text.len()].copy_from_slice(text.as_bytes());
-    let ciphertext = cbc::Encryptor::<aes::Aes128>::new_from_slices(
-        &digest.as_bytes()[..16],
-        &digest.as_bytes()[16..],
-    )
-    .map_err(|_| unavailable())?
-    .encrypt_padded_mut::<Pkcs7>(&mut buffer, text.len())
-    .map_err(|_| unavailable())?;
-    Ok(format!(
-        "{:x}",
-        Md5::digest(STANDARD.encode(ciphertext).as_bytes())
-    ))
-}
-
-// This deliberately supports only GET requests without business query parameters.
 fn signature(token: &str, app_id: &str, timestamp: &str) -> AccountResult<String> {
-    let derived_app = fingerprint(&format!("{app_id}{token}{timestamp}"), token)?;
-    let derived_secret = fingerprint(&format!("{token}{timestamp}"), token)?;
-    fingerprint(
-        &format!("appId={derived_app}&appSecret={derived_secret}"),
-        token,
-    )
+    crate::exercise_protocol::sign::get_signature(app_id, token, timestamp, &[])
 }
 
 fn image_url(origin: &str, value: &str) -> AccountResult<Option<Url>> {
@@ -383,11 +359,16 @@ mod tests {
             "587d94e43d9e1a24dd6d78c2a959fbb5"
         );
         assert_eq!(
-            fingerprint("test-apptest-token1700000000123", "test-token").expect("derive"),
+            crate::exercise_protocol::sign::fingerprint(
+                b"test-apptest-token1700000000123",
+                "test-token"
+            )
+            .expect("derive"),
             "3af3a313ee0c47461187784299bac29b"
         );
         assert_eq!(
-            fingerprint("test-token1700000000123", "test-token").expect("derive"),
+            crate::exercise_protocol::sign::fingerprint(b"test-token1700000000123", "test-token")
+                .expect("derive"),
             "5f63882c88c1985206573379a519a6e7"
         );
     }

@@ -10,6 +10,7 @@ mod account_error;
 mod account_protocol;
 mod account_vault;
 mod accounts;
+pub mod exercise_protocol;
 
 use account_error::{AccountError, AccountResult};
 use accounts::{AccountManager, AccountSnapshot, LoginInput};
