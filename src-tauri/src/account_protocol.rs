@@ -211,6 +211,14 @@ impl Authentication for SchoolAuthentication {
     }
 }
 
+fn login_stage(error: AccountError, code: &'static str, message: &'static str) -> AccountError {
+    if error.code == "invalid_response" {
+        AccountError::new(code, message)
+    } else {
+        error
+    }
+}
+
 impl LoginProtocol<'_> {
     fn login(
         &self,
@@ -225,13 +233,32 @@ impl LoginProtocol<'_> {
             client
                 .get(format!("{origin}auth/rsa-public-key"))
                 .headers(headers(device_id, false)?),
-        )?;
-        let password = Zeroizing::new(encrypt_password(
-            key.get("data")
-                .and_then(Value::as_str)
-                .ok_or_else(AccountError::protocol)?,
-            password,
-        )?);
+        )
+        .map_err(|error| {
+            login_stage(
+                error,
+                "login_key_response",
+                "学校登录准备失败：未能读取登录信息，请稍后重试。",
+            )
+        })?;
+        let password = Zeroizing::new(
+            encrypt_password(
+                key.get("data").and_then(Value::as_str).ok_or_else(|| {
+                    AccountError::new(
+                        "login_key_invalid",
+                        "学校登录准备失败：登录信息不完整，请稍后重试。",
+                    )
+                })?,
+                password,
+            )
+            .map_err(|error| {
+                login_stage(
+                    error,
+                    "login_key_invalid",
+                    "学校登录准备失败：登录信息不可用，请稍后重试。",
+                )
+            })?,
+        );
         let params = [
             ("username", username),
             ("password", password.as_str()),
@@ -245,14 +272,40 @@ impl LoginProtocol<'_> {
                 .headers(headers(device_id, true)?)
                 .query(&params)
                 .body(""),
-        )?;
-        let mut session = parse_session(&token, username, device_id, now)?;
+        )
+        .map_err(|error| {
+            login_stage(
+                error,
+                "login_token_response",
+                "学校登录服务未返回正常结果，请稍后重试。",
+            )
+        })?;
+        let mut session = parse_session(&token, username, device_id, now).map_err(|error| {
+            login_stage(
+                error,
+                "login_session_invalid",
+                "学校登录响应缺少有效会话信息，暂时无法完成登录。",
+            )
+        })?;
         let app_id = response(
             client
                 .get(format!("{origin}upms/sysSchool/getAppid"))
                 .headers(headers(device_id, false)?),
-        )?;
-        session.raw_app_id = text(&app_id, "data")?;
+        )
+        .map_err(|error| {
+            login_stage(
+                error,
+                "login_app_response",
+                "学校账号连接配置读取失败，请稍后重试。",
+            )
+        })?;
+        session.raw_app_id = text(&app_id, "data").map_err(|error| {
+            login_stage(
+                error,
+                "login_app_invalid",
+                "学校账号连接配置不完整，暂时无法完成登录。",
+            )
+        })?;
         Ok(session)
     }
 }
@@ -369,6 +422,43 @@ mod tests {
             );
             worker.join().expect("worker");
         }
+    }
+
+    #[test]
+    fn login_stage_errors_do_not_hide_network_or_authentication_failures() {
+        let error = login_stage(
+            AccountError::protocol(),
+            "login_session_invalid",
+            "会话信息不完整。",
+        );
+        assert_eq!(error.code, "login_session_invalid");
+        for code in [
+            "authentication_rejected",
+            "network_error",
+            "timeout",
+            "http_error",
+            "password_encoding",
+        ] {
+            let error = login_stage(
+                AccountError::new(code, "原有分类"),
+                "login_key_invalid",
+                "新分类",
+            );
+            assert_eq!(error.code, code);
+            assert_eq!(error.message, "原有分类");
+        }
+        let (origin, worker) = mock_server(vec![(200, "<html>synthetic-secret</html>".into())]);
+        let error = LoginProtocol { origin: &origin }
+            .login("synthetic", "synthetic-password", "synthetic-device", 100)
+            .err()
+            .expect("invalid initialization");
+        assert_eq!(error.code, "login_key_response");
+        assert!(
+            !serde_json::to_string(&error)
+                .expect("safe error")
+                .contains("synthetic-secret")
+        );
+        worker.join().expect("worker");
     }
 
     #[test]
