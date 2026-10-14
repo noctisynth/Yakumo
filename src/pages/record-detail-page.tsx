@@ -1,6 +1,6 @@
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { DataFeedback } from '@/components/data-feedback';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -50,12 +50,6 @@ export function RecordDetailPage() {
   ];
   return (
     <div className='space-y-6'>
-      <Button asChild variant='ghost'>
-        <Link to='/records'>
-          <ArrowLeft className='size-4' aria-hidden='true' />
-          返回运动记录
-        </Link>
-      </Button>
       <div className='flex flex-wrap items-start justify-between gap-4'>
         <div>
           <p className='mb-2 text-xs text-muted-foreground'>

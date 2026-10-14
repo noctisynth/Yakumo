@@ -39,7 +39,18 @@ export function AppLayout() {
   const compact = usePreferencesStore((state) => state.compact);
   const accountError = useAccountsStore((state) => state.error);
   const location = useLocation();
-  const accountLogin = location.pathname === '/accounts/login';
+  const parentPage =
+    location.pathname === '/accounts/login'
+      ? { to: '/accounts', label: '账号管理', title: '登录账号' }
+      : /^\/records\/[^/]+$/.test(location.pathname)
+        ? { to: '/records', label: '运动记录', title: '记录详情' }
+        : (
+            {
+              '/profile': { to: '/me', label: '我的', title: '账号资料' },
+              '/accounts': { to: '/me', label: '我的', title: '账号管理' },
+            } as Record<string, { to: string; label: string; title: string }>
+          )[location.pathname];
+  const hasParent = Boolean(parentPage);
   const current = navigation.find((item) =>
     item.to === '/'
       ? location.pathname === '/'
@@ -126,7 +137,7 @@ export function AppLayout() {
         </aside>
         <div className='min-w-0 flex-1 pb-[calc(5rem+var(--native-safe-bottom,env(safe-area-inset-bottom)))] desktop:pb-0'>
           <header className='flex h-[calc(4rem+var(--native-safe-top,env(safe-area-inset-top)))] items-center pt-[var(--native-safe-top,env(safe-area-inset-top))] desktop:h-16 desktop:pt-0 justify-between gap-3 border-b border-border px-5 desktop:px-9 lg:px-12'>
-            {!accountLogin && (
+            {!hasParent && (
               <Link
                 to='/'
                 aria-label='八云爱首页'
@@ -144,13 +155,13 @@ export function AppLayout() {
               aria-label='页面层级'
               className={cn(
                 'items-center gap-2 text-xs text-muted-foreground',
-                accountLogin ? 'flex' : 'hidden desktop:flex',
+                hasParent ? 'flex' : 'hidden desktop:flex',
               )}
             >
-              {accountLogin ? (
+              {parentPage ? (
                 <Link
-                  to='/accounts'
-                  aria-label='返回账号管理'
+                  to={parentPage.to}
+                  aria-label={`返回${parentPage.label}`}
                   className='relative flex size-3.5 shrink-0 items-center justify-center rounded-sm outline-none before:absolute before:-inset-[15px] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
                 >
                   <ArrowLeft className='size-3.5' aria-hidden='true' />
@@ -158,30 +169,28 @@ export function AppLayout() {
               ) : (
                 <ListFilter className='size-3.5' aria-hidden='true' />
               )}
-              <span
-                className={accountLogin ? 'hidden desktop:inline' : undefined}
-              >
+              <span className={hasParent ? 'hidden desktop:inline' : undefined}>
                 工作空间
               </span>
               <span
                 aria-hidden='true'
                 className={cn(
                   'text-border',
-                  accountLogin && 'hidden desktop:inline',
+                  hasParent && 'hidden desktop:inline',
                 )}
               >
                 /
               </span>
-              {accountLogin ? (
+              {parentPage ? (
                 <>
-                  <Link to='/accounts' className='hover:text-foreground'>
-                    账号管理
+                  <Link to={parentPage.to} className='hover:text-foreground'>
+                    {parentPage.label}
                   </Link>
                   <span aria-hidden='true' className='text-border'>
                     /
                   </span>
                   <span className='text-foreground' aria-current='page'>
-                    登录账号
+                    {parentPage.title}
                   </span>
                 </>
               ) : (

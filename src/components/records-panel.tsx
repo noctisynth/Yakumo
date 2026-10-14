@@ -11,6 +11,13 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   duration,
   items,
   object,
@@ -40,49 +47,62 @@ export function RecordsPanel() {
       </CardHeader>
       <CardContent className='space-y-5'>
         <div className='flex flex-wrap items-center gap-3'>
-          <label className='flex items-center gap-2 text-xs text-muted-foreground'>
-            状态
-            <select
-              aria-label='记录状态'
+          <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+            <span>状态</span>
+            <Select
               value={filter.status}
               disabled={records.loading}
-              onChange={(event) => {
+              onValueChange={(status) => {
+                void recordsPage({ ...filter, status, page: 1, date: '' });
+              }}
+            >
+              <SelectTrigger
+                aria-label='记录状态'
+                className='min-w-24 bg-background text-foreground'
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='1'>合格</SelectItem>
+                <SelectItem value='0'>未合格</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+            <span>日期</span>
+            <Select
+              value={filter.date || '__all_dates__'}
+              disabled={records.loading}
+              onValueChange={(date) => {
                 void recordsPage({
                   ...filter,
-                  status: event.target.value,
-                  page: 1,
-                  date: '',
+                  date: date === '__all_dates__' ? '' : date,
                 });
               }}
-              className='h-9 rounded-lg border border-input bg-background px-3 text-sm text-foreground'
             >
-              <option value='1'>合格</option>
-              <option value='0'>未合格</option>
-            </select>
-          </label>
-          <label className='flex items-center gap-2 text-xs text-muted-foreground'>
-            日期
-            <select
-              aria-label='记录日期'
-              value={filter.date}
-              disabled={records.loading}
-              onChange={(event) => {
-                void recordsPage({ ...filter, date: event.target.value });
-              }}
-              className='h-9 max-w-44 rounded-lg border border-input bg-background px-3 text-sm text-foreground'
-            >
-              <option value=''>当前日期分组全部</option>
-              {filter.date &&
-                !dates.some((date) => text(date.date) === filter.date) && (
-                  <option value={filter.date}>{filter.date}</option>
-                )}
-              {dates.map((date) => (
-                <option key={text(date.date)} value={text(date.date)}>
-                  {text(date.date)}
-                </option>
-              ))}
-            </select>
-          </label>
+              <SelectTrigger
+                aria-label='记录日期'
+                className='max-w-44 bg-background text-foreground'
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='__all_dates__'>当前日期分组全部</SelectItem>
+                {Array.from(
+                  new Set([
+                    filter.date,
+                    ...dates.map((date) => text(date.date, '')),
+                  ]),
+                )
+                  .filter(Boolean)
+                  .map((date) => (
+                    <SelectItem key={date} value={date}>
+                      {date}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <DataFeedback resource={records} />
         <div className='hidden overflow-x-auto rounded-xl border border-border/60 md:block'>
