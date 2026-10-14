@@ -36,6 +36,7 @@ jobs:
           bun run check:versions
           bun run typecheck:scripts
           bun run test:release
+          bun run test:android-config
           bun run test:accounts
           bun run test:dashboard
       - name: Frontend production build

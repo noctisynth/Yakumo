@@ -15,10 +15,12 @@ const source = readFileSync(gradle, 'utf8');
 let updated = source
   .replace(/compileSdk\s*=\s*\d+/, 'compileSdk = 36')
   .replace(/targetSdk\s*=\s*\d+/, 'targetSdk = 36');
-updated = updated.replace(
-  /(android\s*\{)/,
-  '$1\n    ndkVersion = "28.2.13676358"',
-);
+updated = /^\s*ndkVersion\s*=.*$/m.test(updated)
+  ? updated.replace(
+      /^\s*ndkVersion\s*=.*$/m,
+      '    ndkVersion = "28.2.13676358"',
+    )
+  : updated.replace(/(android\s*\{)/, '$1\n    ndkVersion = "28.2.13676358"');
 writeFileSync(gradle, updated);
 const kotlin = join(root, 'app/src/main/java/app/yakumo/vault');
 mkdirSync(kotlin, { recursive: true });
@@ -34,6 +36,7 @@ let xml = readFileSync(manifest, 'utf8').replace(
 if (!xml.includes('android:allowBackup='))
   xml = xml.replace('<application', '<application android:allowBackup="false"');
 xml = xml
+  .replace(/android:networkSecurityConfig="[^"]*"/g, '')
   .replace(/android:usesCleartextTraffic="[^"]*"/g, '')
   .replace(
     '<application',

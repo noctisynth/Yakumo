@@ -21,7 +21,8 @@ const file = join(root, 'app/build.gradle.kts');
 let source = readFileSync(file, 'utf8');
 if (!source.includes('getByName("release")'))
   throw new Error('Unknown Android release Gradle layout');
-source = `import java.util.Properties\n${source}`;
+if (!source.includes('import java.util.Properties'))
+  source = `import java.util.Properties\n${source}`;
 source = source.replace(
   /android\s*\{/,
   `android {
