@@ -47,7 +47,7 @@ const entries: [Group, Record<string, string>][] = [
       studentNumber: '学号',
       grade: '年级',
       yearName: '年级',
-      eduYear: '学制（原值）',
+      eduYear: '学制',
       stuTypeName: '学生类别',
     },
   ],
@@ -87,9 +87,7 @@ const fields = Object.fromEntries(
         group,
         ...(group === '状态信息'
           ? { hint: '学校返回的状态值，具体取值含义尚未确认。' }
-          : key === 'eduYear'
-            ? { hint: '按学校原值展示，不推断单位。' }
-            : {}),
+          : {}),
       },
     ]),
   ),
@@ -106,6 +104,12 @@ export function profileField(key: string): Field {
 
 // Confirmed by the user; other codes remain uninterpreted.
 export function profileValue(key: string, value: unknown): string | undefined {
+  if (
+    key === 'eduYear' &&
+    ((typeof value === 'number' && Number.isFinite(value)) ||
+      (typeof value === 'string' && /^\d+(?:\.\d+)?$/.test(value)))
+  )
+    return `${value} 年`;
   if (key === 'userType' && (value === 1 || value === '1')) return '学生';
   if (key === 'isGraduation' && (value === 0 || value === '0')) return '未毕业';
   return undefined;
