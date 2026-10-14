@@ -5,6 +5,7 @@
     "types": ["bun"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "paths": { "@/*": ["./src/*"] },
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "strict": true,

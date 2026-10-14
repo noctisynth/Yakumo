@@ -36,6 +36,7 @@ jobs:
           bun run check:versions
           bun run typecheck:scripts
           bun run test:release
+          bun run test:accounts
       - name: Frontend production build
         run: bun run build
       - name: Setup Semifold

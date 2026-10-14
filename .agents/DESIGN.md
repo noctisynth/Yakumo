@@ -12,7 +12,8 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 原生 CSS 限于全局主题和必要基础规则。隐私最小化、无广告、无无关数据上报属于产品目标。
 
 当前已完成应用骨架初始化：使用 Tauri 2、Vite、React TypeScript 和 Bun，Rust 固定 stable 通道。
-已建立离线页面、导航、界面状态、基础组件及检查命令；协议移植、生成器和业务上传仍未实现。
+已建立页面、导航、界面状态、基础组件及检查命令；当前增加多账号登录与会话管理，见 SPEC-004。
+运动签名、生成器和业务上传仍未实现。
 历史 Android 真实定位和计步流程作为兼容性证据保存，不替代本轮“生成数据并上报”的目标。
 是否增加真实运动采集能力及移动后台服务仍属后续范围，不作为当前目标的隐式前置条件。
 
@@ -28,6 +29,8 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 | SPEC-001 | product-baseline.md | Active Spec | 用户已确定范围及工程约束 |
 | SPEC-002 | application-scaffold.md | Active Spec | 应用骨架、工具配置、职责与初始化验收 |
 | SPEC-003 | release-automation.md | Active Spec | Semifold、版本同步、桌面 CI/CD 和公开仓库 |
+| SPEC-004 | accounts.md | Active Spec | 多账号登录、切换、加密会话和传输边界 |
+| CHECK-003 | accounts-verification.md | 验证记录 | 多账号隔离、协议、存储及交互验证 |
 | CHECK-001 | scaffold-verification.md | 验证记录 | 初始化版本、检查结果及平台覆盖 |
 | CHECK-002 | release-verification.md | 验证记录 | Semifold 预演、发布脚本与工作流检查 |
 | FACT-001 | evidence-baseline.md | Verified facts | 样本与验证成熟度、历史冲突消解 |
@@ -42,6 +45,7 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 | RFC-0001 | 0001-implementation-choices.md | Draft RFC | 平台、存储、生成及协议实现选项 |
 | TODO-001 | TODO.md | Active 索引 | 路由当前实施清单 |
 | TASK-001 | project.md | Active 清单 | 已确认目标与实现差距 |
+| TASK-002 | accounts.md | 已完成清单 | 多账号实现与验收，平台限制见 CHECK-003 |
 
 ## 责任边界
 

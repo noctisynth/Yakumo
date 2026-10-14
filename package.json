@@ -17,10 +17,11 @@
     "format": "biome format --write .",
     "check:rust": "cargo fmt --all -- --check && cargo clippy --workspace --all-targets --locked -- -D warnings",
     "test:rust": "cargo test --workspace --locked",
+    "test:accounts": "bun test scripts/accounts-store.test.ts",
     "check:versions": "bun scripts/check-versions.ts",
     "test:release": "bun test scripts/release-tools.test.ts",
     "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
-    "verify": "bun run check && bun run check:versions && bun run typecheck:scripts && bun run test:release && bun run build && bun run check:rust && bun run test:rust",
+    "verify": "bun run check && bun run check:versions && bun run typecheck:scripts && bun run test:release && bun run test:accounts && bun run build && bun run check:rust && bun run test:rust",
     "preview": "vite preview",
     "tauri": "tauri"
   },

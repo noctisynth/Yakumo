@@ -68,8 +68,8 @@ export function HomePage() {
             少一点打扰，多一点属于自己的时间。
           </p>
           <Button asChild className='mt-8 h-11 rounded-xl px-5'>
-            <Link to='/settings'>
-              设置我的工作台
+            <Link to='/accounts'>
+              管理我的账号
               <ArrowRight className='size-4' aria-hidden='true' />
             </Link>
           </Button>
@@ -137,7 +137,7 @@ export function HomePage() {
               清爽，从尊重你的选择开始
             </h2>
             <p className='mt-2 text-xs leading-6 text-muted-foreground'>
-              当前工作台离线运行。账号和运动功能将在后续接入。
+              账号会话在本机加密保存。登录由你发起，运动功能仍在准备中。
             </p>
           </div>
         </div>

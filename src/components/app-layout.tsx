@@ -1,17 +1,27 @@
-import { ArrowUpRight, Cloud, House, Settings2 } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router';
+import {
+  ArrowUpRight,
+  Cloud,
+  House,
+  Settings2,
+  UsersRound,
+} from 'lucide-react';
+import { NavLink, Outlet, useLocation } from 'react-router';
 
-import { Badge } from '@/components/ui/badge';
+import { AccountSwitcher } from '@/components/account-switcher';
 import { cn } from '@/lib/utils';
+import { useAccountsStore } from '@/stores/accounts-store';
 import { usePreferencesStore } from '@/stores/preferences-store';
 
 const navigation = [
   { to: '/', label: '概览', icon: House },
+  { to: '/accounts', label: '账号管理', icon: UsersRound },
   { to: '/settings', label: '偏好设置', icon: Settings2 },
 ];
 
 export function AppLayout() {
   const compact = usePreferencesStore((state) => state.compact);
+  const accountError = useAccountsStore((state) => state.error);
+  const location = useLocation();
 
   return (
     <div className='min-h-svh bg-background text-foreground'>
@@ -46,7 +56,7 @@ export function AppLayout() {
           </NavLink>
           <nav
             aria-label='主导航'
-            className='mt-6 flex gap-2 md:mt-12 md:flex-col'
+            className='mt-6 flex flex-wrap gap-2 md:mt-12 md:flex-col md:flex-nowrap'
           >
             {navigation.map(({ to, label, icon: Icon }) => (
               <NavLink
@@ -86,14 +96,19 @@ export function AppLayout() {
         </aside>
         <div className='min-w-0 flex-1'>
           <header className='flex h-20 items-center justify-between border-b border-border/70 px-6 md:px-10 lg:px-14'>
-            <p className='text-xs tracking-wide text-muted-foreground'>
+            <p className='hidden text-xs tracking-wide text-muted-foreground sm:block'>
               属于你的跑步数据空间
             </p>
-            <Badge variant='outline' className='gap-2 rounded-full px-3 py-1'>
-              <span className='size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400' />
-              离线工作台
-            </Badge>
+            <AccountSwitcher />
           </header>
+          {accountError && location.pathname !== '/accounts' && (
+            <div
+              role='alert'
+              className='border-b border-destructive/20 bg-destructive/5 px-6 py-3 text-xs text-destructive md:px-10'
+            >
+              {accountError.message}
+            </div>
+          )}
           <main
             id='main-content'
             tabIndex={-1}
