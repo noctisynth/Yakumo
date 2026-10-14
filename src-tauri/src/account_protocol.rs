@@ -143,12 +143,15 @@ fn text(value: &Value, name: &str) -> AccountResult<String> {
 }
 
 pub fn encrypt_password(public_key: &str, password: &str) -> AccountResult<String> {
-    let pem = if public_key.starts_with("-----BEGIN PUBLIC KEY-----") {
-        public_key.to_string()
+    let public_key = public_key.trim();
+    let key = if public_key.starts_with("-----BEGIN PUBLIC KEY-----") {
+        RsaPublicKey::from_public_key_pem(public_key).map_err(|_| AccountError::protocol())?
     } else {
-        format!("-----BEGIN PUBLIC KEY-----\n{public_key}\n-----END PUBLIC KEY-----")
+        let der = STANDARD
+            .decode(public_key)
+            .map_err(|_| AccountError::protocol())?;
+        RsaPublicKey::from_public_key_der(&der).map_err(|_| AccountError::protocol())?
     };
-    let key = RsaPublicKey::from_public_key_pem(&pem).map_err(|_| AccountError::protocol())?;
     if !(2048..=4096).contains(&key.n().bits()) {
         return Err(AccountError::protocol());
     }
@@ -477,6 +480,23 @@ mod tests {
         assert_eq!(
             private.decrypt(Pkcs1v15Encrypt, &cipher).expect("decrypt"),
             "合成密码 +&".as_bytes()
+        );
+        // The school returns one unwrapped Base64 DER line, not a PEM document.
+        let unwrapped: String = pem
+            .lines()
+            .filter(|line| !line.starts_with("-----"))
+            .collect();
+        assert_eq!(unwrapped.len(), 392);
+        let encoded =
+            encrypt_password(&unwrapped, "synthetic-password").expect("bare DER encryption");
+        let cipher = STANDARD
+            .decode(encoded.strip_prefix("RSA:").expect("prefix"))
+            .expect("base64");
+        assert_eq!(
+            private
+                .decrypt(Pkcs1v15Encrypt, &cipher)
+                .expect("DER round trip"),
+            b"synthetic-password"
         );
         assert!(encrypt_password("bad public key", "secret").is_err());
     }
