@@ -20,3 +20,6 @@ src-tauri/gen/
 *.keystore
 *.p12
 keystore.properties
+
+__pycache__/
+*.pyc

@@ -36,6 +36,7 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 | CHECK-008 | run-workflow-verification.md | 验证记录 | 账号资料、生成及提交分阶段验证 |
 | SPEC-008 | run-workflow.md | Active Spec | 账号资料、合成生成与显式提交 |
 | SPEC-009 | mobile.md | Active Spec | 移动导航、Android 原生交付及签名 |
+| CHECK-009 | mobile-verification.md | 验证记录 | 移动布局、跨平台构建及 Android 签名安装 |
 | SPEC-007 | visual-identity.md | Active Spec | 角色品牌、视觉与独立记录和配置页面 |
 | CHECK-007 | visual-verification.md | 验证记录 | 角色图标、导航和响应式视觉验证 |
 | CHECK-006 | dashboard-verification.md | 验证记录 | 学校接口模拟、大盘交互和平台构建 |

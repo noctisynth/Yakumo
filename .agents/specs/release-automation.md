@@ -18,7 +18,8 @@
 有待处理 changeset 时，质量检查通过后由 semifold ci 创建或更新 release PR。
 发布 PR 包含共享版本、派生版本、锁文件及 changelog 修改，合并前必须经过质量检查。
 没有 changeset 且当前版本有 changelog、尚无对应 GitHub Release 时，构建 Windows x64、
-Linux x64、macOS arm64 和 x64 的桌面附件，全部成功后由 Semifold 创建 Release 并上传。
+Linux x64、macOS arm64 和 x64 的桌面附件，以及通过签名和安装检查的 Android 通用 APK/AAB，
+全部成功后由 Semifold 创建 Release 并上传。Android 细节与当前验收范围见 SPEC-009、TASK-003。
 已经存在的 Release 不自动覆盖或补传附件，失败恢复需要检查实际资产状态。
 原始软件包注册表的检查和发布均禁用，只启用应用的 GitHub Release 与附件。
 
@@ -35,3 +36,6 @@ PR 仅执行受限质量检查；可信 main 的发布 job 才持有必要的 co
 Semifold 初始化和配置同步检查成功，changeset 的 status 展示符合预期；预演不消耗 changeset。
 验证派生版本同步、冻结锁文件和工作流语法；运行与 workspace 迁移相称的现有检查。
 确认远端仓库精确名称为 Yakumo、归属 noctisynth、可见性为 public，推送后检查实际 Actions 状态。
+
+移动构建仅在线执行，Android 缺失签名凭据、身份不匹配、签名方案或对齐不合格时终止发布。
+手动跨平台预览与 Android 签名验证只上传 Actions 附件，不创建正式 Release 或合并发布分支。

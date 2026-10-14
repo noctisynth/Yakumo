@@ -56,6 +56,7 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           key: android-ndk28
+          cache-on-failure: true
       - name: Initialize Android project and apply tracked overlays
         run: |
           bun install --frozen-lockfile
@@ -102,6 +103,14 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 2048
           script: bash scripts/android-smoke.sh
+      - name: Upload Android runtime diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-runtime-${{ env.BUILD_MODE }}
+          path: artifacts/android-diagnostics/*
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Clean signing material
         if: always()
         run: |

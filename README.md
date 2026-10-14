@@ -102,6 +102,9 @@ semifold status
 合入 main 后，质量检查通过再由 Semifold 自动维护 release PR。审查并合并该 PR 后，
 流程构建 Windows x64、Linux x64、macOS arm64／x64 的应用附件与 SHA-256 校验文件，
 全部成功后创建 GitHub Release。Windows 附件尚无商业代码签名，macOS 使用 ad-hoc 签名。
+Android 构建使用独立长期发布证书，校验签名身份、v2/v3 签名及 16 KB 对齐，再执行云端安装检查。
+移动端使用四项底部导航，账号资料、学校配置与偏好设置位于“我的”；独立待办见 TASK-003。
+Android 编译、签名和安装验证均交由 GitHub Actions，本机不要求安装 Android 工具链。
 这里列出的是自动化目标，实际平台验证以对应 Actions 运行结果为准。
 
 PR 检查包括前端格式、类型和构建，发布脚本测试、版本一致性，以及三个桌面系统上的 Rust 检查和应用构建。

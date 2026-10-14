@@ -52,8 +52,8 @@ export function AppLayout() {
       >
         跳到主要内容
       </button>
-      <div className='mx-auto flex min-h-svh max-w-[1920px] flex-col md:flex-row'>
-        <aside className='z-20 hidden shrink-0 flex-col md:flex md:overflow-y-auto bg-[#191c35] px-5 py-5 text-[#f4f0e7] md:sticky md:top-0 md:h-svh md:w-60 md:px-5 md:py-8 lg:w-64'>
+      <div className='mx-auto flex min-h-svh max-w-[1920px] flex-col desktop:flex-row'>
+        <aside className='z-20 hidden shrink-0 flex-col desktop:flex desktop:overflow-y-auto bg-[#191c35] px-5 py-5 text-[#f4f0e7] desktop:sticky desktop:top-0 desktop:h-svh desktop:w-60 desktop:px-5 desktop:py-8 lg:w-64'>
           <NavLink
             to='/'
             aria-label='八云爱首页'
@@ -75,12 +75,12 @@ export function AppLayout() {
               </span>
             </span>
           </NavLink>
-          <p className='mt-12 mb-4 hidden px-3 text-[10px] tracking-[0.22em] text-white/30 md:block'>
+          <p className='mt-12 mb-4 hidden px-3 text-[10px] tracking-[0.22em] text-white/30 desktop:block'>
             WORKSPACE
           </p>
           <nav
             aria-label='主导航'
-            className='mt-5 grid grid-cols-2 gap-2 md:mt-0 md:grid-cols-1'
+            className='mt-5 grid grid-cols-2 gap-2 desktop:mt-0 desktop:grid-cols-1'
           >
             {navigation.map(({ to, label, detail, icon: Icon }, index) => (
               <NavLink
@@ -99,17 +99,17 @@ export function AppLayout() {
                 <Icon className='size-[18px] shrink-0' aria-hidden='true' />
                 <span className='flex-1 text-sm'>
                   {label}
-                  <span className='mt-0.5 hidden text-[10px] tracking-wide text-white/35 md:block'>
+                  <span className='mt-0.5 hidden text-[10px] tracking-wide text-white/35 desktop:block'>
                     {detail}
                   </span>
                 </span>
-                <span className='hidden text-[10px] tabular-nums text-white/25 md:block'>
+                <span className='hidden text-[10px] tabular-nums text-white/25 desktop:block'>
                   0{index + 1}
                 </span>
               </NavLink>
             ))}
           </nav>
-          <div className='mt-auto hidden px-3 pt-12 pb-6 md:block'>
+          <div className='mt-auto hidden px-3 pt-12 pb-6 desktop:block'>
             <div className='mb-4 h-px w-7 bg-[#e8c784]/60' />
             <p className='text-sm leading-7 text-white/75'>
               把时间，还给自己。
@@ -118,16 +118,16 @@ export function AppLayout() {
               YOUR PACE. YOUR SPACE.
             </p>
           </div>
-          <div className='mt-5 text-foreground md:mt-0'>
+          <div className='mt-5 text-foreground desktop:mt-0'>
             <AccountSwitcher />
           </div>
         </aside>
-        <div className='min-w-0 flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0'>
-          <header className='flex h-16 items-center justify-between gap-3 border-b border-border px-5 md:px-9 lg:px-12'>
+        <div className='min-w-0 flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] desktop:pb-0'>
+          <header className='flex h-[calc(4rem+env(safe-area-inset-top))] items-center pt-[env(safe-area-inset-top)] desktop:h-16 desktop:pt-0 justify-between gap-3 border-b border-border px-5 desktop:px-9 lg:px-12'>
             <Link
               to='/'
               aria-label='八云爱首页'
-              className='flex items-center gap-2 text-sm font-semibold md:hidden'
+              className='flex items-center gap-2 text-sm font-semibold desktop:hidden'
             >
               <img
                 src='/brand/yakumo-mark.png'
@@ -136,7 +136,7 @@ export function AppLayout() {
               />
               八云爱
             </Link>
-            <p className='hidden items-center gap-2 text-xs text-muted-foreground md:flex'>
+            <p className='hidden items-center gap-2 text-xs text-muted-foreground desktop:flex'>
               <ListFilter className='size-3.5' aria-hidden='true' />
               <span>工作空间</span>
               <span className='text-border'>/</span>
@@ -152,7 +152,7 @@ export function AppLayout() {
             </p>
             <Link
               to='/me'
-              className='flex min-h-11 items-center gap-2 text-xs text-muted-foreground md:hidden'
+              className='flex min-h-11 items-center gap-2 text-xs text-muted-foreground desktop:hidden'
               aria-label='进入我的账号'
             >
               <UserRound className='size-4' />
@@ -160,7 +160,7 @@ export function AppLayout() {
                 {active?.username ?? '登录账号'}
               </span>
             </Link>
-            <span className='hidden max-w-[45%] md:flex items-center gap-2 truncate text-[11px] text-muted-foreground'>
+            <span className='hidden max-w-[45%] desktop:flex items-center gap-2 truncate text-[11px] text-muted-foreground'>
               <span className='size-1.5 shrink-0 rounded-full bg-[#ab8751]' />
               {active?.schoolName ?? '尚未连接账号'}
               <ArrowUpRight
@@ -181,7 +181,7 @@ export function AppLayout() {
             id='main-content'
             tabIndex={-1}
             className={cn(
-              'mx-auto max-w-[1440px] px-5 outline-none md:px-9 lg:px-12',
+              'mx-auto max-w-[1440px] px-5 outline-none desktop:px-9 lg:px-12',
               compact ? 'py-6' : 'py-8 lg:py-10',
             )}
           >
@@ -191,7 +191,7 @@ export function AppLayout() {
       </div>
       <nav
         aria-label='移动端导航'
-        className='fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-border bg-card px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden'
+        className='fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-border bg-card px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] desktop:hidden'
       >
         {[
           { to: '/', label: '大盘', icon: LayoutDashboard },
