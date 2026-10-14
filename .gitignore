@@ -1,0 +1,14 @@
+node_modules/
+dist/
+target/
+.bootstrap/
+.verification/
+*.tsbuildinfo
+*.log
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/

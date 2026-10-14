@@ -8,9 +8,11 @@
 
 建立跨平台的跑步数据客户端：用户可登录、读取配置和记录、查看统计，在软件内生成、
 检查并提交跑步数据，查询服务端处理结果。采用 stable Rust 与 Tauri，以及 React、
-Zustand、React Router、shadcn/ui、Biome。隐私最小化、无广告、无无关数据上报属于产品目标。
+Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 Tailwind 工具类，
+原生 CSS 限于全局主题和必要基础规则。隐私最小化、无广告、无无关数据上报属于产品目标。
 
-当前交付范围是工程上下文。应用、协议移植、生成器、界面、打包和跨平台验证均未实现。
+当前已完成应用骨架初始化：使用 Tauri 2、Vite、React TypeScript 和 Bun，Rust 固定 stable 通道。
+已建立离线页面、导航、界面状态、基础组件及检查命令；协议移植、生成器和业务上传仍未实现。
 历史 Android 真实定位和计步流程作为兼容性证据保存，不替代本轮“生成数据并上报”的目标。
 是否增加真实运动采集能力及移动后台服务仍属后续范围，不作为当前目标的隐式前置条件。
 
@@ -24,6 +26,8 @@ Zustand、React Router、shadcn/ui、Biome。隐私最小化、无广告、无�
 | GOV-001 | AGENTS.md | Active 约定 | 协作、事实、隐私与验证纪律 |
 | DESIGN-001 | DESIGN.md | Active 索引 | 方向、边界、阅读顺序 |
 | SPEC-001 | product-baseline.md | Active Spec | 用户已确定范围及工程约束 |
+| SPEC-002 | application-scaffold.md | Active Spec | 应用骨架、工具配置、职责与初始化验收 |
+| CHECK-001 | scaffold-verification.md | 验证记录 | 初始化版本、检查结果及平台覆盖 |
 | FACT-001 | evidence-baseline.md | Verified facts | 样本与验证成熟度、历史冲突消解 |
 | FACT-002 | protocol.md | Verified facts | 身份、路由、签名、封包、编码 |
 | FACT-003 | upload-fields.md | Verified facts | 38 个顶层字段和嵌套数据 |

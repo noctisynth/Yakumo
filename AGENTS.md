@@ -11,6 +11,7 @@
 
 - DESIGN-001：产品方向、文档注册表与层间责任。
 - SPEC-001：已确定的产品范围和技术栈。
+- SPEC-002：应用骨架、工具配置和初始化验收。
 - FACT-001 至 FACT-005：样本、协议、字段、生命周期和隐私的逆向事实。
 - EVIDENCE-001：证据登记；DATA-001：脱敏结构化证据；DATA-002：客户端字段 Schema。
 - RFC-0000：决策工作流；RFC-0001：尚未冻结的实现选项。
@@ -21,7 +22,7 @@
 
 ## 2. 工作范围与修改顺序
 
-本阶段完成工程上下文建立，未创建客户端、安装依赖或进行服务端测试。
+本阶段推进应用骨架初始化；协议业务接入与真实服务测试尚未实施。
 后续按用户指令推进；只授权文档时，不顺带创建应用或改变远端数据。
 
 涉及新设计时，先更新设计索引及相关规范；未定关键选项进入 RFC；再同步实施清单，最后改代码。
@@ -39,7 +40,8 @@
 
 ## 4. 技术约束
 
-使用 stable Rust、Tauri、React、Zustand、React Router、shadcn/ui 和 Biome。
+使用 stable Rust、Tauri、React、Zustand、React Router、shadcn/ui、Tailwind CSS 和 Biome。
+前端样式必须使用 Tailwind CSS，优先使用工具类；原生 CSS 仅用于 Tailwind 入口、主题变量及必要基础规则。
 前端使用 kebab-case 文件名；按 models、components、pages、stores、hooks、services、lib 等
 职责组织。Biome 固定两空格缩进、JavaScript/TypeScript 单引号；完整契约见 SPEC-001。
 框架保留名称和 Rust 常规 snake_case 不因前端命名约定被强制修改。
