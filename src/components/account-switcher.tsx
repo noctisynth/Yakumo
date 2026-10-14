@@ -153,6 +153,12 @@ export function AccountSwitcher() {
                 : '添加账号后，即可在这里快速切换。'}
             </p>
           )}
+          <DropdownMenu.Item asChild className={itemClassName}>
+            <Link to='/profile'>
+              <UserRound className='size-4' aria-hidden='true' />
+              当前账号资料
+            </Link>
+          </DropdownMenu.Item>
           <DropdownMenu.Separator className='my-1 h-px bg-border' />
           <DropdownMenu.Item asChild className={itemClassName}>
             <Link to='/accounts'>

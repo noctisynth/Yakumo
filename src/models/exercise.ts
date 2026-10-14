@@ -7,7 +7,7 @@ export type JsonValue =
   | { [key: string]: JsonValue };
 export type DataObject = { [key: string]: JsonValue };
 export type ExerciseQuery =
-  | { kind: 'summary' | 'statistics' }
+  | { kind: 'profile' | 'summary' | 'statistics' }
   | { kind: 'records'; status: string; page: number; date: string }
   | { kind: 'detail'; id: string }
   | { kind: 'settings'; latitude: number; longitude: number; runType: number };
@@ -29,6 +29,7 @@ export interface DataResource {
   updatedAt: number | null;
 }
 export type DataSection =
+  | 'profile'
   | 'summary'
   | 'statistics'
   | 'records'

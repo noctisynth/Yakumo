@@ -15,6 +15,7 @@ const empty = (): DataResource => ({
   updatedAt: null,
 });
 const resources = () => ({
+  profile: empty(),
   summary: empty(),
   statistics: empty(),
   records: empty(),
@@ -25,6 +26,7 @@ const resources = () => ({
 interface DashboardState {
   accountId: string | null;
   detailId: string | null;
+  profile: DataResource;
   summary: DataResource;
   statistics: DataResource;
   records: DataResource;

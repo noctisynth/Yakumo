@@ -31,6 +31,7 @@ fn error(code: &'static str, message: &'static str) -> ExerciseError {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum ExerciseQuery {
+    Profile,
     Summary,
     Statistics,
     Records {
@@ -122,6 +123,7 @@ impl ExerciseClient<'_> {
         let protocol = Protocol::new(&session.access_token, &session.raw_app_id, timestamp);
         let mut params: Vec<(String, Option<String>)> = Vec::new();
         let path = match query {
+            ExerciseQuery::Profile => "upms/basUser/getLoginUserInfo",
             ExerciseQuery::Summary => "exercise/exerciseRecord/sumExerciseRecord",
             ExerciseQuery::Statistics => "exercise/exerciseRecord/statisticsExerciseRecord",
             ExerciseQuery::Records { status, page, date } => {
@@ -260,6 +262,9 @@ fn redact(value: Value) -> Value {
                 .filter(|(key, _)| {
                     let key = key.to_ascii_lowercase();
                     !key.contains("token")
+                        && !key.contains("password")
+                        && !key.contains("secret")
+                        && !key.contains("credential")
                         && !matches!(
                             key.as_str(),
                             "uniquecode"
@@ -297,6 +302,7 @@ mod tests {
             avatar_url: None,
         };
         for (query, path) in [
+            (ExerciseQuery::Profile, "/upms/basUser/getLoginUserInfo"),
             (
                 ExerciseQuery::Summary,
                 "/exercise/exerciseRecord/sumExerciseRecord",
@@ -465,7 +471,7 @@ mod tests {
         );
         assert_eq!(
             redact(
-                json!({"access_token":"private","environment":{},"distance":"2.02","nested":{"refresh_token":"private","extra":null}})
+                json!({"access_token":"private","password":"private","clientSecret":"private","environment":{},"distance":"2.02","nested":{"refresh_token":"private","extra":null}})
             ),
             json!({"distance":"2.02","nested":{"extra":null}})
         );
