@@ -115,7 +115,7 @@ export function AppLayout() {
               YOUR PACE. YOUR SPACE.
             </p>
           </div>
-          <div className='mt-5 rounded-xl bg-background p-1 text-foreground md:mt-0'>
+          <div className='mt-5 text-foreground md:mt-0'>
             <AccountSwitcher />
           </div>
         </aside>
