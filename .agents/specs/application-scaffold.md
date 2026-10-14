@@ -7,7 +7,7 @@
 
 - Tauri 2 + Vite + React + TypeScript，Bun 管理前端依赖和文本锁文件。
 - Rust 工具链文件选择 stable，并要求 rustfmt 与 Clippy；提交 Cargo 锁文件。
-- 首阶段采用单应用及内部模块，不预先拆分协议 crate。
+- 首阶段采用单应用及内部模块，不预先拆分协议 crate；版本管理阶段建立单成员 Cargo workspace，见 SPEC-003。
 - React Router 使用 HashRouter，适配打包后的静态入口；首页、设置页与未匹配页面构成导航基线。
 - Zustand 仅管理界面设置，通过内存状态验证更新；本轮不增加用户数据或会话持久化。
 - shadcn/ui 使用本地组件源码及 Tailwind CSS，通过组件配置和统一别名继续生成组件。

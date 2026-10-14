@@ -65,6 +65,28 @@ bun run tauri dev
 
 首次原生构建需要下载依赖并初始化编译缓存。当前验证覆盖 Windows x64，完整平台矩阵仍待确定。
 
+## 版本与持续集成
+
+Semifold 0.3.4 将八云爱作为一个发布单元管理。Rust workspace 的共享版本为唯一来源，
+前端版本由钩子同步，Tauri 读取同一版本；应用不发布到 npm 或 crates.io。
+当前采用 alpha 发布通道，与 stable Rust 工具链要求分别管理。
+
+每项功能或修复随代码提交一个 changeset，例如：
+
+```sh
+semifold commit --name describe-the-change --package yakumo=patch --tag fix --summary "Describe the user-visible change."
+semifold status
+```
+
+合入 main 后，质量检查通过再由 Semifold 自动维护 release PR。审查并合并该 PR 后，
+流程构建 Windows x64、Linux x64、macOS arm64／x64 的应用附件与 SHA-256 校验文件，
+全部成功后创建 GitHub Release。Windows 附件尚无商业代码签名，macOS 使用 ad-hoc 签名。
+这里列出的是自动化目标，实际平台验证以对应 Actions 运行结果为准。
+
+PR 检查包括前端格式、类型和构建，发布脚本测试、版本一致性，以及三个桌面系统上的 Rust 检查和应用构建。
+自动生成的 release 分支通过显式派发 Quality 工作流执行相同检查。
+本地可使用 `bun run verify`；单独检查发布逻辑可运行 `bun run check:versions` 和 `bun run test:release`。
+
 ## 工程上下文
 
 工程文档通过编号检索，不依赖特定机器上的文件位置。
@@ -75,6 +97,7 @@ bun run tauri dev
 | DESIGN-001 | 设计索引与文档注册表 |
 | SPEC-001 | 产品范围和技术约束 |
 | SPEC-002 | 应用骨架和工具配置 |
+| SPEC-003 | Semifold 及 GitHub 自动化 |
 | FACT-001 至 FACT-005 | 逆向事实、协议、字段、生命周期与隐私证据 |
 | EVIDENCE-001 | 脱敏证据登记 |
 | CHECK-001 | 本次初始化的版本和验证结果 |

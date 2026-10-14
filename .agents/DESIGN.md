@@ -27,7 +27,9 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 | DESIGN-001 | DESIGN.md | Active 索引 | 方向、边界、阅读顺序 |
 | SPEC-001 | product-baseline.md | Active Spec | 用户已确定范围及工程约束 |
 | SPEC-002 | application-scaffold.md | Active Spec | 应用骨架、工具配置、职责与初始化验收 |
+| SPEC-003 | release-automation.md | Active Spec | Semifold、版本同步、桌面 CI/CD 和公开仓库 |
 | CHECK-001 | scaffold-verification.md | 验证记录 | 初始化版本、检查结果及平台覆盖 |
+| CHECK-002 | release-verification.md | 验证记录 | Semifold 预演、发布脚本与工作流检查 |
 | FACT-001 | evidence-baseline.md | Verified facts | 样本与验证成熟度、历史冲突消解 |
 | FACT-002 | protocol.md | Verified facts | 身份、路由、签名、封包、编码 |
 | FACT-003 | upload-fields.md | Verified facts | 38 个顶层字段和嵌套数据 |

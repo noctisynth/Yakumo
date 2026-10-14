@@ -1,0 +1,104 @@
+name: Semifold CI
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: semifold-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Quality
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/quality.yaml
+
+  plan:
+    name: Choose version or publish
+    needs: quality
+    runs-on: ubuntu-24.04
+    outputs:
+      mode: ${{ steps.plan.outputs.result }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.4.2'
+      - name: Select release mode
+        id: plan
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          result-encoding: string
+          script: |
+            const { execFileSync } = require('node:child_process');
+            const plan = JSON.parse(execFileSync('bun', ['scripts/release-plan.ts'], { encoding: 'utf8' }));
+            if (plan.mode !== 'publish') return plan.mode;
+            try {
+              await github.rest.repos.getReleaseByTag({ ...context.repo, tag: plan.tag });
+              return 'idle';
+            } catch (error) {
+              if (error.status === 404) return 'publish';
+              throw error;
+            }
+
+  artifacts:
+    name: Desktop bundles
+    needs: plan
+    if: needs.plan.outputs.mode == 'publish'
+    uses: ./.github/workflows/desktop-build.yaml
+
+  release:
+    name: Semifold version or publish
+    needs: [quality, plan, artifacts]
+    if: >-
+      always() && !cancelled() && needs.quality.result == 'success' &&
+      (needs.plan.outputs.mode == 'version' ||
+      (needs.plan.outputs.mode == 'publish' && needs.artifacts.result == 'success'))
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    outputs:
+      version: ${{ steps.semifold.outputs['semifold-version'] }}
+      publish: ${{ steps.semifold.outputs['semifold-publish'] }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.4.2'
+      - name: Setup stable Rust
+        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Download desktop bundles
+        if: needs.plan.outputs.mode == 'publish'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: artifacts
+      - name: Setup Semifold
+        uses: noctisynth/setup-semifold@9dc3b2e2f25d5db332322b29c3d3436c857ca1d9
+        with:
+          version: '0.3.4'
+      - name: Semifold CI
+        id: semifold
+        run: semifold ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run checks on the generated release branch
+        if: steps.semifold.outputs.semifold-version != ''
+        run: gh workflow run quality.yaml --ref release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,26 @@
+name: Semifold Status
+on:
+  pull_request:
+    branches: [main]
+
+env:
+  CLICOLOR_FORCE: 1
+
+permissions:
+  contents: read
+
+jobs:
+  status:
+    name: Status
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Setup Semifold
+        uses: noctisynth/setup-semifold@9dc3b2e2f25d5db332322b29c3d3436c857ca1d9
+        with:
+          version: '0.3.4'
+      - name: Semifold Status
+        run: semifold status
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
