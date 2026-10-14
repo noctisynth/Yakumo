@@ -35,6 +35,7 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 | SPEC-006 | dashboard.md | Active Spec | 学校只读接口、数据大盘和账号隔离 |
 | CHECK-008 | run-workflow-verification.md | 验证记录 | 账号资料、生成及提交分阶段验证 |
 | SPEC-008 | run-workflow.md | Active Spec | 账号资料、合成生成与显式提交 |
+| SPEC-009 | mobile.md | Active Spec | 移动导航、Android 原生交付及签名 |
 | SPEC-007 | visual-identity.md | Active Spec | 角色品牌、视觉与独立记录和配置页面 |
 | CHECK-007 | visual-verification.md | 验证记录 | 角色图标、导航和响应式视觉验证 |
 | CHECK-006 | dashboard-verification.md | 验证记录 | 学校接口模拟、大盘交互和平台构建 |
@@ -57,6 +58,7 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 | TODO-001 | TODO.md | Active 索引 | 路由当前实施清单 |
 | TASK-001 | project.md | Active 清单 | 已确认目标与实现差距 |
 | TASK-002 | accounts.md | 已完成清单 | 多账号实现与验收，平台限制见 CHECK-003 |
+| TASK-003 | mobile.md | Active 清单 | 移动布局、Android 原生能力、云端产物和签名安装验收 |
 
 ## 责任边界
 

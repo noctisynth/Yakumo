@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 
 export function AccountRequired() {
   return (
-    <section className='grid min-h-96 place-items-center border border-border bg-card p-8 text-center'>
+    <section className='grid min-h-96 place-items-center rounded-xl border border-border bg-card p-8 text-center'>
       <div>
         <img
           src='/brand/yakumo-mark.png'

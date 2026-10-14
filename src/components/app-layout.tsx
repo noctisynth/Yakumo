@@ -5,9 +5,10 @@ import {
   ListFilter,
   Settings2,
   SlidersHorizontal,
+  UserRound,
   WandSparkles,
 } from 'lucide-react';
-import { NavLink, Outlet, useLocation } from 'react-router';
+import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { useDashboardAccount } from '@/hooks/use-dashboard-account';
 import { cn } from '@/lib/utils';
@@ -52,7 +53,7 @@ export function AppLayout() {
         跳到主要内容
       </button>
       <div className='mx-auto flex min-h-svh max-w-[1920px] flex-col md:flex-row'>
-        <aside className='z-20 flex shrink-0 flex-col bg-[#191c35] px-5 py-5 text-[#f4f0e7] md:sticky md:top-0 md:h-svh md:w-60 md:px-5 md:py-8 lg:w-64'>
+        <aside className='z-20 hidden shrink-0 flex-col md:flex md:overflow-y-auto bg-[#191c35] px-5 py-5 text-[#f4f0e7] md:sticky md:top-0 md:h-svh md:w-60 md:px-5 md:py-8 lg:w-64'>
           <NavLink
             to='/'
             aria-label='八云爱首页'
@@ -121,18 +122,45 @@ export function AppLayout() {
             <AccountSwitcher />
           </div>
         </aside>
-        <div className='min-w-0 flex-1'>
+        <div className='min-w-0 flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0'>
           <header className='flex h-16 items-center justify-between gap-3 border-b border-border px-5 md:px-9 lg:px-12'>
-            <p className='flex items-center gap-2 text-xs text-muted-foreground'>
+            <Link
+              to='/'
+              aria-label='八云爱首页'
+              className='flex items-center gap-2 text-sm font-semibold md:hidden'
+            >
+              <img
+                src='/brand/yakumo-mark.png'
+                alt=''
+                className='size-8 rounded-lg'
+              />
+              八云爱
+            </Link>
+            <p className='hidden items-center gap-2 text-xs text-muted-foreground md:flex'>
               <ListFilter className='size-3.5' aria-hidden='true' />
               <span>工作空间</span>
               <span className='text-border'>/</span>
               <span className='text-foreground'>
                 {current?.label ??
-                  (location.pathname === '/accounts' ? '账号管理' : '页面')}
+                  {
+                    '/accounts': '账号管理',
+                    '/profile': '账号资料',
+                    '/me': '我的',
+                  }[location.pathname] ??
+                  '页面'}
               </span>
             </p>
-            <span className='flex max-w-[45%] items-center gap-2 truncate text-[11px] text-muted-foreground'>
+            <Link
+              to='/me'
+              className='flex min-h-11 items-center gap-2 text-xs text-muted-foreground md:hidden'
+              aria-label='进入我的账号'
+            >
+              <UserRound className='size-4' />
+              <span className='max-w-28 truncate'>
+                {active?.username ?? '登录账号'}
+              </span>
+            </Link>
+            <span className='hidden max-w-[45%] md:flex items-center gap-2 truncate text-[11px] text-muted-foreground'>
               <span className='size-1.5 shrink-0 rounded-full bg-[#ab8751]' />
               {active?.schoolName ?? '尚未连接账号'}
               <ArrowUpRight
@@ -161,6 +189,42 @@ export function AppLayout() {
           </main>
         </div>
       </div>
+      <nav
+        aria-label='移动端导航'
+        className='fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-border bg-card px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden'
+      >
+        {[
+          { to: '/', label: '大盘', icon: LayoutDashboard },
+          { to: '/records', label: '记录', icon: Footprints },
+          { to: '/studio', label: '生成', icon: WandSparkles },
+          { to: '/me', label: '我的', icon: UserRound },
+        ].map(({ to, label, icon: Icon }) => {
+          const selected =
+            to === '/'
+              ? location.pathname === '/'
+              : to === '/me'
+                ? ['/me', '/school', '/settings', '/accounts', '/profile'].some(
+                    (path) => location.pathname === path,
+                  )
+                : location.pathname.startsWith(to);
+          return (
+            <Link
+              key={to}
+              to={to}
+              aria-current={selected ? 'page' : undefined}
+              className={cn(
+                'flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg text-[10px] transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                selected
+                  ? 'bg-primary/10 font-medium text-primary'
+                  : 'text-muted-foreground',
+              )}
+            >
+              <Icon className='size-5' aria-hidden='true' />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }
