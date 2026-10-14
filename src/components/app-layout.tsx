@@ -144,6 +144,7 @@ export function AppLayout() {
                 {current?.label ??
                   {
                     '/accounts': '账号管理',
+                    '/login': '登录账号',
                     '/profile': '账号资料',
                     '/me': '我的',
                   }[location.pathname] ??
@@ -169,14 +170,15 @@ export function AppLayout() {
               />
             </span>
           </header>
-          {accountError && location.pathname !== '/accounts' && (
-            <div
-              role='alert'
-              className='border-b border-destructive/20 bg-destructive/5 px-6 py-3 text-sm text-destructive'
-            >
-              {accountError.message}
-            </div>
-          )}
+          {accountError &&
+            !['/accounts', '/login'].includes(location.pathname) && (
+              <div
+                role='alert'
+                className='border-b border-destructive/20 bg-destructive/5 px-6 py-3 text-sm text-destructive'
+              >
+                {accountError.message}
+              </div>
+            )}
           <main
             id='main-content'
             tabIndex={-1}
@@ -203,9 +205,14 @@ export function AppLayout() {
             to === '/'
               ? location.pathname === '/'
               : to === '/me'
-                ? ['/me', '/school', '/settings', '/accounts', '/profile'].some(
-                    (path) => location.pathname === path,
-                  )
+                ? [
+                    '/me',
+                    '/school',
+                    '/settings',
+                    '/accounts',
+                    '/profile',
+                    '/login',
+                  ].some((path) => location.pathname === path)
                 : location.pathname.startsWith(to);
           return (
             <Link

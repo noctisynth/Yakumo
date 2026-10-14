@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router';
 import { AppLayout } from '@/components/app-layout';
 import { AccountsPage } from '@/pages/accounts-page';
 import { HomePage } from '@/pages/home-page';
+import { LoginPage } from '@/pages/login-page';
 import { MePage } from '@/pages/me-page';
 import { NotFoundPage } from '@/pages/not-found-page';
 import { ProfilePage } from '@/pages/profile-page';
@@ -20,6 +21,7 @@ export function AppRoutes() {
         <Route path='me' element={<MePage />} />
         <Route path='studio' element={<StudioPage />} />
         <Route path='profile' element={<ProfilePage />} />
+        <Route path='login' element={<LoginPage />} />
         <Route path='accounts' element={<AccountsPage />} />
         <Route path='records' element={<RecordsPage />} />
         <Route path='school' element={<SchoolPage />} />

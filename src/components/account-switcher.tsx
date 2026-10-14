@@ -161,7 +161,7 @@ export function AccountSwitcher() {
           </DropdownMenu.Item>
           <DropdownMenu.Separator className='my-1 h-px bg-border' />
           <DropdownMenu.Item asChild className={itemClassName}>
-            <Link to='/accounts'>
+            <Link to='/login'>
               <Plus className='size-4' aria-hidden='true' />
               添加账号
             </Link>

@@ -1,26 +1,8 @@
-import {
-  Check,
-  LoaderCircle,
-  LogIn,
-  Plus,
-  ShieldCheck,
-  Trash2,
-  UsersRound,
-} from 'lucide-react';
-import type { FormEvent } from 'react';
-import { useId, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Check, Plus, Trash2, UsersRound } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useAccounts } from '@/hooks/use-accounts';
 import { nativeAccountsAvailable } from '@/services/account-service';
 
@@ -32,41 +14,14 @@ export function AccountsPage() {
     pending,
     initialized,
     error,
-    login,
     load,
     switchAccount,
     remove,
-    clearError,
   } = useAccounts();
-  const [username, setUsername] = useState('');
-  const [consent, setConsent] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const passwordRef = useRef<HTMLInputElement>(null);
-  const usernameRef = useRef<HTMLInputElement>(null);
-  const formId = useId();
   const unavailable = !nativeAccountsAvailable;
   const disabled = unavailable || pending || !initialized;
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (disabled || !consent || !passwordRef.current) return;
-    const password = passwordRef.current.value;
-    passwordRef.current.value = '';
-    setNotice(null);
-    setConsent(false);
-    const success = await login({
-      school: 'swpu',
-      username,
-      password,
-      allowInsecureTransport: consent,
-    });
-    if (success) {
-      setUsername('');
-      setNotice('登录成功，已设为当前账号。');
-      navigate('/');
-    }
-  }
 
   return (
     <div className='space-y-8'>
@@ -80,10 +35,18 @@ export function AccountsPage() {
             在多个账号之间切换，清楚掌握当前使用的身份。
           </p>
         </div>
-        <Badge variant='outline' className='gap-2 rounded-full px-3 py-1.5'>
-          <UsersRound className='size-3.5' aria-hidden='true' />
-          {accounts.length} / 20 个账号
-        </Badge>
+        <div className='flex flex-wrap items-center gap-3'>
+          <Button asChild>
+            <Link to='/login'>
+              <Plus className='size-4' aria-hidden='true' />
+              添加账号
+            </Link>
+          </Button>
+          <Badge variant='outline' className='gap-2 rounded-full px-3 py-1.5'>
+            <UsersRound className='size-3.5' aria-hidden='true' />
+            {accounts.length} / 20 个账号
+          </Badge>
+        </div>
       </section>
 
       {unavailable && (
@@ -123,7 +86,7 @@ export function AccountsPage() {
         </p>
       )}
 
-      <div className='grid items-start gap-6 xl:grid-cols-[1.1fr_1fr]'>
+      <div className='mx-auto w-full max-w-4xl'>
         <section aria-labelledby='saved-accounts-title'>
           <div className='mb-4 flex items-center justify-between gap-3'>
             <h2 id='saved-accounts-title' className='text-lg font-medium'>
@@ -155,6 +118,9 @@ export function AccountsPage() {
               <p className='mt-2 text-xs leading-6 text-muted-foreground'>
                 登录后可保留多个会话，随时选择当前账号。
               </p>
+              <Button asChild className='mt-5'>
+                <Link to='/login'>登录第一个账号</Link>
+              </Button>
             </div>
           ) : (
             <ul className='space-y-3'>
@@ -209,12 +175,9 @@ export function AccountsPage() {
                       variant='outline'
                       disabled={disabled}
                       onClick={() => {
-                        setUsername(account.username);
-                        setConsent(false);
-                        if (passwordRef.current) passwordRef.current.value = '';
-                        clearError();
-                        setNotice(null);
-                        usernameRef.current?.focus();
+                        navigate(
+                          `/login?account=${encodeURIComponent(account.id)}`,
+                        );
                       }}
                     >
                       重新登录
@@ -263,104 +226,6 @@ export function AccountsPage() {
             </ul>
           )}
         </section>
-
-        <Card className='rounded-2xl border-border/70 shadow-none'>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2 text-lg'>
-              <Plus className='size-4' aria-hidden='true' />
-              添加或重新登录
-            </CardTitle>
-            <CardDescription className='leading-6'>
-              同一学校的同一账号会更新会话，不会重复添加。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={submit} className='space-y-5' aria-busy={pending}>
-              <div className='space-y-2'>
-                <Label htmlFor={`${formId}-school`}>学校</Label>
-                <select
-                  id={`${formId}-school`}
-                  disabled={disabled}
-                  className='h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50'
-                >
-                  <option value='swpu'>西南石油大学</option>
-                </select>
-                <p className='text-xs leading-5 text-muted-foreground'>
-                  目前仅此学校的协议有验证依据。
-                </p>
-              </div>
-              <div className='space-y-2'>
-                <Label htmlFor={`${formId}-username`}>账号</Label>
-                <Input
-                  ref={usernameRef}
-                  id={`${formId}-username`}
-                  name='username'
-                  autoComplete='username'
-                  required
-                  maxLength={128}
-                  value={username}
-                  disabled={disabled}
-                  onChange={(event) => setUsername(event.target.value)}
-                  placeholder='请输入学校账号'
-                />
-              </div>
-              <div className='space-y-2'>
-                <Label htmlFor={`${formId}-password`}>密码</Label>
-                <Input
-                  ref={passwordRef}
-                  id={`${formId}-password`}
-                  name='password'
-                  type='password'
-                  autoComplete='current-password'
-                  required
-                  maxLength={512}
-                  disabled={disabled}
-                  placeholder='请输入密码'
-                />
-              </div>
-              <div className='rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-xs leading-6'>
-                <p id={`${formId}-transport`}>
-                  学校已验证入口使用 HTTP。密码经 RSA
-                  加密，但连接无法验证服务端身份，会话令牌仍可能被窃听。请仅在可信网络登录。
-                </p>
-                <label className='mt-3 flex cursor-pointer items-start gap-2'>
-                  <input
-                    type='checkbox'
-                    className='mt-1 size-4 shrink-0 accent-primary'
-                    checked={consent}
-                    disabled={disabled}
-                    onChange={(event) => setConsent(event.target.checked)}
-                    aria-describedby={`${formId}-transport`}
-                    required
-                  />
-                  <span>我了解上述风险，允许本次连接学校服务。</span>
-                </label>
-              </div>
-              <Button
-                type='submit'
-                disabled={disabled || !consent}
-                className='h-10 w-full gap-2'
-              >
-                {pending ? (
-                  <LoaderCircle
-                    className='size-4 animate-spin'
-                    aria-hidden='true'
-                  />
-                ) : (
-                  <LogIn className='size-4' aria-hidden='true' />
-                )}
-                {pending ? '正在处理…' : '登录并进入数据大盘'}
-              </Button>
-              <p className='flex items-start gap-2 text-xs leading-6 text-muted-foreground'>
-                <ShieldCheck
-                  className='mt-1 size-4 shrink-0'
-                  aria-hidden='true'
-                />
-                不保存密码。会话在本机加密保存，密钥由系统密钥库管理。切换账号不会开始或提交运动。
-              </p>
-            </form>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
