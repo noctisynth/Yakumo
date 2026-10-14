@@ -54,10 +54,10 @@ const entries: [Group, Record<string, string>][] = [
   [
     '状态信息',
     {
-      isGraduation: '毕业状态（原值）',
+      isGraduation: '毕业状态',
       feature: '特征标记（原值）',
       type: '资料类型（原值）',
-      userType: '用户类型（原值）',
+      userType: '用户类型',
     },
   ],
   [
@@ -99,7 +99,14 @@ export function profileField(key: string): Field {
     fields[key] ?? {
       label: '其他资料（待识别）',
       group: '补充信息',
-      hint: '此字段的具体含义尚未确认，可展开查看来源字段名。',
+      hint: '此字段的具体含义尚未确认，来源字段名显示在名称旁。',
     }
   );
+}
+
+// Confirmed by the user; other codes remain uninterpreted.
+export function profileValue(key: string, value: unknown): string | undefined {
+  if (key === 'userType' && (value === 1 || value === '1')) return '学生';
+  if (key === 'isGraduation' && (value === 0 || value === '0')) return '未毕业';
+  return undefined;
 }

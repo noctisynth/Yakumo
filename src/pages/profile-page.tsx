@@ -7,7 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useDashboardAccount } from '@/hooks/use-dashboard-account';
 import { object, text } from '@/lib/exercise-data';
-import { profileField, profileGroups } from '@/lib/profile-fields';
+import {
+  profileField,
+  profileGroups,
+  profileValue,
+} from '@/lib/profile-fields';
 import { useDashboardStore } from '@/stores/dashboard-store';
 
 export function ProfilePage() {
@@ -29,7 +33,7 @@ export function ProfilePage() {
   const fields = Object.entries(object(profile.data));
   const query = search.trim().toLowerCase();
   const visible = fields.filter(([key, value]) =>
-    `${profileField(key).label} ${profileField(key).group} ${key} ${JSON.stringify(value)}`
+    `${profileField(key).label} ${profileField(key).group} ${profileValue(key, value) ?? ''} ${key} ${JSON.stringify(value)}`
       .toLowerCase()
       .includes(query),
   );
@@ -113,6 +117,7 @@ export function ProfilePage() {
             <dl key={group} className='grid sm:grid-cols-2'>
               {groupFields.map(([key, value]) => {
                 const field = profileField(key);
+                const translated = profileValue(key, value);
                 return (
                   <div
                     key={key}
@@ -120,6 +125,9 @@ export function ProfilePage() {
                   >
                     <dt className='text-xs text-muted-foreground'>
                       {field.label}
+                      <span className='ml-2 break-all text-[10px] text-muted-foreground/65'>
+                        {key}
+                      </span>
                     </dt>
                     <dd className='mt-2 break-words text-sm'>
                       {value === null ? (
@@ -136,22 +144,17 @@ export function ProfilePage() {
                           </pre>
                         </details>
                       ) : (
-                        String(value) || (
+                        (translated ??
+                        (String(value) || (
                           <span className='text-muted-foreground'>未填写</span>
-                        )
+                        )))
                       )}
                     </dd>
-                    {field.hint && (
+                    {field.hint && translated === undefined && (
                       <p className='mt-2 text-[11px] leading-5 text-muted-foreground'>
                         {field.hint}
                       </p>
                     )}
-                    <details className='mt-2 text-[10px] text-muted-foreground'>
-                      <summary className='w-fit cursor-pointer hover:text-foreground'>
-                        来源字段
-                      </summary>
-                      <code className='mt-1 block break-all'>{key}</code>
-                    </details>
                   </div>
                 );
               })}
