@@ -1,10 +1,4 @@
-import {
-  ArrowUpRight,
-  Cloud,
-  House,
-  Settings2,
-  UsersRound,
-} from 'lucide-react';
+import { Cloud, House, Settings2 } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 
 import { AccountSwitcher } from '@/components/account-switcher';
@@ -14,7 +8,6 @@ import { usePreferencesStore } from '@/stores/preferences-store';
 
 const navigation = [
   { to: '/', label: '概览', icon: House },
-  { to: '/accounts', label: '账号管理', icon: UsersRound },
   { to: '/settings', label: '偏好设置', icon: Settings2 },
 ];
 
@@ -36,7 +29,7 @@ export function AppLayout() {
         跳到主要内容
       </button>
       <div className='mx-auto flex min-h-svh max-w-[1600px] flex-col md:flex-row'>
-        <aside className='flex shrink-0 flex-col border-b border-border/70 p-5 md:sticky md:top-0 md:h-svh md:w-60 md:border-r md:border-b-0 md:p-7'>
+        <aside className='flex shrink-0 flex-col border-b border-border/70 p-5 md:sticky md:top-0 md:h-svh md:w-64 md:border-r md:border-b-0 md:p-5 md:pt-7'>
           <NavLink
             to='/'
             aria-label='八云爱首页'
@@ -77,21 +70,8 @@ export function AppLayout() {
               </NavLink>
             ))}
           </nav>
-          <div className='mt-auto hidden pt-8 md:block'>
-            <div className='rounded-2xl border border-border/70 p-4'>
-              <ArrowUpRight
-                className='mb-3 size-4 text-primary'
-                aria-hidden='true'
-              />
-              <p className='text-xs leading-6 text-muted-foreground'>
-                把时间留给热爱，
-                <br />
-                把选择留给自己。
-              </p>
-            </div>
-            <p className='mt-5 text-[10px] tracking-[0.15em] text-muted-foreground'>
-              YOUR PACE. YOUR SPACE.
-            </p>
+          <div className='pt-5 md:mt-auto md:pt-8'>
+            <AccountSwitcher />
           </div>
         </aside>
         <div className='min-w-0 flex-1'>
@@ -99,7 +79,6 @@ export function AppLayout() {
             <p className='hidden text-xs tracking-wide text-muted-foreground sm:block'>
               属于你的跑步数据空间
             </p>
-            <AccountSwitcher />
           </header>
           {accountError && location.pathname !== '/accounts' && (
             <div
