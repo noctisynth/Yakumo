@@ -356,7 +356,9 @@ pub fn run() {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|_, _, _| {}));
     #[cfg(target_os = "android")]
-    let builder = builder.plugin(mobile_vault::init());
+    let builder = builder
+        .plugin(mobile_vault::init())
+        .plugin(tauri_plugin_geolocation::init());
     if let Err(error) = builder
         .setup(|app| {
             let directory = app.path().app_local_data_dir()?;

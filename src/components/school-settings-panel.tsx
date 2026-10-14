@@ -1,11 +1,20 @@
-import { MapPin, SlidersHorizontal } from 'lucide-react';
+import {
+  LoaderCircle,
+  LocateFixed,
+  MapPin,
+  SlidersHorizontal,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DataFeedback } from '@/components/data-feedback';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { object, text } from '@/lib/exercise-data';
+import {
+  locationError,
+  requestQueryLocation,
+} from '@/services/location-service';
 import { useDashboardStore } from '@/stores/dashboard-store';
 
 const fields = [
@@ -28,10 +37,43 @@ const fields = [
 export function SchoolSettingsPanel() {
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
+  const [locating, setLocating] = useState(false);
+  const [locationNotice, setLocationNotice] = useState<string | null>(null);
+  const [locationFailure, setLocationFailure] = useState<string | null>(null);
+  const live = useRef(true);
+  const locatingRef = useRef(false);
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+    };
+  }, []);
+  async function locate() {
+    if (locatingRef.current) return;
+    locatingRef.current = true;
+    setLocating(true);
+    setLocationFailure(null);
+    setLocationNotice(null);
+    try {
+      const position = await requestQueryLocation();
+      if (!live.current) return;
+      setLatitude(String(position.latitude));
+      setLongitude(String(position.longitude));
+      setLocationNotice(
+        `已填入当前位置（精度约 ${Math.ceil(position.accuracy)} 米）。确认后点击“读取学校配置”。`,
+      );
+    } catch (error) {
+      if (live.current) setLocationFailure(locationError(error));
+    } finally {
+      locatingRef.current = false;
+      if (live.current) setLocating(false);
+    }
+  }
   const { settings, read } = useDashboardStore();
   const data = object(settings.data);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (locatingRef.current) return;
     if (!latitude.trim() || !longitude.trim()) return;
     await read('settings', {
       kind: 'settings',
@@ -54,12 +96,47 @@ export function SchoolSettingsPanel() {
           <span className='flex-1'>
             <span className='block text-lg font-medium'>学校运动配置</span>
             <span className='mt-1 block text-xs leading-6 text-muted-foreground'>
-              输入本次查询坐标，读取运动类型 1 的当前要求。
+              手动输入坐标或获取当前位置，再读取学校要求。
             </span>
           </span>
         </span>
       </div>
       <div className='mt-6 space-y-5'>
+        <div className='flex flex-wrap items-center gap-3'>
+          <Button
+            type='button'
+            variant='outline'
+            disabled={locating || settings.loading}
+            onClick={() => void locate()}
+          >
+            {locating ? (
+              <LoaderCircle
+                className='size-4 animate-spin'
+                aria-hidden='true'
+              />
+            ) : (
+              <LocateFixed className='size-4' aria-hidden='true' />
+            )}
+            {locating ? '正在获取位置…' : '获取当前位置'}
+          </Button>
+          <p className='text-xs leading-6 text-muted-foreground'>
+            仅在点击后请求权限并定位一次，不会自动查询学校。
+          </p>
+        </div>
+        {locationFailure && (
+          <p
+            role='alert'
+            className='rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-xs leading-6 text-destructive'
+          >
+            {locationFailure}
+          </p>
+        )}
+        {locationNotice && (
+          <p role='status' className='text-xs leading-6 text-muted-foreground'>
+            {locationNotice}
+          </p>
+        )}
+
         <form
           onSubmit={submit}
           className='grid items-end gap-4 sm:grid-cols-[1fr_1fr_auto]'
@@ -76,7 +153,7 @@ export function SchoolSettingsPanel() {
               value={latitude}
               onChange={(event) => setLatitude(event.target.value)}
               placeholder='-90 至 90'
-              disabled={settings.loading}
+              disabled={settings.loading || locating}
             />
           </div>
           <div className='space-y-2'>
@@ -91,16 +168,20 @@ export function SchoolSettingsPanel() {
               value={longitude}
               onChange={(event) => setLongitude(event.target.value)}
               placeholder='-180 至 180'
-              disabled={settings.loading}
+              disabled={settings.loading || locating}
             />
           </div>
-          <Button type='submit' className='h-10' disabled={settings.loading}>
+          <Button
+            type='submit'
+            className='h-10'
+            disabled={settings.loading || locating}
+          >
             读取学校配置
           </Button>
         </form>
         <p className='flex items-start gap-2 text-xs leading-6 text-muted-foreground'>
           <MapPin className='mt-1 size-3.5 shrink-0' aria-hidden='true' />
-          仅发送你输入的坐标，不读取设备定位、不保存坐标；此操作不会开始运动。
+          确认后才向学校发送表单坐标，不保存为历史位置，也不会开始运动。
         </p>
         <DataFeedback resource={settings} />
         {settings.data !== null && (

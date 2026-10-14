@@ -26,7 +26,7 @@ export function SchoolPage() {
             <MapPin className='mb-3 size-5 text-primary' />
             <h2 className='text-sm font-medium'>位置由你决定</h2>
             <p className='mt-2 text-xs leading-6 text-muted-foreground'>
-              只发送本次输入的查询坐标，不读取设备定位，也不保存坐标。
+              仅在你点击时请求定位，也可手动输入。确认读取配置后才向学校发送坐标。
             </p>
           </div>
           <div>

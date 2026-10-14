@@ -1,0 +1,11 @@
+{
+  "identifier": "explicit-location",
+  "description": "Single location lookup after a user click; no background tracking",
+  "platforms": ["android"],
+  "windows": ["main"],
+  "permissions": [
+    "geolocation:allow-check-permissions",
+    "geolocation:allow-request-permissions",
+    "geolocation:allow-get-current-position"
+  ]
+}

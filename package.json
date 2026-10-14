@@ -30,6 +30,7 @@
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
     "@tauri-apps/api": "2.12.3",
+    "@tauri-apps/plugin-geolocation": "^2.5.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "lucide-react": "1.57.0",
