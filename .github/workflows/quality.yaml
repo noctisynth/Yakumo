@@ -45,7 +45,9 @@ jobs:
       - name: Semifold workspace and plan
         run: |
           semifold config sync --check
-          semifold status
+          # Semifold 0.3.4 treats every GITHUB_ACTIONS event as a pull request.
+          # This job only needs the local plan; PR comments use their own workflow.
+          env -u GITHUB_ACTIONS semifold status
 
   desktop:
     name: Desktop (${{ matrix.os }})
