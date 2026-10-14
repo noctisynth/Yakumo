@@ -1,0 +1,6 @@
+{
+  "certificateSha256": "09da0e23d9f21c9c5ee85b383342ab2e74fba4d372b8a07258205cd425c46da8",
+  "keyAlias": "yakumo",
+  "keyAlgorithm": "RSA-3072",
+  "distribution": "Direct signed APK; no Play publishing configured"
+}

@@ -53,13 +53,22 @@ jobs:
     if: needs.plan.outputs.mode == 'publish'
     uses: ./.github/workflows/desktop-build.yaml
 
+  android:
+    name: Signed Android bundles
+    needs: plan
+    if: needs.plan.outputs.mode == 'publish'
+    uses: ./.github/workflows/android-build.yaml
+    with:
+      release: true
+    secrets: inherit
+
   release:
     name: Semifold version or publish
-    needs: [quality, plan, artifacts]
+    needs: [quality, plan, artifacts, android]
     if: >-
       always() && !cancelled() && needs.quality.result == 'success' &&
       (needs.plan.outputs.mode == 'version' ||
-      (needs.plan.outputs.mode == 'publish' && needs.artifacts.result == 'success'))
+      (needs.plan.outputs.mode == 'publish' && needs.artifacts.result == 'success' && needs.android.result == 'success'))
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -87,6 +96,12 @@ jobs:
         with:
           pattern: desktop-*
           merge-multiple: true
+          path: artifacts
+      - name: Download verified Android bundles
+        if: needs.plan.outputs.mode == 'publish'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: android-release
           path: artifacts
       - name: Setup Semifold
         uses: noctisynth/setup-semifold@9dc3b2e2f25d5db332322b29c3d3436c857ca1d9

@@ -23,3 +23,14 @@ stable Rust，首批包含 arm64 与 x86_64，原生链接按 16 KB 页大小配
 跨平台预览仅生成 Actions 附件，不自动创建 Release；Android debug 附件明确标识为测试版本。
 正式发布签名及安装验证在下一阶段完成后才纳入 Release 门槛。
 原生桥接依据：https://v2.tauri.app/develop/plugins/develop-mobile/ 。
+
+Android 发布采用长期 RSA-3072 自签证书，稳定证书指纹与公钥证书纳入公开源码；私钥及密码仅存
+GitHub secrets。已有发布密钥不得自动替换；本机备份为加密 PKCS#12，密码另用当前 Windows 用户的
+DPAPI 保护，不纳入 Git。三个 secret 名称为 ANDROID_KEY_BASE64、ANDROID_KEY_PASSWORD、ANDROID_KEY_ALIAS。
+发布构建要求密钥齐全，签名身份与已登记指纹一致；校验 APK v2/v3、ZIP 与 ELF 16 KB 对齐及 AAB 签名。
+云端 Android 模拟器执行安装、冷启动及同包覆盖安装；成功不代表所有厂商设备均已验证。
+签名仅供可信 main 发布及手动验证工作流使用，外部 PR 不持有发布凭据。
+
+正式发布须等待桌面矩阵与已验证签名 Android job 均成功，合并到统一附件集合后才执行发布。
+手动验证仅上传 Actions 附件，不创建 Release，不消费 changeset，不自动合并发布分支。
+Android 签名依据：https://v2.tauri.app/distribute/sign/android/ 。
