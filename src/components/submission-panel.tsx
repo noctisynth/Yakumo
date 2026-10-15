@@ -301,25 +301,39 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
             </p>
           )}
           {preparation && (
-            <div className='space-y-3 rounded-lg bg-muted/60 p-4'>
+            <div className='space-y-4 rounded-xl border border-border bg-muted/30 p-5'>
               <p className='text-xs font-medium'>
                 {preparation.ticket
                   ? '基础要求检查通过，请确认提交'
                   : '当前无法提交'}
               </p>
-              {preparation.blockers.map((line) => (
-                <p key={line} className='text-xs leading-6 text-destructive'>
-                  {line}
-                </p>
-              ))}
-              {preparation.notes.map((line) => (
-                <p
-                  key={line}
-                  className='text-xs leading-6 text-muted-foreground'
-                >
-                  {line}
-                </p>
-              ))}
+              {preparation.blockers.length > 0 && (
+                <div className='space-y-3'>
+                  <p className='text-xs text-muted-foreground'>
+                    检查在本机完成，本次尚未发送。请调整以下项目后重新检查。
+                  </p>
+                  <ul className='space-y-2' aria-label='提交拦截原因'>
+                    {preparation.blockers.map((line) => (
+                      <li
+                        key={line}
+                        className='rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm leading-6 text-destructive'
+                      >
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {preparation.notes.length > 0 && (
+                <details className='border-t border-border pt-3 text-xs text-muted-foreground'>
+                  <summary className='cursor-pointer py-1'>提交说明</summary>
+                  <ul className='mt-2 space-y-1 leading-6'>
+                    {preparation.notes.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
               {preparation.ticket && (
                 <>
                   <p className='text-[10px] text-muted-foreground'>

@@ -146,12 +146,28 @@ fn prepare_settings(
         (Some(r), Some(s), Some(lo), Some(hi))
             if r > 0.0 && s >= 0.0 && lo >= 0.0 && (hi == -1.0 || hi >= lo) =>
         {
-            if (input.distance_m / 10.0).floor() / 100.0 < r
-                || (input.steps as f64) < s
-                || (input.duration_s as f64) < lo * 60.0
-                || (hi != -1.0 && input.duration_s as f64 > hi * 60.0)
-            {
-                blockers.push("距离、步数或时长未满足当前基础要求；首版采用保守区间检查。".into());
+            let reported_km = (input.distance_m / 10.0).floor() / 100.0;
+            if reported_km < r {
+                blockers.push(format!(
+                    "里程不足：实际上报 {reported_km:.2} 公里，学校要求至少 {r} 公里。"
+                ));
+            }
+            if (input.steps as f64) < s {
+                blockers.push(format!(
+                    "步数不足：当前 {} 步，学校要求至少 {s} 步。",
+                    input.steps
+                ));
+            }
+            let duration = format!("{} 分 {} 秒", input.duration_s / 60, input.duration_s % 60);
+            if (input.duration_s as f64) < lo * 60.0 {
+                blockers.push(format!(
+                    "时长不足：当前 {duration}，学校要求至少 {lo} 分钟。"
+                ));
+            }
+            if hi != -1.0 && input.duration_s as f64 > hi * 60.0 {
+                blockers.push(format!(
+                    "时长超限：当前 {duration}，学校要求不超过 {hi} 分钟。"
+                ));
             }
         }
         _ => blockers.push("学校基础距离、时长或步数要求不完整。".into()),
@@ -165,13 +181,13 @@ fn prepare_settings(
         ticket: None,
         blockers,
         notes: vec![
-            "轨迹为合成数据；服务端可能拒绝或判定无效。".into(),
+            "轨迹为合成数据，是否有效以学校处理结果为准。".into(),
             format!(
-                "协议上报距离向下保留两位公里：{:.2} km。",
+                "实际上报里程为 {:.2} 公里（向下保留两位小数）。",
                 (input.distance_m / 10.0).floor() / 100.0
             ),
-            "不执行开始接口、真实定位或人脸流程；不伪造设备环境证明。".into(),
-            "HTTP 明文入口会传输账号认证与运动数据。".into(),
+            "此流程不执行运动开始、定位或人脸验证。".into(),
+            "学校连接未加密，请仅在可信网络提交。".into(),
         ],
         expires_at: now + 300000,
     };
@@ -342,6 +358,74 @@ mod tests {
     }
     fn sample_settings() -> Value {
         json!({"runType":"1","totalRange":1,"step":"1000","startQualifiedTime":4,"endQualifiedTime":20,"isStartFace":"0","isEndFace":"0","isMidwayFace":"0","needRegisterFace":"0","isStepRecursion":"0","isSequencePoint":"0","isSpeedRangeCheck":"0","list":[],"geofence":[],"middleFaces":[],"limitSpeed":"3.33","endStride":"2.3","endLimitStepFrequency":"300"})
+    }
+    #[test]
+    fn requirement_blockers_name_each_failed_metric_with_actual_and_required_values() {
+        for (key, value, expected) in [
+            (
+                "totalRange",
+                json!("2.03"),
+                "里程不足：实际上报 2.02 公里，学校要求至少 2.03 公里。",
+            ),
+            (
+                "step",
+                json!("2400"),
+                "步数不足：当前 2397 步，学校要求至少 2400 步。",
+            ),
+            (
+                "startQualifiedTime",
+                json!("15"),
+                "时长不足：当前 14 分 59 秒，学校要求至少 15 分钟。",
+            ),
+            (
+                "endQualifiedTime",
+                json!("14"),
+                "时长超限：当前 14 分 59 秒，学校要求不超过 14 分钟。",
+            ),
+        ] {
+            let mut settings = sample_settings();
+            settings[key] = value;
+            let (result, ticket) = prepare_settings(
+                "synthetic-account".into(),
+                sample_preview(),
+                &settings,
+                &sample_session(),
+                1700000900000,
+            )
+            .expect("prepare");
+            assert_eq!(result.blockers, vec![expected]);
+            assert!(ticket.is_none());
+            assert!(!result.notes.is_empty());
+        }
+        let mut settings = sample_settings();
+        settings["totalRange"] = json!("3");
+        settings["step"] = json!("3000");
+        settings["startQualifiedTime"] = json!("16");
+        let (result, ticket) = prepare_settings(
+            "synthetic-account".into(),
+            sample_preview(),
+            &settings,
+            &sample_session(),
+            1700000900000,
+        )
+        .expect("all failures");
+        assert_eq!(result.blockers.len(), 3);
+        assert!(ticket.is_none());
+
+        settings["totalRange"] = json!("2.02");
+        settings["step"] = json!("2397");
+        settings["startQualifiedTime"] = json!(899.0 / 60.0);
+        settings["endQualifiedTime"] = json!("-1");
+        let (result, ticket) = prepare_settings(
+            "synthetic-account".into(),
+            sample_preview(),
+            &settings,
+            &sample_session(),
+            1700000900000,
+        )
+        .expect("exact boundaries");
+        assert!(result.blockers.is_empty());
+        assert!(ticket.is_some());
     }
     #[test]
     fn unsupported_requirements_and_unknowns_block_preparation() {
