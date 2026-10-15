@@ -23,3 +23,9 @@
 四个平台的附件全部成功后才进入 Semifold 发布，registry 命令和凭据均未配置。
 首次推送会运行质量检查并准备 release PR，不自动合并发布 PR。
 私有会话、原始抓包、临时副本、测试附件、依赖和编译产物不进入公开提交。
+
+
+系统产品名修订（2026-10-15）：产品名改为 Yakumo，stable Rust Windows x64 Release/NSIS 构建成功。
+生成的安装脚本中产品名、默认安装目录末级、快捷方式和卸载显示名均引用 Yakumo；
+可执行文件版本资源 ProductName=Yakumo、ProductVersion/FileVersion=0.1.0。
+Biome、版本一致性和前端生产构建通过，应用标识保持稳定。未操作用户已有安装或发布分支。
