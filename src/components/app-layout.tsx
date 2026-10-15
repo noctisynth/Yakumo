@@ -227,7 +227,7 @@ export function AppLayout() {
             </span>
           </header>
           {accountError &&
-            !['/accounts', '/accounts/login', '/login'].includes(
+            !['/accounts', '/accounts/login', '/login', '/profile'].includes(
               location.pathname,
             ) && (
               <div

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
-use crate::account_error::{AccountError, AccountResult};
+use crate::accounts::error::{AccountError, AccountResult};
 
 const SCHOOL_ORIGIN: &str = "http://tygl.swpu.edu.cn/";
 // Public application compatibility constant, recovered from the 2.0.24 interceptor.
@@ -33,8 +33,8 @@ pub trait Authentication: Send {
         &self,
         session: &Session,
         now: u64,
-    ) -> AccountResult<crate::account_avatar::AccountIdentity> {
-        Ok(crate::account_avatar::AccountIdentity {
+    ) -> AccountResult<crate::avatars::reader::AccountIdentity> {
+        Ok(crate::avatars::reader::AccountIdentity {
             display_name: None,
             avatar: Ok(self.avatar(session, now)?),
         })
@@ -211,11 +211,11 @@ impl Authentication for SchoolAuthentication {
         &self,
         session: &Session,
         now: u64,
-    ) -> AccountResult<crate::account_avatar::AccountIdentity> {
-        crate::account_avatar::AvatarReader::new(SCHOOL_ORIGIN).read_identity(session, now)
+    ) -> AccountResult<crate::avatars::reader::AccountIdentity> {
+        crate::avatars::reader::AvatarReader::new(SCHOOL_ORIGIN).read_identity(session, now)
     }
     fn avatar(&self, session: &Session, now: u64) -> AccountResult<Option<String>> {
-        crate::account_avatar::AvatarReader::new(SCHOOL_ORIGIN).read(session, now)
+        crate::avatars::reader::AvatarReader::new(SCHOOL_ORIGIN).read(session, now)
     }
     fn login(
         &self,

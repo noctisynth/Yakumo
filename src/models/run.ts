@@ -4,6 +4,7 @@ export interface RoutePoint {
 }
 export interface RunInput {
   route?: RoutePoint[];
+  closeLoop?: boolean;
   coordinateNoiseM?: number;
   targetPaceSecondsPerKm?: number;
   estimatedCadence?: number;

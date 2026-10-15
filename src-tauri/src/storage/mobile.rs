@@ -1,4 +1,4 @@
-use crate::account_error::{AccountError, AccountResult};
+use crate::accounts::error::{AccountError, AccountResult};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use serde::Deserialize;
 use tauri::{
@@ -44,9 +44,9 @@ pub struct ExportReply {
 }
 pub fn export(
     app: &tauri::AppHandle,
-    input: crate::run_generator::RunInput,
+    input: crate::studio::generator::RunInput,
 ) -> AccountResult<ExportReply> {
-    let preview = crate::run_generator::generate(input)?;
+    let preview = crate::studio::generator::generate(input)?;
     let filename = format!("yakumo-synthetic-{}.json", &preview.digest[..12]);
     let content = serde_json::to_string_pretty(&preview).map_err(|_| AccountError::storage())?;
     app.state::<Vault<tauri::Wry>>()

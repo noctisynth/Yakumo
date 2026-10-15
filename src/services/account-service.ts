@@ -17,6 +17,10 @@ async function accountCommand(
 }
 
 export const accountService = {
+  refreshIdentity: (accountId: string) =>
+    accountCommand('refresh_account_identity', { accountId }),
+  updateAvatar: (accountId: string, dataUri: string) =>
+    accountCommand('update_account_avatar', { accountId, dataUri }),
   list: () => accountCommand('list_accounts'),
   login: (input: LoginInput) => accountCommand('login_account', { input }),
   switch: (id: string) => accountCommand('switch_account', { id }),

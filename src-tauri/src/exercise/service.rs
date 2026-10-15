@@ -1,6 +1,6 @@
 use crate::{
-    account_protocol::{Session, headers},
-    exercise_protocol::Protocol,
+    accounts::protocol::{Session, headers},
+    exercise::protocol::Protocol,
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
 use md5::{Digest, Md5};
@@ -93,7 +93,7 @@ pub struct ExerciseResponse {
 
 pub(crate) fn signature_metadata() -> ExerciseResult<String> {
     let material: Value =
-        serde_json::from_str(include_str!("../resources/protocol-materials.json"))
+        serde_json::from_str(include_str!("../../resources/protocol-materials.json"))
             .map_err(|_| error("protocol_encoding", "兼容材料不可用。"))?;
     let cert = STANDARD
         .decode(

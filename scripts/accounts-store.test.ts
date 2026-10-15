@@ -21,6 +21,8 @@ describe('accounts state', () => {
     let complete: (snapshot: AccountSnapshot) => void = () => {};
     let mutations = 0;
     const state = createAccountsStore({
+      refreshIdentity: async () => ({ accounts: [], activeId: null }),
+      updateAvatar: async () => ({ accounts: [], activeId: null }),
       list: () =>
         new Promise<AccountSnapshot>((resolve) => {
           complete = resolve;
@@ -65,6 +67,8 @@ describe('accounts state', () => {
   test('allows retry after a failed initial load and clears stale selection on removal', async () => {
     let attempts = 0;
     const state = createAccountsStore({
+      refreshIdentity: async () => ({ accounts: [], activeId: null }),
+      updateAvatar: async () => ({ accounts: [], activeId: null }),
       list: async () => {
         if (++attempts === 1)
           throw { code: 'storage_unavailable', message: '请重试。' };

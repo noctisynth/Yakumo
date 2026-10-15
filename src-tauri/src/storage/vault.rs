@@ -8,8 +8,8 @@ use rand::{RngCore, rngs::OsRng};
 use zeroize::Zeroizing;
 
 use crate::{
-    account_error::{AccountError, AccountResult},
     accounts::AccountData,
+    accounts::error::{AccountError, AccountResult},
 };
 
 const AAD: &[u8] = b"app.yakumo.client/accounts/v1";
@@ -89,7 +89,7 @@ impl EncryptedVault {
     }
     #[cfg(target_os = "android")]
     fn key(&self, create: bool) -> AccountResult<Zeroizing<Vec<u8>>> {
-        crate::mobile_vault::key(
+        crate::storage::mobile::key(
             self.mobile.as_ref().ok_or_else(AccountError::storage)?,
             create,
         )

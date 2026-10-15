@@ -11,6 +11,7 @@ export type OffsetKey = (typeof offsetKeys)[number];
 export type Offsets = Record<OffsetKey, [number, number]>;
 export interface StudioConfig {
   route?: RoutePoint[];
+  closeLoop?: boolean;
   coordinateNoiseM?: number;
   paceSecondsPerKm?: number;
   cadence?: number;

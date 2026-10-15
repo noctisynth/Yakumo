@@ -12,6 +12,8 @@ export function sampleRun(
       config.coordinateNoiseM > 3)
   )
     throw new Error('轨迹坐标浮动范围应为 0 至 3 米。');
+  if (config.closeLoop && (config.route?.length ?? 0) < 3)
+    throw new Error('首尾相连至少需要三个选点。');
   let state = 2166136261;
   for (const char of seed)
     state = Math.imul(state ^ char.charCodeAt(0), 16777619);
@@ -131,6 +133,7 @@ export function sampleRun(
     ...(config.route?.length
       ? { coordinateNoiseM: config.coordinateNoiseM ?? 0.8 }
       : {}),
+    closeLoop: config.closeLoop ?? false,
     seed,
     startTime: actualStart,
     latitude,
@@ -157,6 +160,7 @@ export function paceConfig(config: StudioConfig): StudioConfig {
   return {
     ...config,
     route: config.route ?? [],
+    closeLoop: config.closeLoop ?? true,
     paceSecondsPerKm,
     cadence,
     cadenceOffset: config.cadenceOffset ?? [-3, 3],

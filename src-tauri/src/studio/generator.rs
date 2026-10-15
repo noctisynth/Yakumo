@@ -1,4 +1,4 @@
-use crate::account_error::{AccountError, AccountResult};
+use crate::accounts::error::{AccountError, AccountResult};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -19,7 +19,7 @@ fn route_distance(a: &RoutePoint, b: &RoutePoint) -> f64 {
 }
 pub fn validate_route(route: &[RoutePoint]) -> bool {
     route.is_empty()
-        || ((2..=50).contains(&route.len())
+        || ((2..=51).contains(&route.len())
             && route.iter().all(|p| {
                 p.latitude.is_finite()
                     && p.longitude.is_finite()
@@ -36,9 +36,33 @@ pub fn validate_route(route: &[RoutePoint]) -> bool {
                     .sum::<f64>(),
             ))
 }
+pub fn effective_route(route: &[RoutePoint], close_loop: bool) -> AccountResult<Vec<RoutePoint>> {
+    let invalid = || {
+        AccountError::new(
+            "invalid_route",
+            "路线需要 2–50 个有效选点；首尾相连至少需要 3 个点，总长 50 米至 30 公里。",
+        )
+    };
+    if route.len() > 50 || (close_loop && route.len() < 3) {
+        return Err(invalid());
+    }
+    let mut geometry = route.to_vec();
+    if close_loop
+        && let (Some(first), Some(last)) = (route.first(), route.last())
+        && route_distance(first, last) >= 1.0
+    {
+        geometry.push(first.clone());
+    }
+    if !validate_route(&geometry) {
+        return Err(invalid());
+    }
+    Ok(geometry)
+}
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RunInput {
+    #[serde(default)]
+    pub close_loop: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub route: Vec<RoutePoint>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -96,12 +120,7 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
             "请检查参数：距离 100–30000 米、时长 60–7200 秒、圈数 1–10、有效坐标、步数及合理速度/步频。 ",
         )
     };
-    if !validate_route(&input.route) {
-        return Err(AccountError::new(
-            "invalid_route",
-            "路线需要 2–50 个有效选点，相邻点至少相距 1 米，总长度 50 米至 30 公里。",
-        ));
-    }
+    let geometry = effective_route(&input.route, input.close_loop)?;
     if input
         .coordinate_noise_m
         .is_some_and(|v| !v.is_finite() || !(0.0..=3.0).contains(&v))
@@ -147,7 +166,7 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
     let algorithm = if input.route.is_empty() {
         "circle-v1"
     } else {
-        "waypoints-v3"
+        "waypoints-v4"
     };
     let digest = format!(
         "{:x}",
@@ -158,20 +177,19 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
     } else {
         input.coordinate_noise_m.unwrap_or(0.8).min(speed * 0.6)
     };
-    let motion = crate::run_variation::motion(input.duration_s, &input.seed, coordinate_noise_m);
+    let motion = crate::studio::motion::motion(input.duration_s, &input.seed, coordinate_noise_m);
     let seed = Sha256::digest(input.seed.as_bytes());
     let phase = u32::from_le_bytes([seed[0], seed[1], seed[2], seed[3]]) as f64 / u32::MAX as f64
         * std::f64::consts::TAU;
     let mut cumulative = vec![0.0];
-    for pair in input.route.windows(2) {
+    for pair in geometry.windows(2) {
         cumulative
             .push(cumulative.last().copied().unwrap_or(0.0) + route_distance(&pair[0], &pair[1]));
     }
     let path_length = cumulative.last().copied().unwrap_or(0.0);
-    let closed = input
-        .route
+    let closed = geometry
         .first()
-        .zip(input.route.last())
+        .zip(geometry.last())
         .is_some_and(|(a, b)| route_distance(a, b) < 1.0);
     let along = |travel: f64| -> (f64, f64) {
         // Closed paths repeat in order; open paths return along the same line.
@@ -188,10 +206,10 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
         let index = cumulative
             .partition_point(|d| *d <= position)
             .saturating_sub(1)
-            .min(input.route.len() - 2);
+            .min(geometry.len() - 2);
         let fraction = (position - cumulative[index]) / (cumulative[index + 1] - cumulative[index]);
-        let a = &input.route[index];
-        let b = &input.route[index + 1];
+        let a = &geometry[index];
+        let b = &geometry[index + 1];
         (
             a.latitude + (b.latitude - a.latitude) * fraction,
             a.longitude + (b.longitude - a.longitude) * fraction,
@@ -304,6 +322,7 @@ mod tests {
             target_pace_seconds_per_km: None,
             estimated_cadence: None,
             coordinate_noise_m: None,
+            close_loop: false,
             route: vec![],
             seed: "synthetic-seed".into(),
             start_time: 1700000000000,
@@ -368,7 +387,7 @@ mod tests {
             value.seed = format!("route-{n}");
             value.coordinate_noise_m = Some(0.0);
             let a = generate(value.clone()).expect("waypoint generation");
-            assert_eq!(a.algorithm, "waypoints-v3");
+            assert_eq!(a.algorithm, "waypoints-v4");
             assert_eq!(a.source, "synthetic");
             assert!((a.actual_distance_m - value.distance_m).abs() < 0.001);
             assert_eq!(a.step_buckets.iter().sum::<u32>(), value.steps);
@@ -546,6 +565,35 @@ mod tests {
             assert!(preview.coordinate_noise_m <= noise);
             assert!(preview.points.iter().all(|p| p.s <= 12.0));
         }
+    }
+    #[test]
+    fn explicit_loop_closes_geometry_without_modifying_saved_waypoints() {
+        let mut value = input();
+        value.close_loop = true;
+        value.coordinate_noise_m = Some(0.0);
+        value.route = vec![
+            RoutePoint {
+                latitude: 0.0,
+                longitude: 0.0,
+            },
+            RoutePoint {
+                latitude: 0.0,
+                longitude: 0.002,
+            },
+            RoutePoint {
+                latitude: 0.002,
+                longitude: 0.002,
+            },
+        ];
+        let route = effective_route(&value.route, true).expect("closed");
+        assert_eq!(route.len(), 4);
+        assert_eq!(route[3].latitude, 0.0);
+        assert_eq!(route[3].longitude, 0.0);
+        let preview = generate(value.clone()).expect("loop");
+        assert_eq!(preview.input.route.len(), 3);
+        assert!((preview.actual_distance_m - value.distance_m).abs() < 0.001);
+        value.route.pop();
+        assert!(generate(value).is_err());
     }
     #[test]
     fn invalid_routes_fail_and_legacy_inputs_remain_compatible() {

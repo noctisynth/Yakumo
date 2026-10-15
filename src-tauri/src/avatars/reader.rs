@@ -9,18 +9,18 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use reqwest::{Url, blocking::Client, redirect::Policy};
 
 use crate::{
-    account_error::{AccountError, AccountResult},
-    account_protocol::{Session, headers, response},
+    accounts::error::{AccountError, AccountResult},
+    accounts::protocol::{Session, headers, response},
 };
 
-const MAX_IMAGE: usize = 256 * 1024;
+const MAX_IMAGE: usize = 2 * 1024 * 1024;
 
 fn unavailable() -> AccountError {
     AccountError::new("avatar_unavailable", "头像暂时无法读取，已保留账号占位。")
 }
 
 fn signature(token: &str, app_id: &str, timestamp: &str) -> AccountResult<String> {
-    crate::exercise_protocol::sign::get_signature(app_id, token, timestamp, &[])
+    crate::exercise::protocol::sign::get_signature(app_id, token, timestamp, &[])
 }
 
 fn image_url(origin: &str, value: &str) -> AccountResult<Option<Url>> {
@@ -414,7 +414,7 @@ mod tests {
             "587d94e43d9e1a24dd6d78c2a959fbb5"
         );
         assert_eq!(
-            crate::exercise_protocol::sign::fingerprint(
+            crate::exercise::protocol::sign::fingerprint(
                 b"test-apptest-token1700000000123",
                 "test-token"
             )
@@ -422,7 +422,7 @@ mod tests {
             "3af3a313ee0c47461187784299bac29b"
         );
         assert_eq!(
-            crate::exercise_protocol::sign::fingerprint(b"test-token1700000000123", "test-token")
+            crate::exercise::protocol::sign::fingerprint(b"test-token1700000000123", "test-token")
                 .expect("derive"),
             "5f63882c88c1985206573379a519a6e7"
         );
@@ -474,6 +474,11 @@ mod tests {
         let png = b"\x89PNG\r\n\x1a\nsynthetic";
         let cached = encode_image(png, "image/png").expect("png");
         assert!(valid_cached_avatar(&cached));
+        let mut large_png = vec![0; 283_184];
+        large_png[..8].copy_from_slice(b"\x89PNG\r\n\x1a\n");
+        assert!(valid_cached_avatar(
+            &encode_image(&large_png, "image/png").expect("observed-size PNG")
+        ));
         assert!(!valid_cached_avatar("https://cdn.example/private.png"));
         assert!(encode_image(b"<svg/>", "image/svg+xml").is_err());
         assert!(encode_image(b"<html/>", "image/png").is_err());

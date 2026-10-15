@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { routeLength } from '../src/lib/route-geometry';
 import { paceConfig, sampleRun } from '../src/lib/studio-sampling';
 import { defaultConfig } from '../src/models/studio';
 
@@ -46,6 +47,7 @@ test('zero offsets preserve base values; bad ranges and inconsistent inputs fail
 test('route sampling preserves selected geometry rather than translating it', () => {
   const c = {
     ...defaultConfig(),
+    closeLoop: false,
     latitude: 0,
     longitude: 0,
     route: [
@@ -71,6 +73,7 @@ test('route sampling preserves selected geometry rather than translating it', ()
 test('pace and distance jointly determine time, speed and estimated steps', () => {
   const config = paceConfig({
     ...defaultConfig(),
+    closeLoop: false,
     latitude: 0,
     longitude: 0,
     route: [
@@ -104,6 +107,7 @@ test('pace and distance jointly determine time, speed and estimated steps', () =
 test('one preset varies between seeds while zero ranges preserve final metrics', () => {
   const config = paceConfig({
     ...defaultConfig(),
+    closeLoop: false,
     latitude: 0,
     longitude: 0,
     route: [
@@ -140,6 +144,7 @@ test('one preset varies between seeds while zero ranges preserve final metrics',
 test('coordinate variation is included in the exact generation input', () => {
   const c = paceConfig({
     ...defaultConfig(),
+    closeLoop: false,
     latitude: 0,
     longitude: 0,
     route: [
@@ -158,4 +163,39 @@ test('coordinate variation is included in the exact generation input', () => {
   expect(() =>
     sampleRun({ ...c, coordinateNoiseM: 4 }, 1700000000000, 'noise'),
   ).toThrow();
+});
+
+test('loop preference is preserved and requires three selected points', () => {
+  const c = paceConfig({
+    ...defaultConfig(),
+    latitude: 0,
+    longitude: 0,
+    closeLoop: true,
+    route: [
+      { latitude: 0, longitude: 0 },
+      { latitude: 0, longitude: 0.002 },
+      { latitude: 0.002, longitude: 0.002 },
+    ],
+  });
+  expect(sampleRun(c, 1700000000000, 'loop').closeLoop).toBe(true);
+  expect(() =>
+    sampleRun({ ...c, route: c.route?.slice(0, 2) }, 1700000000000, 'loop'),
+  ).toThrow();
+});
+
+test('new routes default to a loop and default mileage follows the selected geometry', () => {
+  expect(paceConfig(defaultConfig()).closeLoop).toBe(true);
+  expect(paceConfig({ ...defaultConfig(), closeLoop: false }).closeLoop).toBe(
+    false,
+  );
+  const points = [
+    { latitude: 0, longitude: 0 },
+    { latitude: 0, longitude: 0.001 },
+    { latitude: 0, longitude: 0.002 },
+  ];
+  expect(routeLength(points, false)).toBe(222.4);
+  expect(routeLength(points, true)).toBe(444.8);
+  expect(routeLength([...points, points[0]], true)).toBe(444.8);
+  expect(routeLength([], true)).toBe(0);
+  expect(routeLength(points.slice(0, 1), false)).toBe(0);
 });

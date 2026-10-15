@@ -1,9 +1,9 @@
 use crate::{
-    account_error::{AccountError, AccountResult},
-    account_protocol::{Session, headers},
-    exercise_protocol::Protocol,
-    exercise_service::{ExerciseClient, ExerciseQuery, scalar_number},
-    run_generator::{RunInput, generate},
+    accounts::error::{AccountError, AccountResult},
+    accounts::protocol::{Session, headers},
+    exercise::protocol::Protocol,
+    exercise::service::{ExerciseClient, ExerciseQuery, scalar_number},
+    studio::generator::{RunInput, generate},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -92,7 +92,7 @@ pub fn prepare(
 }
 fn prepare_settings(
     account_id: String,
-    preview: crate::run_generator::RunPreview,
+    preview: crate::studio::generator::RunPreview,
     settings: &Value,
     session: &Session,
     now: u64,
@@ -100,7 +100,7 @@ fn prepare_settings(
     let input = &preview.input;
     let mut blockers = Vec::new();
     if preview.end_time > now || now.saturating_sub(preview.end_time) > 7 * 86400000 {
-        blockers.push("运动须已结束，且结束时间在最近 7 天内（本客户端限制）。".into());
+        blockers.push("运动须已结束，且结束时间在最近 7 天内（客户端安全门禁）。".into());
     }
     for (key, label) in [
         ("isStartFace", "开始人脸"),
@@ -194,7 +194,8 @@ fn prepare_settings(
     // initialized, non-anomalous state; this is not a successful face verification.
     let face_status = "1";
     let reported_km = (input.distance_m / 10.0).floor() / 100.0;
-    let payload = json!({"sportType":1,"startTime":input.start_time,"endTime":preview.end_time,"sportTime":input.duration_s,"sportRange":format!("{reported_km:.2}"),"gpsDistance":format!("{reported_km:.2}"),"speed":preview.pace,"avgSpeed":format!("{:.2}",preview.average_kmh),"brand":"Yakumo","model":"Synthetic","system":std::env::consts::OS,"version":"unknown","appVersion":"2.0.22","appType":"Android","versionCode":20220,"versionName":"2.0.22","signatureMD5":crate::exercise_service::signature_metadata().map_err(|_|failed("兼容材料不可用。"))?,"uniqueCode":session.device_id,"pointList":stringify(&settings["list"] )?,"geofence":stringify(&settings["geofence"] )?,"isSequencePoint":as_text("isSequencePoint"),"stepNumbers":stringify(&json!(preview.step_buckets))?,"gitudeLatitude":stringify(&json!(points))?,"okPointList":"[]","isFaceStatus":face_status,"uploadType":0,"identify":identify,"limitSpeed":as_text("limitSpeed"),"limitStride":as_text("endStride"),"limitStepFrequency":as_text("endLimitStepFrequency"),"f":preview.points.len(),"m":0,"h":0,"isValid":1});
+    let payload = json!({"sportType":1,"startTime":input.start_time,"endTime":preview.end_time,"sportTime":input.duration_s,"sportRange":format!("{reported_km:.2}"),"gpsDistance":format!("{reported_km:.2}"),"speed":preview.pace,"avgSpeed":format!("{:.2}",preview.average_kmh),"brand":"Yakumo","model":"Synthetic","system":std::env::consts::OS,"version":"unknown","appVersion":"2.0.22","appType":"Android","versionCode":20220,"versionName":"2.0.22","signatureMD5":crate::exercise::service::signature_metadata().map_err(|_|failed("兼容材料不可用。"))?,"uniqueCode":session.device_id,"pointList":stringify(&settings["list"] )?,"geofence":stringify(&settings["geofence"] )?,"isSequencePoint":as_text("isSequencePoint"),"stepNumbers":stringify(&json!(preview.step_buckets))?,"gitudeLatitude":stringify(&json!(points))?,"okPointList":"[]","isFaceStatus":face_status,"uploadType":0,"identify":identify,"limitSpeed":as_text("limitSpeed"),"limitStride":as_text("endStride"),"limitStepFrequency":as_text("endLimitStepFrequency"),"f":preview.points.len(),"m":0,"h":0,"isValid":1});
+    crate::studio::validation::validate(&payload, now)?;
     Ok((
         preparation,
         Some(Ticket {
@@ -215,6 +216,12 @@ pub fn send(
     origin: &str,
 ) -> Receipt {
     let mut outcome = receipt.clone();
+    if let Err(error) = crate::studio::validation::validate(&ticket.payload, now) {
+        outcome.state = "rejected".into();
+        outcome.message = error.message.into();
+        outcome.record_id = None;
+        return outcome;
+    }
     let protocol = Protocol::new(&session.access_token, &session.raw_app_id, now);
     let response = (|| -> Result<(u16, Vec<u8>), ()> {
         let envelope = protocol.pack(&ticket.payload).map_err(|_| ())?;
@@ -315,11 +322,12 @@ mod tests {
             avatar_url: None,
         }
     }
-    fn sample_preview() -> crate::run_generator::RunPreview {
+    fn sample_preview() -> crate::studio::generator::RunPreview {
         generate(RunInput {
             target_pace_seconds_per_km: None,
             estimated_cadence: None,
             coordinate_noise_m: None,
+            close_loop: false,
             route: vec![],
             seed: "synthetic".into(),
             start_time: 1700000000000,
@@ -368,6 +376,100 @@ mod tests {
                 .expect("points");
         assert_eq!(points[0]["f"], true);
         assert_eq!(points.as_array().expect("array").len(), 900);
+    }
+    #[test]
+    fn submission_schema_and_cross_field_anomalies_are_rejected_before_network() {
+        let (_, ticket) = prepare_settings(
+            "synthetic-account".into(),
+            sample_preview(),
+            &sample_settings(),
+            &sample_session(),
+            1700000900000,
+        )
+        .expect("prepare");
+        let mut ticket = ticket.expect("ticket");
+        let payload = ticket.payload.clone();
+        let validate = |v: &Value| crate::studio::validation::validate(v, 1700000900000);
+        assert!(validate(&payload).is_ok());
+        for (key, value) in [
+            ("sportTime", json!("899")),
+            ("sportRange", json!("999")),
+            ("avgSpeed", json!("NaN")),
+            ("speed", json!("1'00\"")),
+            ("f", json!(0)),
+            ("gitudeLatitude", json!([])),
+            ("stepNumbers", json!("[1]")),
+            ("endTime", json!(1700000000001_u64)),
+            ("unknown", json!(true)),
+        ] {
+            let mut bad = payload.clone();
+            bad[key] = value;
+            assert!(validate(&bad).is_err(), "{key}");
+        }
+        let mut missing = payload.clone();
+        missing
+            .as_object_mut()
+            .expect("object")
+            .remove("sportRange");
+        assert!(validate(&missing).is_err());
+        let mut points: Value =
+            serde_json::from_str(payload["gitudeLatitude"].as_str().expect("text"))
+                .expect("points");
+        points[2]["e"] = json!(999);
+        let mut bad = payload.clone();
+        bad["gitudeLatitude"] = json!(points.to_string());
+        assert!(validate(&bad).is_err());
+        ticket.payload["sportRange"] = json!("999");
+        let receipt = Receipt {
+            id: "synthetic".into(),
+            digest: ticket.digest.clone(),
+            identify: ticket.identify.clone(),
+            state: "unknown".into(),
+            message: "pending".into(),
+            record_id: None,
+            created_at: 1700000900000,
+            algorithm: ticket.algorithm.clone(),
+            source: "synthetic".into(),
+        };
+        let outcome = send(
+            &sample_session(),
+            &ticket,
+            &receipt,
+            1700000900000,
+            "not-a-network-origin",
+        );
+        assert_eq!(outcome.state, "rejected");
+        assert!(!outcome.message.contains("结果不确定"));
+    }
+    #[test]
+    fn coherent_but_abnormal_runs_fail_the_client_submission_limits() {
+        for (distance, duration, steps, label) in [
+            (4000.0, 600, 2000, "配速"),
+            (1000.0, 1100, 2200, "配速"),
+            (2021.0, 899, 4000, "步频"),
+            (2021.0, 899, 1000, "步频"),
+            (3000.0, 900, 1200, "单步"),
+        ] {
+            let mut input = sample_preview().input;
+            input.distance_m = distance;
+            input.duration_s = duration;
+            input.steps = steps;
+            let preview = generate(input).expect("technically consistent preview");
+            let result = prepare_settings(
+                "synthetic-account".into(),
+                preview,
+                &sample_settings(),
+                &sample_session(),
+                1700001200000,
+            );
+            match result {
+                Err(error) => {
+                    assert_eq!(error.code, "invalid_submission");
+                    assert!(error.message.contains(label));
+                }
+                Ok(_) => panic!("abnormal run received a ticket"),
+            }
+        }
     }
     #[test]
     fn face_requirements_must_be_explicitly_disabled_before_preserving_initial_state() {
@@ -433,11 +535,11 @@ mod tests {
         let mut input = sample_preview().input;
         input.coordinate_noise_m = Some(0.8);
         input.route = vec![
-            crate::run_generator::RoutePoint {
+            crate::studio::generator::RoutePoint {
                 latitude: 0.0,
                 longitude: 0.0,
             },
-            crate::run_generator::RoutePoint {
+            crate::studio::generator::RoutePoint {
                 latitude: 0.0,
                 longitude: 0.01,
             },
@@ -459,7 +561,7 @@ mod tests {
         )
         .expect("prepare");
         let ticket = ticket.expect("ticket");
-        assert_eq!(ticket.algorithm, "waypoints-v3");
+        assert_eq!(ticket.algorithm, "waypoints-v4");
         assert_eq!(ticket.digest, digest);
         let points: Vec<Value> =
             serde_json::from_str(ticket.payload["gitudeLatitude"].as_str().expect("text"))

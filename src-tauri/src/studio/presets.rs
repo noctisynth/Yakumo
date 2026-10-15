@@ -1,4 +1,4 @@
-use crate::account_error::{AccountError, AccountResult};
+use crate::accounts::error::{AccountError, AccountResult};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 pub fn invalid() -> AccountError {
@@ -7,8 +7,10 @@ pub fn invalid() -> AccountError {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PresetConfig {
+    #[serde(default)]
+    pub close_loop: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub route: Vec<crate::run_generator::RoutePoint>,
+    pub route: Vec<crate::studio::generator::RoutePoint>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pace_seconds_per_km: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -38,7 +40,7 @@ impl PresetConfig {
         if self
             .coordinate_noise_m
             .is_some_and(|v| !v.is_finite() || !(0.0..=3.0).contains(&v))
-            || !crate::run_generator::validate_route(&self.route)
+            || crate::studio::generator::effective_route(&self.route, self.close_loop).is_err()
             || !self.latitude.is_finite()
             || self.latitude.abs() > 85.0
             || !self.longitude.is_finite()

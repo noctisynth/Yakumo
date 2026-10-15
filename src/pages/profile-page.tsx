@@ -2,6 +2,7 @@ import { RefreshCw, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { AccountAvatar } from '@/components/account-avatar';
 import { AccountRequired } from '@/components/account-required';
+import { AvatarEditor } from '@/components/avatar-editor';
 import { DataFeedback } from '@/components/data-feedback';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import {
   profileGroups,
   profileValue,
 } from '@/lib/profile-fields';
+import { useAccountsStore } from '@/stores/accounts-store';
 import { useDashboardStore } from '@/stores/dashboard-store';
 
 export function ProfilePage() {
@@ -27,6 +29,7 @@ export function ProfilePage() {
     if (loaded.current === active.id) return;
     loaded.current = active.id;
     setSearch('');
+    void useAccountsStore.getState().refreshIdentity(active.id);
     void useDashboardStore.getState().read('profile', { kind: 'profile' });
   }, [ready, active]);
   if (!ready) return <AccountRequired />;
@@ -52,13 +55,17 @@ export function ProfilePage() {
         <Button
           variant='outline'
           disabled={profile.loading}
-          onClick={() => void read('profile', { kind: 'profile' })}
+          onClick={() => {
+            void read('profile', { kind: 'profile' });
+            if (active)
+              void useAccountsStore.getState().refreshIdentity(active.id);
+          }}
         >
           <RefreshCw className='size-4' />
           刷新资料
         </Button>
       </div>
-      <section className='flex items-center gap-5 rounded-xl border border-border bg-card p-6'>
+      <section className='flex flex-wrap items-center gap-5 rounded-xl border border-border bg-card p-6'>
         <AccountAvatar
           key={active?.id}
           avatarUrl={active?.avatarUrl}
@@ -81,6 +88,7 @@ export function ProfilePage() {
         <span className='ml-auto hidden text-[10px] tracking-[0.2em] text-primary sm:block'>
           PERSONAL IDENTITY
         </span>
+        {active && <AvatarEditor accountId={active.id} />}
       </section>
       <DataFeedback resource={profile} />
       <section className='rounded-xl border border-border bg-card'>

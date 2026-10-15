@@ -5,8 +5,11 @@ import {
   ArrowRight,
   Bookmark,
   Check,
+  Gauge,
   LoaderCircle,
   LocateFixed,
+  Route,
+  Ruler,
   Save,
   Trash2,
   Undo2,
@@ -23,7 +26,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { useDashboardAccount } from '@/hooks/use-dashboard-account';
+import { routeLength } from '@/lib/route-geometry';
 import { localDateTime, paceConfig, sampleRun } from '@/lib/studio-sampling';
 import { cn } from '@/lib/utils';
 import type { RoutePoint } from '@/models/run';
@@ -39,7 +44,7 @@ import { useStudioStore } from '@/stores/studio-store';
 
 const steps = [
   { id: 'location', title: '地图选点' },
-  { id: 'parameters', title: '基准与偏移' },
+  { id: 'parameters', title: '距离与节奏' },
   { id: 'preview', title: '检查预览' },
   { id: 'confirm', title: '确认提交' },
 ] as const;
@@ -289,17 +294,17 @@ function StudioContent({ accountId }: { accountId: string }) {
   }
 
   return (
-    <div className='space-y-7'>
-      <header className='flex flex-wrap items-end justify-between gap-4'>
+    <div className='space-y-8'>
+      <header className='flex flex-wrap items-end justify-between gap-5 border-b border-border pb-7'>
         <div>
-          <p className='text-[10px] tracking-[0.25em] text-muted-foreground'>
+          <p className='text-[10px] font-medium tracking-[0.3em] text-primary'>
             STUDIO / CREATE AT YOUR PACE
           </p>
-          <h1 className='mt-3 text-3xl font-semibold'>
-            从选点，到清晰的预览。
+          <h1 className='mt-3 text-3xl font-semibold tracking-tight sm:text-4xl'>
+            生成工作室<span className='text-primary'>.</span>
           </h1>
           <p className='mt-3 text-sm text-muted-foreground'>
-            选好位置与范围，每次生成前都由你确认。
+            规划路线、设定节奏，在预览后确认每一次提交。
           </p>
         </div>
         <Button asChild variant='default'>
@@ -312,7 +317,7 @@ function StudioContent({ accountId }: { accountId: string }) {
       <nav
         id='studio-steps'
         aria-label='生成步骤'
-        className='grid grid-cols-4 gap-2 rounded-xl border border-border bg-card p-3 sm:p-5'
+        className='grid grid-cols-4 gap-2 sm:gap-6'
       >
         {steps.map((s, i) => (
           <button
@@ -323,15 +328,15 @@ function StudioContent({ accountId }: { accountId: string }) {
             aria-current={s.id === stepper.current.id ? 'step' : undefined}
             onClick={() => void stepper.goTo(s.id)}
             className={cn(
-              'flex min-h-12 flex-col items-center justify-center gap-2 rounded-lg px-1 py-3 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default sm:flex-row sm:gap-3 sm:text-sm',
+              'group flex min-h-12 flex-col items-start justify-center gap-2 border-b-2 px-1 pb-4 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:text-sm',
               i === stepper.index
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground',
+                ? 'border-primary text-primary'
+                : 'border-border text-muted-foreground',
             )}
           >
             <span
               className={cn(
-                'flex size-6 shrink-0 items-center justify-center rounded-full border text-xs',
+                'flex size-7 shrink-0 items-center justify-center rounded-md border text-xs tabular-nums',
                 i === stepper.index ? 'border-primary' : 'border-border',
               )}
             >
@@ -342,7 +347,7 @@ function StudioContent({ accountId }: { accountId: string }) {
         ))}
       </nav>
       {stepper.current.id === 'location' && (
-        <section className='space-y-5 rounded-xl border border-border bg-card p-5 sm:p-7'>
+        <section className='space-y-6'>
           <div>
             <div className='flex flex-wrap items-center justify-between gap-3'>
               <h2 className='text-lg font-semibold'>沿着道路，逐点绘制路线</h2>
@@ -364,86 +369,148 @@ function StudioContent({ accountId }: { accountId: string }) {
               点击地图依次选点。仅点击获取位置后请求权限，不会自动定位。
             </p>
           </div>
-          <div className='space-y-3 rounded-lg bg-muted/30 p-4'>
-            <div className='flex flex-wrap items-center justify-between gap-3'>
-              <p className='text-sm font-medium'>
-                已选 {config.route?.length ?? 0} / 50 个点
-              </p>
-              <div className='flex gap-2'>
-                <Button
-                  size='sm'
-                  variant='outline'
-                  disabled={!config.route?.length}
-                  onClick={() =>
-                    update({ ...config, route: config.route?.slice(0, -1) })
+          <div className='grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]'>
+            <div className='min-w-0'>
+              <StudioMap
+                focusPoint={mapFocus}
+                defaultLoaded={mapEnabled}
+                onLoad={() => setMapEnabled(true)}
+                latitude={config.latitude}
+                longitude={config.longitude}
+                routeEditing
+                waypoints={config.route}
+                closeLoop={config.closeLoop}
+                onPick={(latitude, longitude) => {
+                  if ((config.route?.length ?? 0) >= 50) {
+                    setErrorScope('location');
+                    setError('最多选择 50 个路线点，请先撤销或清空。');
+                    return;
                   }
-                >
-                  <Undo2 className='size-3.5' />
-                  撤销选点
-                </Button>
+                  update({
+                    ...config,
+                    latitude: config.route?.length ? config.latitude : latitude,
+                    longitude: config.route?.length
+                      ? config.longitude
+                      : longitude,
+                    route: [...(config.route ?? []), { latitude, longitude }],
+                  });
+                }}
+              />
+              <p className='mt-3 text-xs text-muted-foreground'>
+                地图选点用于规划，预览将显示最终生成的轨迹。
+              </p>
+            </div>
+            <aside className='space-y-6 rounded-2xl border border-border bg-card p-5'>
+              <p className='text-[10px] tracking-[0.2em] text-primary'>
+                ROUTE / 路线规划
+              </p>
+              <div className='space-y-4'>
+                <div className='flex flex-wrap items-center justify-between gap-3'>
+                  <p className='text-sm font-medium'>
+                    已选 {config.route?.length ?? 0} / 50 个点
+                  </p>
+                  <div className='flex gap-2'>
+                    <Button
+                      size='sm'
+                      variant='outline'
+                      disabled={!config.route?.length}
+                      onClick={() =>
+                        update({ ...config, route: config.route?.slice(0, -1) })
+                      }
+                    >
+                      <Undo2 className='size-3.5' />
+                      撤销选点
+                    </Button>
+                    <Button
+                      size='sm'
+                      variant='ghost'
+                      disabled={!config.route?.length}
+                      onClick={() => update({ ...config, route: [] })}
+                    >
+                      <Trash2 className='size-3.5' />
+                      清空
+                    </Button>
+                  </div>
+                </div>
+                <p className='text-xs leading-6 text-muted-foreground'>
+                  依次标记起点和转弯处，可撤销或重新绘制。闭合路线至少 3
+                  点；选线以直线连接，不会自动贴合道路。
+                </p>
+              </div>
+              <div className='flex items-center justify-between gap-4 border-t border-border pt-5'>
+                <div>
+                  <Label
+                    htmlFor='close-route'
+                    className='flex items-center gap-2 text-sm'
+                  >
+                    <Route className='size-4 text-primary' />
+                    首尾相连
+                  </Label>
+                  <p className='mt-1 text-xs leading-5 text-muted-foreground'>
+                    连接末点与起点形成环线，至少 3 个选点；关闭则原路往返。
+                  </p>
+                </div>
+                <Switch
+                  id='close-route'
+                  checked={config.closeLoop ?? true}
+                  onCheckedChange={(checked) =>
+                    update({ ...config, closeLoop: checked })
+                  }
+                />
+              </div>
+
+              <div className='border-t border-border pt-5'>
+                <p className='text-xs text-muted-foreground'>
+                  {config.closeLoop ? '单圈里程' : '单程里程'}
+                </p>
+                <p className='mt-2 text-3xl font-medium tracking-tight tabular-nums'>
+                  {(
+                    routeLength(config.route ?? [], config.closeLoop ?? true) /
+                    1000
+                  ).toFixed(2)}
+                  <span className='ml-2 text-sm font-normal text-muted-foreground'>
+                    km
+                  </span>
+                </p>
+                <p className='mt-2 text-xs leading-5 text-muted-foreground'>
+                  完成选点后，作为本次距离的默认值。
+                </p>
+              </div>
+              {feedback('location')}
+              <div className='flex justify-end'>
                 <Button
-                  size='sm'
-                  variant='ghost'
-                  disabled={!config.route?.length}
-                  onClick={() => update({ ...config, route: [] })}
+                  disabled={
+                    locating ||
+                    (config.route?.length ?? 0) < (config.closeLoop ? 3 : 2) ||
+                    config.latitude === null ||
+                    config.longitude === null ||
+                    !Number.isFinite(config.latitude) ||
+                    !Number.isFinite(config.longitude) ||
+                    Math.abs(config.latitude) > 85 ||
+                    Math.abs(config.longitude) > 179
+                  }
+                  onClick={() => {
+                    update({
+                      ...config,
+                      distanceM: routeLength(
+                        config.route ?? [],
+                        config.closeLoop ?? true,
+                      ),
+                    });
+                    void stepper.next();
+                  }}
                 >
-                  <Trash2 className='size-3.5' />
-                  清空
+                  设置参数
+                  <ArrowRight className='size-4' />
                 </Button>
               </div>
-            </div>
-            <p className='text-xs leading-6 text-muted-foreground'>
-              按经过顺序点击地图，弯道请补点；至少 2 点，总长度 50 米至 30
-              公里。按目标距离截断，闭合路线按顺序循环，开放路线原路折返。沿线速度随种子平滑变化（约
-              ±5%）。选点直连，未进行道路匹配。
-            </p>
-          </div>
-          <StudioMap
-            focusPoint={mapFocus}
-            defaultLoaded={mapEnabled}
-            onLoad={() => setMapEnabled(true)}
-            latitude={config.latitude}
-            longitude={config.longitude}
-            routeEditing
-            waypoints={config.route}
-            onPick={(latitude, longitude) => {
-              if ((config.route?.length ?? 0) >= 50) {
-                setErrorScope('location');
-                setError('最多选择 50 个路线点，请先撤销或清空。');
-                return;
-              }
-              update({
-                ...config,
-                latitude: config.route?.length ? config.latitude : latitude,
-                longitude: config.route?.length ? config.longitude : longitude,
-                route: [...(config.route ?? []), { latitude, longitude }],
-              });
-            }}
-          />
-          {feedback('location')}
-          <div className='flex justify-end'>
-            <Button
-              disabled={
-                locating ||
-                (config.route?.length ?? 0) < 2 ||
-                config.latitude === null ||
-                config.longitude === null ||
-                !Number.isFinite(config.latitude) ||
-                !Number.isFinite(config.longitude) ||
-                Math.abs(config.latitude) > 85 ||
-                Math.abs(config.longitude) > 179
-              }
-              onClick={() => void stepper.next()}
-            >
-              设置参数
-              <ArrowRight className='size-4' />
-            </Button>
+            </aside>
           </div>
         </section>
       )}
       {stepper.current.id === 'parameters' && (
         <form
-          className='space-y-6 rounded-xl border border-border bg-card p-5 sm:p-7'
+          className='space-y-7'
           onSubmit={(e) => {
             e.preventDefault();
             void generate();
@@ -451,7 +518,7 @@ function StudioContent({ accountId }: { accountId: string }) {
         >
           <div>
             <div className='flex flex-wrap items-center justify-between gap-3'>
-              <h2 className='text-lg font-semibold'>基准值与偏移范围</h2>
+              <h2 className='text-lg font-semibold'>距离与节奏</h2>
               <Button
                 type='button'
                 variant='default'
@@ -468,9 +535,13 @@ function StudioContent({ accountId }: { accountId: string }) {
             </p>
           </div>
           <div className='grid gap-5 md:grid-cols-2'>
-            <div className='space-y-5 rounded-xl border border-border p-4'>
-              <div className='space-y-2'>
+            <div className='flex flex-col gap-5 rounded-2xl bg-card p-6 sm:p-7'>
+              <div className='flex h-5 items-center justify-between'>
                 <Label htmlFor='run-distanceM'>距离 / 公里</Label>
+                <Ruler className='size-4 text-primary' />
+              </div>
+              <div className='flex h-20 flex-col justify-end gap-2 pb-1'>
+                <p className='text-xs text-muted-foreground'>目标里程</p>
                 <Input
                   id='run-distanceM'
                   type='number'
@@ -506,9 +577,12 @@ function StudioContent({ accountId }: { accountId: string }) {
                 disabled={studio.busy || saving}
               />
             </div>
-            <div className='space-y-5 rounded-xl border border-border p-4'>
-              <p className='text-sm font-medium'>预期配速 / 每公里</p>
-              <div className='grid grid-cols-2 gap-3'>
+            <div className='flex flex-col gap-5 rounded-2xl bg-card p-6 sm:p-7'>
+              <div className='flex h-5 items-center justify-between'>
+                <p className='text-sm font-medium'>预期配速 / 每公里</p>
+                <Gauge className='size-4 text-primary' />
+              </div>
+              <div className='grid h-20 grid-cols-2 items-end gap-3 pb-1'>
                 <div className='space-y-2'>
                   <Label htmlFor='run-pace-minutes'>分钟</Label>
                   <Input
@@ -564,7 +638,10 @@ function StudioContent({ accountId }: { accountId: string }) {
               />
             </div>
           </div>
-          <section className='rounded-xl bg-muted/30 p-5' aria-label='自动估算'>
+          <section
+            className='border-y border-border py-6'
+            aria-label='自动估算'
+          >
             <p className='text-sm font-medium'>预计运动数据</p>
             <dl className='mt-4 grid grid-cols-2 gap-5 sm:grid-cols-4'>
               {[
@@ -584,7 +661,7 @@ function StudioContent({ accountId }: { accountId: string }) {
               ].map(([label, value]) => (
                 <div key={label}>
                   <dt className='text-xs text-muted-foreground'>{label}</dt>
-                  <dd className='mt-2 text-sm font-medium tabular-nums'>
+                  <dd className='mt-2 text-xl font-medium tracking-tight tabular-nums'>
                     {value}
                   </dd>
                 </div>
@@ -762,6 +839,13 @@ function StudioContent({ accountId }: { accountId: string }) {
               合成来源会保留；学校规则、重复防护和结果核对仍适用。
             </p>
           </div>
+          <section className='rounded-xl border border-border bg-card p-5'>
+            <h3 className='text-sm font-medium'>上报前检查</h3>
+            <p className='mt-2 text-xs leading-6 text-muted-foreground'>
+              检查字段结构、时间与里程一致性、配速、步频和逐段速度。当前客户端允许配速
+              3–15 分钟/公里、步频 80–220 步/分钟；异常数据会在发送前拦截。
+            </p>
+          </section>
           <SubmissionPanel key={preview.digest} preview={preview} />
           <Button variant='outline' onClick={() => void stepper.prev()}>
             返回预览

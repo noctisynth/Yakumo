@@ -14,6 +14,8 @@ interface AccountsState extends AccountSnapshot {
   login: (input: LoginInput) => Promise<boolean>;
   switchAccount: (id: string) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
+  refreshIdentity: (id: string) => Promise<boolean>;
+  updateAvatar: (id: string, dataUri: string) => Promise<boolean>;
   clearError: () => void;
 }
 
@@ -59,6 +61,9 @@ export function createAccountsStore(service = accountService) {
       login: (input) => perform(() => service.login(input)),
       switchAccount: (id) => perform(() => service.switch(id)),
       remove: (id) => perform(() => service.remove(id)),
+      refreshIdentity: (id) => perform(() => service.refreshIdentity(id)),
+      updateAvatar: (id, dataUri) =>
+        perform(() => service.updateAvatar(id, dataUri)),
       clearError: () => set({ error: null }),
     };
   });

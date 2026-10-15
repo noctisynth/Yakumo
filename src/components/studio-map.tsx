@@ -10,6 +10,7 @@ export function StudioMap({
   onPick,
   focusPoint,
   waypoints,
+  closeLoop = false,
   routeEditing = false,
   points,
   detail = false,
@@ -20,6 +21,7 @@ export function StudioMap({
   longitude: number | null;
   onPick?: (latitude: number, longitude: number) => void;
   focusPoint?: RoutePoint;
+  closeLoop?: boolean;
   routeEditing?: boolean;
   waypoints?: RoutePoint[];
   points?: RunPoint[];
@@ -91,7 +93,10 @@ export function StudioMap({
     }
     if (waypoints?.length) {
       L.polyline(
-        waypoints.map((p) => [p.latitude, p.longitude] as [number, number]),
+        (closeLoop && waypoints.length >= 3
+          ? [...waypoints, waypoints[0]]
+          : waypoints
+        ).map((p) => [p.latitude, p.longitude] as [number, number]),
         { color: '#c6a76b', weight: 3, dashArray: '6 5' },
       ).addTo(layer.current);
       for (const [index, p] of waypoints.entries()) {
@@ -116,7 +121,7 @@ export function StudioMap({
       }).addTo(layer.current);
       if (!points?.length) map.current.panTo([latitude, longitude]);
     }
-  }, [loaded, latitude, longitude, points, waypoints]);
+  }, [loaded, latitude, longitude, points, waypoints, closeLoop]);
   useEffect(() => {
     if (!loaded || !map.current || !focusPoint) return;
     map.current.setView(
@@ -144,7 +149,7 @@ export function StudioMap({
             <section
               ref={container}
               aria-label={onPick ? '地图选点' : '轨迹地图'}
-              className='relative z-0 h-80 w-full touch-none sm:h-96'
+              className='relative z-0 h-[25rem] w-full touch-none sm:h-[32rem]'
             />
             <section
               aria-label='地图缩放'

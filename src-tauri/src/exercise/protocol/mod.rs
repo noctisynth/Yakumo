@@ -1,7 +1,7 @@
 pub mod json;
 pub mod sign;
 
-use crate::account_error::{AccountError, AccountResult};
+use crate::accounts::error::{AccountError, AccountResult};
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyInit, block_padding::Pkcs7};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use md5::{Digest, Md5};
@@ -68,7 +68,7 @@ impl<'a> Protocol<'a> {
 
     pub fn pack(&self, payload: &Value) -> ProtocolResult<Envelope> {
         let materials: Value =
-            serde_json::from_str(include_str!("../../resources/protocol-materials.json"))
+            serde_json::from_str(include_str!("../../../resources/protocol-materials.json"))
                 .map_err(|_| invalid())?;
         let cert = STANDARD
             .decode(
@@ -161,7 +161,7 @@ mod tests {
     #[test]
     fn native_seven_json_vectors_and_stamp_match() {
         let cases: Vec<Value> =
-            serde_json::from_str(include_str!("../../resources/native-json-vectors.json"))
+            serde_json::from_str(include_str!("../../../resources/native-json-vectors.json"))
                 .expect("synthetic vectors");
         let protocol = Protocol::new("test-token", "test-app", 1700000000123);
         for case in cases {
