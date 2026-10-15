@@ -73,3 +73,10 @@ Android 定位接口。isFaceStatus=0，不声称通过人脸；isValid=1 仅表
 原生算法标记 waypoints-v1，保留 synthetic 来源，继续校验时间、步数、总距离及逐段速度。
 预设加密保存全部路线点，旧预设无路线时继续按 circle-v1 处理；提交回执记录实际算法。
 保存为预设使用主按钮，数据大盘刷新使用标准 sm 尺寸并与标题区域居中对齐。
+
+
+地图交互补充：主动加载后启用滚轮与双指缩放，缩放按钮使用现有 Button 和主题图标，
+移动端保持 44 像素触控目标，达到缩放上下限后禁用对应按钮。
+移除可选 Leaflet 前缀，自定义署名保留清晰可见的 © OpenStreetMap contributors 及版权链接；
+不折叠、不隐藏、不降低为不可辨识文字，主题使用实底卡片保证底图变化时可读。
+依据：Leaflet 1.9.4 Control.Attribution 文档允许 prefix=false；OSMF Tile Usage Policy 第 2 节要求地图内清晰署名。
