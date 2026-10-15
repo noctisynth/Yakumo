@@ -7,11 +7,16 @@ import { HomePage } from '@/pages/home-page';
 import { LoginPage } from '@/pages/login-page';
 import { MePage } from '@/pages/me-page';
 import { NotFoundPage } from '@/pages/not-found-page';
-import { ProfilePage } from '@/pages/profile-page';
 import { RecordDetailPage } from '@/pages/record-detail-page';
 import { RecordsPage } from '@/pages/records-page';
 import { SchoolPage } from '@/pages/school-page';
 import { SettingsPage } from '@/pages/settings-page';
+
+const ProfilePage = lazy(() =>
+  import('@/pages/profile-page').then((module) => ({
+    default: module.ProfilePage,
+  })),
+);
 
 const StudioPage = lazy(() =>
   import('@/pages/studio-page').then((m) => ({ default: m.StudioPage })),

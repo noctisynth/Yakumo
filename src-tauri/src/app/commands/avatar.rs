@@ -27,7 +27,7 @@ async fn update(
                 if uploaded {
                     AccountError::new(
                         "avatar_refresh_failed",
-                        "头像已保存，但暂未读取到新头像，请点击刷新头像确认。",
+                        "头像已保存，但暂未读取到新头像，请点击刷新资料确认。",
                     )
                 } else {
                     e
@@ -36,7 +36,7 @@ async fn update(
         if uploaded && identity.avatar.is_err() {
             return Err(AccountError::new(
                 "avatar_refresh_failed",
-                "头像已保存，但图片暂时无法读取，请刷新头像确认。",
+                "头像已保存，但图片暂时无法读取，请刷新资料确认。",
             ));
         }
         state

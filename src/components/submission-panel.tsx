@@ -1,26 +1,12 @@
 import { invoke } from '@tauri-apps/api/core';
-import {
-  ArrowUpRight,
-  LoaderCircle,
-  RefreshCw,
-  Send,
-  ShieldCheck,
-} from 'lucide-react';
+import { LoaderCircle, RefreshCw, Send, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
+import type { Receipt } from '@/components/submission-recovery';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { useDashboardAccount } from '@/hooks/use-dashboard-account';
-import {
-  items,
-  object,
-  quantity,
-  recordStatus,
-  text,
-} from '@/lib/exercise-data';
 import type { RunPreview } from '@/models/run';
-import { readExercise } from '@/services/exercise-service';
 import { useDashboardStore } from '@/stores/dashboard-store';
 
 interface Preparation {
@@ -29,17 +15,6 @@ interface Preparation {
   notes: string[];
   expiresAt: number;
 }
-interface Receipt {
-  id: string;
-  digest: string;
-  identify: string;
-  state: string;
-  message: string;
-  recordId: string | null;
-  createdAt: number;
-  algorithm: string;
-  source: string;
-}
 const failure = (e: unknown) =>
   typeof e === 'object' &&
   e !== null &&
@@ -47,165 +22,6 @@ const failure = (e: unknown) =>
   typeof e.message === 'string'
     ? e.message
     : '操作未能完成，请先核对已有提交。';
-function ReceiptCard({
-  receipt,
-  accountId,
-  onLinked,
-}: {
-  receipt: Receipt;
-  accountId: string;
-  onLinked: () => void;
-}) {
-  const [busy, setBusy] = useState(false),
-    [report, setReport] = useState<string[]>([]),
-    [recordId, setRecordId] = useState('');
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-  async function reconcile() {
-    setBusy(true);
-    setReport([]);
-    const results = await Promise.allSettled([
-      receipt.recordId
-        ? readExercise(accountId, { kind: 'detail', id: receipt.recordId })
-        : Promise.resolve(null),
-      readExercise(accountId, {
-        kind: 'records',
-        status: '1',
-        page: 1,
-        date: '',
-      }),
-      readExercise(accountId, { kind: 'statistics' }),
-      readExercise(accountId, { kind: 'summary' }),
-    ]);
-    if (!mounted.current) return;
-    const labels = ['详情', '有效列表当前日期页', '统计快照', '运动汇总'];
-    const lines = results.map((r, i) => {
-      if (r.status === 'rejected') return `${labels[i]}：${failure(r.reason)}`;
-      if (!r.value) return '详情：回执没有记录标识，请查看列表后尝试关联核对。';
-      const data = object(r.value.data);
-      if (i === 0)
-        return `详情：${recordStatus(data.status)} · ${text(data.remark)}`;
-      if (i === 1)
-        return receipt.recordId
-          ? `有效列表当前日期页：${items(data.records).some((v) => text(object(v).id, '') === receipt.recordId) ? '已收录' : '本页未见，可能存在延迟或其他日期分组'}`
-          : '有效列表已读取，请到运动记录页查看候选记录。';
-      if (i === 2)
-        return `最新累计里程 ${quantity(data.allTotalMileage)} km，累计次数 ${quantity(data.allNum, 0)}；不据此推断本次增量。`;
-      return '运动汇总已读取；接收、详情判定及统计口径分别核对。';
-    });
-    setReport(lines);
-    setBusy(false);
-    void useDashboardStore.getState().overview();
-  }
-  async function link() {
-    setBusy(true);
-    try {
-      await invoke<Receipt>('link_submission', {
-        accountId,
-        attemptId: receipt.id,
-        recordId: recordId.trim(),
-      });
-      if (mounted.current) {
-        setReport(['已用学校详情的运动关联标识确认入库。']);
-        onLinked();
-      }
-    } catch (e) {
-      if (mounted.current) setReport([failure(e)]);
-    } finally {
-      if (mounted.current) setBusy(false);
-    }
-  }
-  return (
-    <article className='space-y-4 border-t border-border py-5'>
-      <div className='flex flex-wrap items-start justify-between gap-2'>
-        <div>
-          <p
-            className={`text-sm font-medium ${receipt.state === 'unknown' ? 'text-primary' : ''}`}
-          >
-            {receipt.state === 'accepted'
-              ? '学校已接收'
-              : receipt.state === 'rejected'
-                ? '学校已拒绝'
-                : '结果不确定'}
-          </p>
-          <p className='mt-1 text-[10px] text-muted-foreground'>
-            {new Date(receipt.createdAt).toLocaleString()} · {receipt.source} /{' '}
-            {receipt.algorithm}
-          </p>
-        </div>
-        <span className='font-mono text-[10px] text-muted-foreground'>
-          {receipt.digest.slice(0, 12)}
-        </span>
-      </div>
-      <p className='text-xs leading-6 text-muted-foreground'>
-        {receipt.message}
-      </p>
-      <div className='flex flex-wrap gap-2'>
-        <Button
-          size='sm'
-          variant='outline'
-          disabled={busy}
-          onClick={() => void reconcile()}
-        >
-          <RefreshCw className='size-3.5' />
-          核对详情、列表与统计
-        </Button>
-        {receipt.recordId && (
-          <Button asChild size='sm' variant='ghost'>
-            <Link to={`/records/${encodeURIComponent(receipt.recordId)}`}>
-              打开详情
-              <ArrowUpRight className='size-3.5' />
-            </Link>
-          </Button>
-        )}
-        <Button asChild size='sm' variant='ghost'>
-          <Link to='/records'>查看运动记录</Link>
-        </Button>
-      </div>
-      {!receipt.recordId && (
-        <details className='text-xs'>
-          <summary className='cursor-pointer text-muted-foreground'>
-            用学校记录标识关联核对
-          </summary>
-          <p className='my-3 leading-6 text-muted-foreground'>
-            只有详情中的运动关联标识匹配，才会更新本地回执；无法匹配时保留结果不确定。
-          </p>
-          <div className='flex flex-wrap gap-2'>
-            <Input
-              aria-label='学校记录标识'
-              maxLength={128}
-              value={recordId}
-              onChange={(e) => setRecordId(e.target.value)}
-              className='min-w-0 flex-1'
-            />
-            <Button
-              size='sm'
-              disabled={busy || !recordId.trim()}
-              onClick={() => void link()}
-            >
-              关联核对
-            </Button>
-          </div>
-        </details>
-      )}
-      {report.length > 0 && (
-        <ul
-          role='status'
-          className='space-y-2 rounded-md bg-muted p-4 text-xs leading-6 text-muted-foreground'
-        >
-          {report.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-      )}
-    </article>
-  );
-}
 export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
   const { active } = useDashboardAccount();
   const accountId = active?.id ?? '';
@@ -215,6 +31,7 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
   const consentId = useId();
   const [preparation, setPreparation] = useState<Preparation | null>(null);
   const [history, setHistory] = useState<Receipt[]>([]);
+  const [lastReceipt, setLastReceipt] = useState<Receipt | null>(null);
   const [historyReady, setHistoryReady] = useState(false);
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -227,6 +44,10 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
     preparationSequence = useRef(0);
   const autoChecked = useRef<string | null>(null);
   const busy = checking || submitting;
+  const outcome =
+    lastReceipt ??
+    history.find((r) => r.digest === preview?.digest) ??
+    history.find((r) => r.state === 'unknown');
   const locked = history.some(
     (r) => r.state === 'unknown' || r.digest === preview?.digest,
   );
@@ -335,12 +156,16 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
     setSubmitting(true);
     setError(null);
     try {
-      await invoke<Receipt>('submit_run', {
+      const receipt = await invoke<Receipt>('submit_run', {
         accountId,
         ticket: preparation.ticket,
         consent,
       });
-      if (mounted.current) setPreparation(null);
+      if (mounted.current) {
+        setPreparation(null);
+        setLastReceipt(receipt);
+        void useDashboardStore.getState().overview();
+      }
     } catch (e) {
       if (mounted.current) {
         setError(failure(e));
@@ -436,10 +261,22 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
               正在检查学校要求…
             </p>
           )}
-          {locked && (
-            <p className='text-sm leading-6 text-primary'>
-              本草稿已有提交，或账号存在结果不确定的提交。请先核对下方历史。
-            </p>
+          {(lastReceipt || locked) && (
+            <div className='space-y-3 border-t border-border pt-5'>
+              <p role='status' className='text-sm font-medium'>
+                {outcome?.state === 'accepted'
+                  ? '学校已接收'
+                  : outcome?.state === 'rejected'
+                    ? '学校未接收本次提交'
+                    : '有提交结果待核对'}
+              </p>
+              <p className='text-xs leading-6 text-muted-foreground'>
+                {outcome?.message || '请前往运动记录核对结果，避免重复提交。'}
+              </p>
+              <Button asChild size='sm' variant='outline'>
+                <Link to='/records'>查看运动记录</Link>
+              </Button>
+            </div>
           )}
           {preparation && !locked && (
             <div className='space-y-4 border-t border-border pt-5'>
@@ -516,30 +353,15 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
           提交记录未能核对：{historyError}
         </p>
       )}
-      <div className='mt-6 flex items-center justify-between border-t border-border pt-4'>
-        <h3 className='text-xs font-medium'>本账号提交历史</h3>
+      {historyError && (
         <Button
-          variant='ghost'
+          className='mt-3'
+          variant='outline'
           size='sm'
-          disabled={busy}
           onClick={() => void refresh()}
         >
-          刷新回执
+          重试核对
         </Button>
-      </div>
-      {history.length ? (
-        history.map((receipt) => (
-          <ReceiptCard
-            key={receipt.id}
-            receipt={receipt}
-            accountId={accountId}
-            onLinked={() => void refresh()}
-          />
-        ))
-      ) : (
-        <p className='py-5 text-xs text-muted-foreground'>
-          暂无本地提交记录。提交意图与回执加密保存，含合成来源，不保存轨迹坐标。
-        </p>
       )}
     </section>
   );

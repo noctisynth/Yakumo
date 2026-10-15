@@ -1,8 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { AccountRequired } from '@/components/account-required';
 import { RecordsPanel } from '@/components/records-panel';
 import { useDashboardAccount } from '@/hooks/use-dashboard-account';
 import { useDashboardStore } from '@/stores/dashboard-store';
+
+const SubmissionRecovery = lazy(() =>
+  import('@/components/submission-recovery').then((module) => ({
+    default: module.SubmissionRecovery,
+  })),
+);
 
 export function RecordsPage() {
   const { active, ready } = useDashboardAccount();
@@ -31,6 +37,11 @@ export function RecordsPage() {
           查看学校记录，按状态和日期筛选，了解每次运动的结果。
         </p>
       </div>
+      {active && (
+        <Suspense fallback={null}>
+          <SubmissionRecovery key={active.id} accountId={active.id} />
+        </Suspense>
+      )}
       <RecordsPanel />
     </div>
   );

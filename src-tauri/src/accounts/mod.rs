@@ -358,7 +358,7 @@ impl AccountManager {
         if current.access_token != session.access_token || current.user_id != session.user_id {
             return Err(AccountError::new(
                 "account_changed",
-                "账号会话已变化，请重新刷新头像。",
+                "账号会话已变化，请刷新资料后重试。",
             ));
         }
         let avatar = identity.avatar?;

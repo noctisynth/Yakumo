@@ -1,6 +1,5 @@
 import { RefreshCw, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { AccountAvatar } from '@/components/account-avatar';
 import { AccountRequired } from '@/components/account-required';
 import { AvatarEditor } from '@/components/avatar-editor';
 import { DataFeedback } from '@/components/data-feedback';
@@ -18,6 +17,7 @@ import { useDashboardStore } from '@/stores/dashboard-store';
 
 export function ProfilePage() {
   const { active, ready } = useDashboardAccount();
+  const pending = useAccountsStore((state) => state.pending);
   const { profile, read } = useDashboardStore();
   const loaded = useRef<string | null>(null);
   const [search, setSearch] = useState('');
@@ -54,42 +54,46 @@ export function ProfilePage() {
         </div>
         <Button
           variant='outline'
-          disabled={profile.loading}
+          disabled={profile.loading || pending}
           onClick={() => {
             void read('profile', { kind: 'profile' });
             if (active)
               void useAccountsStore.getState().refreshIdentity(active.id);
           }}
         >
-          <RefreshCw className='size-4' />
+          <RefreshCw
+            className={
+              profile.loading || pending ? 'size-4 animate-spin' : 'size-4'
+            }
+          />
           刷新资料
         </Button>
       </div>
-      <section className='flex flex-wrap items-center gap-5 rounded-xl border border-border bg-card p-6'>
-        <AccountAvatar
-          key={active?.id}
-          avatarUrl={active?.avatarUrl}
-          className='size-16 rounded-xl'
-        />
-        <div className='min-w-0'>
-          <h2 className='break-words text-xl font-semibold'>
-            {text(
-              object(profile.data).realName,
-              text(
-                object(profile.data).name,
-                text(object(profile.data).nickName, active?.username),
-              ),
-            )}
-          </h2>
-          <p className='mt-2 text-xs text-muted-foreground'>
-            {active?.schoolName} · {active?.username}
-          </p>
-        </div>
-        <span className='ml-auto hidden text-[10px] tracking-[0.2em] text-primary sm:block'>
-          PERSONAL IDENTITY
-        </span>
-        {active && <AvatarEditor accountId={active.id} />}
-      </section>
+      {active && (
+        <AvatarEditor
+          key={active.id}
+          accountId={active.id}
+          avatarUrl={active.avatarUrl}
+        >
+          <div className='min-w-0'>
+            <h2 className='break-words text-xl font-semibold'>
+              {text(
+                object(profile.data).realName,
+                text(
+                  object(profile.data).name,
+                  text(object(profile.data).nickName, active?.username),
+                ),
+              )}
+            </h2>
+            <p className='mt-2 text-xs text-muted-foreground'>
+              {active?.schoolName} · {active?.username}
+            </p>
+          </div>
+          <span className='ml-auto hidden text-[10px] tracking-[0.2em] text-primary sm:block'>
+            PERSONAL IDENTITY
+          </span>
+        </AvatarEditor>
+      )}
       <DataFeedback resource={profile} />
       <section className='rounded-xl border border-border bg-card'>
         <div className='flex flex-wrap items-center justify-between gap-4 border-b border-border p-5'>

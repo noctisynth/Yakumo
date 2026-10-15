@@ -1,21 +1,34 @@
-import { Camera, RefreshCw } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Camera, LoaderCircle } from 'lucide-react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { AccountAvatar } from '@/components/account-avatar';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useAccountsStore } from '@/stores/accounts-store';
 
-export function AvatarEditor({ accountId }: { accountId: string }) {
+export function AvatarEditor({
+  accountId,
+  avatarUrl,
+  children,
+}: {
+  accountId: string;
+  avatarUrl?: string | null;
+  children: ReactNode;
+}) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
   const generation = useRef(0);
-  const {
-    pending,
-    refreshIdentity,
-    updateAvatar,
-    error: accountError,
-  } = useAccountsStore();
+  const { pending, updateAvatar, error: accountError } = useAccountsStore();
   useEffect(() => {
     void accountId;
     generation.current++;
@@ -32,6 +45,8 @@ export function AvatarEditor({ accountId }: { accountId: string }) {
     const current = ++generation.current;
     setError(null);
     setReading(true);
+    setNotice(null);
+    useAccountsStore.getState().clearError();
     try {
       if (
         !['image/png', 'image/jpeg'].includes(file.type) ||
@@ -68,76 +83,137 @@ export function AvatarEditor({ accountId }: { accountId: string }) {
       if (current === generation.current) setReading(false);
     }
   }
-  async function act(upload: boolean) {
-    const success =
-      upload && preview
-        ? await updateAvatar(accountId, preview)
-        : await refreshIdentity(accountId);
+  async function upload() {
+    if (!preview || pending) return;
+    const current = generation.current;
+    const success = await updateAvatar(accountId, preview);
+    if (current !== generation.current) {
+      useAccountsStore.getState().clearError();
+      return;
+    }
     setError(
       success
         ? null
         : (useAccountsStore.getState().error?.message ??
             '头像操作未完成，请重试。'),
     );
-    if (success && upload) setPreview(null);
+    if (success) {
+      setPreview(null);
+      setNotice('头像已更新。');
+    }
   }
+  const message = error ?? accountError?.message;
   return (
-    <div className='basis-full space-y-3 border-t border-border pt-4'>
-      <input
-        ref={input}
-        type='file'
-        accept='image/png,image/jpeg'
-        aria-label='选择头像图片'
-        className='hidden'
-        onChange={(e) => {
-          void choose(e.target.files?.[0]);
-          e.target.value = '';
-        }}
-      />
-      <div className='flex flex-wrap gap-2'>
-        <Button
-          size='sm'
-          variant='outline'
+    <section className='flex flex-wrap items-center gap-5 rounded-xl border border-border bg-card p-6'>
+      <div className='relative shrink-0'>
+        <button
+          ref={trigger}
+          type='button'
+          aria-label='更换头像'
+          title='更换头像'
           disabled={pending || reading}
           onClick={() => input.current?.click()}
+          className='group relative block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-card disabled:cursor-wait'
         >
-          <Camera className='size-4' />
-          {reading ? '正在处理…' : '更换头像'}
-        </Button>
-        <Button
-          size='sm'
-          variant='ghost'
-          disabled={pending || reading}
-          onClick={() => void act(false)}
-        >
-          <RefreshCw className='size-4' />
-          刷新头像
-        </Button>
-      </div>
-      {preview && (
-        <div className='flex flex-wrap items-center gap-4 rounded-xl bg-background/50 p-4'>
-          <AccountAvatar avatarUrl={preview} className='size-16' />
-          <div className='flex-1 text-xs leading-6 text-muted-foreground'>
-            将使用居中的正方形区域。确认后同步到学校账号。
-          </div>
-          <Button size='sm' disabled={pending} onClick={() => void act(true)}>
-            {pending ? '正在保存…' : '确认更换'}
-          </Button>
-          <Button
-            size='sm'
-            variant='ghost'
-            disabled={pending}
-            onClick={() => setPreview(null)}
+          <AccountAvatar
+            avatarUrl={avatarUrl}
+            className='size-20 rounded-2xl'
+          />
+          <span className='absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-2xl bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
+            {reading ? (
+              <LoaderCircle className='size-5 animate-spin' />
+            ) : (
+              <Camera className='size-5' />
+            )}
+            <span className='text-[10px]'>
+              {reading ? '正在处理' : '更换头像'}
+            </span>
+          </span>
+          <span
+            aria-hidden='true'
+            className='absolute -right-1 -bottom-1 rounded-full border-[3px] border-card bg-primary p-1.5 text-primary-foreground transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0'
           >
-            取消
-          </Button>
-        </div>
-      )}
-      {(error || accountError) && (
-        <p role='alert' className='text-sm text-destructive'>
-          {error ?? accountError?.message}
+            <Camera className='size-3' />
+          </span>
+        </button>
+        <input
+          ref={input}
+          type='file'
+          accept='image/png,image/jpeg'
+          aria-label='选择头像图片'
+          className='hidden'
+          onChange={(e) => {
+            void choose(e.target.files?.[0]);
+            e.target.value = '';
+          }}
+        />
+      </div>
+      {children}
+      {message && !preview && (
+        <p
+          role='alert'
+          className='basis-full text-sm leading-6 text-destructive'
+        >
+          {message}
         </p>
       )}
-    </div>
+      {notice && (
+        <p role='status' className='basis-full text-xs text-muted-foreground'>
+          {notice}
+        </p>
+      )}
+      <Dialog
+        open={preview !== null}
+        onOpenChange={(open) => {
+          if (!open && !pending) {
+            setPreview(null);
+            setError(null);
+            useAccountsStore.getState().clearError();
+          }
+        }}
+      >
+        <DialogContent
+          showCloseButton={!pending}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            trigger.current?.focus();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>更换头像</DialogTitle>
+            <DialogDescription>
+              将使用图片居中的正方形区域，确认后同步到学校账号。
+            </DialogDescription>
+          </DialogHeader>
+          <div className='flex justify-center rounded-xl bg-muted/40 py-6'>
+            <AccountAvatar
+              avatarUrl={preview}
+              className='size-40 rounded-2xl'
+            />
+          </div>
+          {message && (
+            <p role='alert' className='text-sm leading-6 text-destructive'>
+              {message}
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              variant='outline'
+              disabled={pending}
+              onClick={() => {
+                setPreview(null);
+                setError(null);
+                useAccountsStore.getState().clearError();
+              }}
+            >
+              取消
+            </Button>
+            <Button disabled={pending} onClick={() => void upload()}>
+              {pending ? '正在保存…' : '确认更换'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </section>
   );
 }

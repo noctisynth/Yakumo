@@ -10,7 +10,7 @@ fn failed() -> AccountError {
 fn uncertain() -> AccountError {
     AccountError::new(
         "avatar_upload_unknown",
-        "未收到明确结果，请先刷新头像确认后再决定是否重试。",
+        "未收到明确结果，请先刷新资料确认后再决定是否重试。",
     )
 }
 

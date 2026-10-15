@@ -16,7 +16,7 @@ use crate::{
 const MAX_IMAGE: usize = 2 * 1024 * 1024;
 
 fn unavailable() -> AccountError {
-    AccountError::new("avatar_unavailable", "头像暂时无法读取，已保留账号占位。")
+    AccountError::new("avatar_unavailable", "头像未能读取，请刷新资料重试。")
 }
 
 fn signature(token: &str, app_id: &str, timestamp: &str) -> AccountResult<String> {
@@ -78,7 +78,23 @@ fn client_builder() -> reqwest::blocking::ClientBuilder {
         .timeout(Duration::from_secs(10))
 }
 
-fn image_client(url: &Url, allow_local: bool) -> AccountResult<Client> {
+fn permitted_image_address(url: &Url, origin: &str, address: IpAddr) -> bool {
+    if public_ip(address) {
+        return true;
+    }
+    let fake_ip = matches!(address, IpAddr::V4(ip) if ip.octets()[0] == 198 && matches!(ip.octets()[1], 18 | 19));
+    // A TUN proxy can return benchmark-range addresses for an already trusted school host.
+    // Keep the exception same-origin and DNS-only; never allow literal or arbitrary private targets.
+    fake_ip
+        && url.domain().is_some()
+        && Url::parse(origin).is_ok_and(|school| {
+            school.scheme() == url.scheme()
+                && school.host_str() == url.host_str()
+                && school.port_or_known_default() == url.port_or_known_default()
+        })
+}
+
+fn image_client(url: &Url, origin: &str, allow_local: bool) -> AccountResult<Client> {
     let host = url
         .host_str()
         .ok_or_else(unavailable)?
@@ -87,12 +103,23 @@ fn image_client(url: &Url, allow_local: bool) -> AccountResult<Client> {
     let port = url.port_or_known_default().ok_or_else(unavailable)?;
     let addresses: Vec<_> = (host, port)
         .to_socket_addrs()
-        .map_err(|_| unavailable())?
+        .map_err(|_| {
+            AccountError::new(
+                "avatar_dns_unavailable",
+                "无法连接头像服务器，请检查网络后刷新资料。",
+            )
+        })?
         .collect();
     if addresses.is_empty()
-        || (!allow_local && addresses.iter().any(|address| !public_ip(address.ip())))
+        || (!allow_local
+            && addresses
+                .iter()
+                .any(|address| !permitted_image_address(url, origin, address.ip())))
     {
-        return Err(unavailable());
+        return Err(AccountError::new(
+            "avatar_address_unavailable",
+            "头像地址暂时不可用，请稍后刷新资料。",
+        ));
     }
     // Pin the checked addresses so a second DNS lookup cannot change the target.
     client_builder()
@@ -215,32 +242,94 @@ impl<'a> AvatarReader<'a> {
             return Ok(None);
         };
         // Never attach school authentication headers to image requests, including same-origin ones.
-        let image = image_client(&url, self.allow_local)?
+        let image = image_client(&url, self.origin, self.allow_local)?
             .get(url)
             .header("Accept", "image/png,image/jpeg,image/gif,image/webp")
             .send()
-            .map_err(|_| unavailable())?;
-        if !image.status().is_success()
-            || image
-                .content_length()
-                .is_some_and(|length| length > MAX_IMAGE as u64)
+            .map_err(|_| {
+                AccountError::new(
+                    "avatar_network_error",
+                    "头像下载失败，请检查网络后刷新资料。",
+                )
+            })?;
+        if !image.status().is_success() {
+            return Err(match image.status().as_u16() {
+                401 | 403 => {
+                    AccountError::new("avatar_access_denied", "头像访问被拒绝，请刷新资料重试。")
+                }
+                404 => AccountError::new(
+                    "avatar_not_found",
+                    "学校返回的头像不存在，请刷新资料或重新选择头像。",
+                ),
+                300..=399 => {
+                    AccountError::new("avatar_redirected", "头像地址发生跳转，暂时无法读取。")
+                }
+                _ => AccountError::new(
+                    "avatar_http_error",
+                    "头像服务器暂时无法提供图片，请稍后重试。",
+                ),
+            });
+        }
+        if image
+            .content_length()
+            .is_some_and(|length| length > MAX_IMAGE as u64)
         {
-            return Err(unavailable());
+            return Err(AccountError::new(
+                "avatar_too_large",
+                "头像图片超过当前支持的大小，请选择较小图片。",
+            ));
         }
         let mime = image
             .headers()
             .get("Content-Type")
             .and_then(|value| value.to_str().ok())
             .and_then(|value| value.split(';').next())
-            .ok_or_else(unavailable)?
+            .unwrap_or("")
             .trim()
             .to_ascii_lowercase();
         let mut bytes = Vec::new();
         image
             .take(MAX_IMAGE as u64 + 1)
             .read_to_end(&mut bytes)
-            .map_err(|_| unavailable())?;
-        encode_image(&bytes, &mime).map(Some)
+            .map_err(|_| {
+                AccountError::new(
+                    "avatar_download_incomplete",
+                    "头像下载未完成，请检查网络后刷新资料。",
+                )
+            })?;
+        if bytes.len() > MAX_IMAGE {
+            return Err(AccountError::new(
+                "avatar_too_large",
+                "头像图片超过当前支持的大小，请选择较小图片。",
+            ));
+        }
+        let mime = if matches!(
+            mime.as_str(),
+            "" | "application/octet-stream" | "binary/octet-stream"
+        ) {
+            if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+                "image/png"
+            } else if bytes.starts_with(b"\xff\xd8\xff") {
+                "image/jpeg"
+            } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+                "image/gif"
+            } else if bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP") {
+                "image/webp"
+            } else {
+                return Err(AccountError::new(
+                    "avatar_invalid_image",
+                    "头像响应不是支持的图片格式，请刷新资料重试。",
+                ));
+            }
+        } else {
+            &mime
+        };
+        encode_image(&bytes, mime).map(Some).map_err(|_| {
+            AccountError::new(
+                "avatar_invalid_image",
+                "头像响应不是支持的图片格式，请刷新资料重试。",
+            )
+        })
     }
 }
 
@@ -470,6 +559,43 @@ mod tests {
     }
 
     #[test]
+    fn proxy_fake_ips_are_supported_only_for_the_trusted_school_dns_origin() {
+        let origin = "https://school.example/";
+        let image = Url::parse("https://school.example/avatar.png").expect("url");
+        for fake in ["198.18.0.2", "198.19.255.254"] {
+            let ip = fake.parse().expect("ip");
+            assert!(!public_ip(ip));
+            assert!(permitted_image_address(&image, origin, ip));
+            for url in [
+                "https://other.example/avatar.png",
+                "http://school.example/avatar.png",
+                "https://school.example:444/avatar.png",
+                "https://198.18.0.2/avatar.png",
+            ] {
+                assert!(!permitted_image_address(
+                    &Url::parse(url).expect("url"),
+                    origin,
+                    ip
+                ));
+            }
+        }
+        for private in [
+            "127.0.0.1",
+            "10.0.0.1",
+            "169.254.169.254",
+            "192.168.1.2",
+            "::1",
+            "fc00::1",
+        ] {
+            assert!(!permitted_image_address(
+                &image,
+                origin,
+                private.parse().expect("ip")
+            ));
+        }
+    }
+
+    #[test]
     fn cache_allows_only_bounded_raster_images() {
         let png = b"\x89PNG\r\n\x1a\nsynthetic";
         let cached = encode_image(png, "image/png").expect("png");
@@ -483,5 +609,59 @@ mod tests {
         assert!(encode_image(b"<svg/>", "image/svg+xml").is_err());
         assert!(encode_image(b"<html/>", "image/png").is_err());
         assert!(encode_image(&vec![0; MAX_IMAGE + 1], "image/png").is_err());
+    }
+
+    #[test]
+    fn generic_binary_responses_use_raster_magic_and_errors_identify_the_stage() {
+        for mime in ["application/octet-stream", "binary/octet-stream", ""] {
+            let (origin, worker) = server(
+                serde_json::json!({"code":0,"data":{"imageRouteUrl":"/avatar.png"}}),
+                Some((200, mime, b"\x89PNG\r\n\x1a\nsynthetic".to_vec())),
+            );
+            assert!(
+                AvatarReader {
+                    origin: &origin,
+                    allow_local: true
+                }
+                .read(&session(), 100)
+                .expect("binary PNG")
+                .expect("image")
+                .starts_with("data:image/png;base64,")
+            );
+            worker.join().expect("server");
+        }
+        for (status, mime, bytes, code) in [
+            (403, "image/png", vec![], "avatar_access_denied"),
+            (404, "image/png", vec![], "avatar_not_found"),
+            (302, "image/png", vec![], "avatar_redirected"),
+            (
+                200,
+                "application/octet-stream",
+                b"<svg/>".to_vec(),
+                "avatar_invalid_image",
+            ),
+            (
+                200,
+                "text/html",
+                b"<html>private</html>".to_vec(),
+                "avatar_invalid_image",
+            ),
+            (200, "image/png", vec![0; MAX_IMAGE + 1], "avatar_too_large"),
+        ] {
+            let (origin, worker) = server(
+                serde_json::json!({"code":0,"data":{"imageRouteUrl":"/avatar.png"}}),
+                Some((status, mime, bytes)),
+            );
+            let error = AvatarReader {
+                origin: &origin,
+                allow_local: true,
+            }
+            .read(&session(), 100)
+            .expect_err("classified");
+            assert_eq!(error.code, code);
+            assert!(!error.message.contains("private"));
+            assert!(!error.message.contains("占位"));
+            worker.join().expect("server");
+        }
     }
 }
