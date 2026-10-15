@@ -131,7 +131,6 @@ function StudioContent({ accountId }: { accountId: string }) {
       ? paceConfig(structuredClone(draft.config))
       : paceConfig(defaultConfig());
   });
-  const [mapEnabled, setMapEnabled] = useState(false);
   const [mapFocus, setMapFocus] = useState<RoutePoint>();
   const [start, setStart] = useState(() =>
     localDateTime(Date.now() - 20 * 60000),
@@ -394,11 +393,8 @@ function StudioContent({ accountId }: { accountId: string }) {
               <div className='min-w-0'>
                 <StudioMap
                   focusPoint={mapFocus}
-                  defaultLoaded={mapEnabled}
-                  onLoad={() => setMapEnabled(true)}
                   latitude={config.latitude}
                   longitude={config.longitude}
-                  routeEditing
                   waypoints={config.route}
                   closeLoop={config.closeLoop}
                   onPick={(latitude, longitude) => {
@@ -811,8 +807,6 @@ function StudioContent({ accountId }: { accountId: string }) {
               preview={preview}
               exportError={errorScope === 'export' ? error : null}
               exportPreview={exportPreview}
-              mapLoaded={mapEnabled}
-              onMapLoad={() => setMapEnabled(true)}
             />
             <div className='flex flex-wrap justify-between gap-3'>
               <Button variant='outline' onClick={() => void stepper.prev()}>
@@ -827,25 +821,6 @@ function StudioContent({ accountId }: { accountId: string }) {
         )}
         {stepper.current.id === 'confirm' && preview && (
           <section className='space-y-5'>
-            <div className='rounded-xl border border-border bg-card p-5'>
-              <h2 className='text-lg font-semibold'>
-                检查完成，由你决定是否提交。
-              </h2>
-              <p className='mt-3 text-sm text-muted-foreground'>
-                {(preview.actualDistanceM / 1000).toFixed(3)} km ·{' '}
-                {preview.input.durationS} 秒 · {preview.input.steps} 步
-              </p>
-              <p className='mt-3 text-xs text-muted-foreground'>
-                合成来源会保留；学校规则、重复防护和结果核对仍适用。
-              </p>
-            </div>
-            <section className='rounded-xl border border-border bg-card p-5'>
-              <h3 className='text-sm font-medium'>上报前检查</h3>
-              <p className='mt-2 text-xs leading-6 text-muted-foreground'>
-                检查字段结构、时间与里程一致性、配速、步频和逐段速度。当前客户端允许配速
-                3–15 分钟/公里、步频 80–220 步/分钟；异常数据会在发送前拦截。
-              </p>
-            </section>
             <SubmissionPanel key={preview.digest} preview={preview} />
             <Button variant='outline' onClick={() => void stepper.prev()}>
               返回预览

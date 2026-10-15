@@ -7,14 +7,10 @@ export function RunPreviewCard({
   preview,
   exportPreview,
   exportError,
-  mapLoaded,
-  onMapLoad,
 }: {
   preview: RunPreview;
   exportPreview: () => Promise<void>;
   exportError?: string | null;
-  mapLoaded?: boolean;
-  onMapLoad?: () => void;
 }) {
   const [detail, setDetail] = useState(false);
   return (
@@ -74,8 +70,6 @@ export function RunPreviewCard({
             longitude={preview.points[0]?.o ?? preview.input.longitude}
             points={preview.points}
             detail={detail}
-            defaultLoaded={mapLoaded}
-            onLoad={onMapLoad}
           />
         </div>
         <p className='px-5 pb-5 text-[11px] text-muted-foreground'>

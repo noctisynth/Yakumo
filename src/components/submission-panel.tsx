@@ -1,8 +1,15 @@
 import { invoke } from '@tauri-apps/api/core';
-import { ArrowUpRight, RefreshCw, Send, ShieldCheck } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ArrowUpRight,
+  LoaderCircle,
+  RefreshCw,
+  Send,
+  ShieldCheck,
+} from 'lucide-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { useDashboardAccount } from '@/hooks/use-dashboard-account';
 import {
@@ -202,24 +209,46 @@ function ReceiptCard({
 export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
   const { active } = useDashboardAccount();
   const accountId = active?.id ?? '';
-  const [preparation, setPreparation] = useState<Preparation | null>(null),
-    [history, setHistory] = useState<Receipt[]>([]),
-    [busy, setBusy] = useState(false),
-    [consent, setConsent] = useState(false),
-    [error, setError] = useState<string | null>(null);
+  const context = `${accountId}:${preview?.digest ?? ''}`;
+  const currentContext = useRef(context);
+  currentContext.current = context;
+  const consentId = useId();
+  const [preparation, setPreparation] = useState<Preparation | null>(null);
+  const [history, setHistory] = useState<Receipt[]>([]);
+  const [historyReady, setHistoryReady] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const mounted = useRef(true),
     flight = useRef(false);
-  const refreshSequence = useRef(0);
+  const refreshSequence = useRef(0),
+    preparationSequence = useRef(0);
+  const autoChecked = useRef<string | null>(null);
+  const busy = checking || submitting;
+  const locked = history.some(
+    (r) => r.state === 'unknown' || r.digest === preview?.digest,
+  );
   const refresh = useCallback(async () => {
     const sequence = ++refreshSequence.current;
     try {
       const receipts = await invoke<Receipt[]>('submission_history', {
         accountId,
       });
-      if (mounted.current && sequence === refreshSequence.current)
+      if (mounted.current && sequence === refreshSequence.current) {
         setHistory(receipts);
+        setHistoryReady(true);
+        setHistoryError(null);
+      }
     } catch (e) {
-      if (mounted.current) setError(failure(e));
+      if (mounted.current && sequence === refreshSequence.current) {
+        setHistoryError(failure(e));
+        setHistoryReady(false);
+        setPreparation(null);
+        setConsent(false);
+        autoChecked.current = null;
+      }
     }
   }, [accountId]);
   useEffect(() => {
@@ -227,12 +256,15 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
     void refresh();
     return () => {
       mounted.current = false;
+      refreshSequence.current++;
+      preparationSequence.current++;
     };
   }, [refresh]);
-  async function prepare() {
-    if (!preview || flight.current) return;
+  const prepare = useCallback(async () => {
+    if (!preview || flight.current || !historyReady || locked) return;
     flight.current = true;
-    setBusy(true);
+    const sequence = ++preparationSequence.current;
+    setChecking(true);
     setError(null);
     setConsent(false);
     setPreparation(null);
@@ -241,18 +273,66 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
         accountId,
         input: preview.input,
       });
-      if (mounted.current) setPreparation(result);
+      if (result.ticket && result.expiresAt <= Date.now())
+        throw new Error('检查结果已过期，请重试。');
+      if (
+        mounted.current &&
+        sequence === preparationSequence.current &&
+        currentContext.current === context
+      )
+        setPreparation(result);
     } catch (e) {
-      if (mounted.current) setError(failure(e));
+      if (
+        mounted.current &&
+        sequence === preparationSequence.current &&
+        currentContext.current === context
+      )
+        setError(failure(e));
     } finally {
       flight.current = false;
-      if (mounted.current) setBusy(false);
+      if (mounted.current) setChecking(false);
     }
-  }
+  }, [accountId, context, historyReady, locked, preview]);
+  useEffect(() => {
+    if (
+      !preview ||
+      !historyReady ||
+      locked ||
+      busy ||
+      autoChecked.current === context
+    )
+      return;
+    autoChecked.current = context;
+    void prepare();
+  }, [busy, context, historyReady, locked, prepare, preview]);
+  useEffect(() => {
+    if (!preparation?.ticket || locked) return;
+    const timer = setTimeout(
+      () => {
+        if (flight.current) return;
+        setConsent(false);
+        setPreparation(null);
+        void prepare();
+      },
+      Math.max(0, preparation.expiresAt - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [locked, preparation, prepare]);
   async function submit() {
-    if (!preparation?.ticket || !consent || flight.current) return;
+    if (
+      !preparation?.ticket ||
+      !consent ||
+      flight.current ||
+      locked ||
+      !historyReady
+    )
+      return;
+    if (preparation.expiresAt <= Date.now()) {
+      void prepare();
+      return;
+    }
     flight.current = true;
-    setBusy(true);
+    setSubmitting(true);
     setError(null);
     try {
       await invoke<Receipt>('submit_run', {
@@ -269,48 +349,107 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
     } finally {
       flight.current = false;
       if (mounted.current) {
-        setBusy(false);
+        setSubmitting(false);
+        setConsent(false);
         void refresh();
       }
     }
   }
-  const locked = history.some(
-    (r) => r.state === 'unknown' || r.digest === preview?.digest,
-  );
   return (
     <section className='rounded-xl border border-border bg-card p-5'>
-      <div className='flex items-center gap-2'>
-        <ShieldCheck className='size-4 text-primary' />
-        <h2 className='text-sm font-semibold'>03 / 提交与核对</h2>
-      </div>
-      <p className='mt-3 text-xs leading-6 text-muted-foreground'>
-        提交由你明确发起。先读取当前学校要求，未支持或未知的要求会阻止提交；学校可能拒绝合成数据。
-      </p>
-      {preview && (
-        <div className='mt-4 space-y-4'>
+      <div className='flex items-center justify-between gap-3'>
+        <h2 className='flex items-center gap-2 text-sm font-semibold'>
+          <ShieldCheck className='size-4 text-primary' />
+          提交核对
+        </h2>
+        {historyReady && !locked && (preparation || error) && (
           <Button
-            variant='outline'
-            disabled={busy || locked}
+            variant='ghost'
+            size='sm'
+            disabled={busy}
             onClick={() => void prepare()}
           >
-            检查学校要求
+            <RefreshCw className='size-3.5' />
+            重新检查
           </Button>
+        )}
+      </div>
+      {preview && (
+        <div className='mt-5 space-y-5'>
+          <div className='overflow-hidden rounded-xl border border-border'>
+            <table className='w-full text-sm'>
+              <caption className='sr-only'>本次提交数据</caption>
+              <tbody className='divide-y divide-border'>
+                {[
+                  [
+                    '距离',
+                    `${(preview.actualDistanceM / 1000).toFixed(4)} 公里`,
+                  ],
+                  [
+                    '时长',
+                    `${Math.floor(preview.input.durationS / 60)} 分 ${preview.input.durationS % 60} 秒`,
+                  ],
+                  ['步数', `${preview.input.steps.toLocaleString()} 步`],
+                  ['配速', `${preview.pace} / 公里`],
+                  [
+                    '开始时间',
+                    new Date(preview.input.startTime).toLocaleString(),
+                  ],
+                  ['结束时间', new Date(preview.endTime).toLocaleString()],
+                  [
+                    '数据来源',
+                    preview.source === 'synthetic'
+                      ? '合成数据'
+                      : preview.source,
+                  ],
+                ].map(([label, value]) => (
+                  <tr key={label}>
+                    <th
+                      scope='row'
+                      className='w-24 px-4 py-3 text-left text-xs font-normal text-muted-foreground sm:w-32'
+                    >
+                      {label}
+                    </th>
+                    <td className='px-4 py-3 text-right text-xs tabular-nums sm:text-sm'>
+                      {value}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!historyReady && !historyError && (
+            <p
+              role='status'
+              className='flex items-center gap-2 text-sm text-muted-foreground'
+            >
+              <LoaderCircle className='size-4 animate-spin' />
+              正在核对提交记录…
+            </p>
+          )}
+          {checking && (
+            <p
+              role='status'
+              className='flex items-center gap-2 text-sm text-muted-foreground'
+            >
+              <LoaderCircle className='size-4 animate-spin' />
+              正在检查学校要求…
+            </p>
+          )}
           {locked && (
-            <p className='text-xs text-primary'>
+            <p className='text-sm leading-6 text-primary'>
               本草稿已有提交，或账号存在结果不确定的提交。请先核对下方历史。
             </p>
           )}
-          {preparation && (
-            <div className='space-y-4 rounded-xl border border-border bg-muted/30 p-5'>
-              <p className='text-xs font-medium'>
-                {preparation.ticket
-                  ? '基础要求检查通过，请确认提交'
-                  : '当前无法提交'}
+          {preparation && !locked && (
+            <div className='space-y-4 border-t border-border pt-5'>
+              <p className='text-sm font-medium'>
+                {preparation.ticket ? '学校基础要求检查通过' : '当前无法提交'}
               </p>
               {preparation.blockers.length > 0 && (
                 <div className='space-y-3'>
                   <p className='text-xs text-muted-foreground'>
-                    检查在本机完成，本次尚未发送。请调整以下项目后重新检查。
+                    本次尚未发送，请调整以下项目后重新生成。
                   </p>
                   <ul className='space-y-2' aria-label='提交拦截原因'>
                     {preparation.blockers.map((line) => (
@@ -325,7 +464,7 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
                 </div>
               )}
               {preparation.notes.length > 0 && (
-                <details className='border-t border-border pt-3 text-xs text-muted-foreground'>
+                <details className='text-xs text-muted-foreground'>
                   <summary className='cursor-pointer py-1'>提交说明</summary>
                   <ul className='mt-2 space-y-1 leading-6'>
                     {preparation.notes.map((line) => (
@@ -337,27 +476,29 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
               {preparation.ticket && (
                 <>
                   <p className='text-[10px] text-muted-foreground'>
-                    确认有效至{' '}
+                    检查有效至{' '}
                     {new Date(preparation.expiresAt).toLocaleTimeString()}
-                    ，过期请重新检查。
+                    ，过期自动更新。
                   </p>
-                  <label className='flex items-start gap-3 text-xs leading-6'>
-                    <input
-                      type='checkbox'
+                  <label
+                    htmlFor={consentId}
+                    className='flex items-start gap-3 text-xs leading-6'
+                  >
+                    <Checkbox
+                      id={consentId}
                       checked={consent}
                       disabled={busy}
-                      onChange={(e) => setConsent(e.target.checked)}
-                      className='mt-1.5 accent-current'
+                      onCheckedChange={(value) => setConsent(value === true)}
+                      className='mt-1'
                     />
-                    我确认发送当前账号的合成运动数据，知晓 HTTP
-                    明文传输及结果不确定时不可盲目重传。
+                    我确认向学校提交当前账号的合成运动数据，知晓连接未加密，结果不确定时先核对再重试。
                   </label>
                   <Button
-                    disabled={!consent || busy}
+                    disabled={!consent || busy || !historyReady}
                     onClick={() => void submit()}
                   >
                     <Send className='size-3.5' />
-                    {busy ? '正在提交…' : '确认提交一次'}
+                    {submitting ? '正在提交…' : '确认提交一次'}
                   </Button>
                 </>
               )}
@@ -366,8 +507,13 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
         </div>
       )}
       {error && (
-        <p role='alert' className='mt-4 text-xs leading-6 text-destructive'>
+        <p role='alert' className='mt-4 text-sm leading-6 text-destructive'>
           {error}
+        </p>
+      )}
+      {historyError && (
+        <p role='alert' className='mt-4 text-sm leading-6 text-destructive'>
+          提交记录未能核对：{historyError}
         </p>
       )}
       <div className='mt-6 flex items-center justify-between border-t border-border pt-4'>
