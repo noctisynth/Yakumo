@@ -190,8 +190,11 @@ fn prepare_settings(
         .collect();
     let stringify =
         |value: &Value| serde_json::to_string(value).map_err(|_| failed("生成载荷失败。"));
+    // All face requirements were explicitly disabled above. Preserve the original
+    // initialized, non-anomalous state; this is not a successful face verification.
+    let face_status = "1";
     let reported_km = (input.distance_m / 10.0).floor() / 100.0;
-    let payload = json!({"sportType":1,"startTime":input.start_time,"endTime":preview.end_time,"sportTime":input.duration_s,"sportRange":format!("{reported_km:.2}"),"gpsDistance":format!("{reported_km:.2}"),"speed":preview.pace,"avgSpeed":format!("{:.2}",preview.average_kmh),"brand":"Yakumo","model":"Synthetic","system":std::env::consts::OS,"version":"unknown","appVersion":"2.0.22","appType":"Android","versionCode":20220,"versionName":"2.0.22","signatureMD5":crate::exercise_service::signature_metadata().map_err(|_|failed("兼容材料不可用。"))?,"uniqueCode":session.device_id,"pointList":stringify(&settings["list"] )?,"geofence":stringify(&settings["geofence"] )?,"isSequencePoint":as_text("isSequencePoint"),"stepNumbers":stringify(&json!(preview.step_buckets))?,"gitudeLatitude":stringify(&json!(points))?,"okPointList":"[]","isFaceStatus":"0","uploadType":0,"identify":identify,"limitSpeed":as_text("limitSpeed"),"limitStride":as_text("endStride"),"limitStepFrequency":as_text("endLimitStepFrequency"),"f":preview.points.len(),"m":0,"h":0,"isValid":1});
+    let payload = json!({"sportType":1,"startTime":input.start_time,"endTime":preview.end_time,"sportTime":input.duration_s,"sportRange":format!("{reported_km:.2}"),"gpsDistance":format!("{reported_km:.2}"),"speed":preview.pace,"avgSpeed":format!("{:.2}",preview.average_kmh),"brand":"Yakumo","model":"Synthetic","system":std::env::consts::OS,"version":"unknown","appVersion":"2.0.22","appType":"Android","versionCode":20220,"versionName":"2.0.22","signatureMD5":crate::exercise_service::signature_metadata().map_err(|_|failed("兼容材料不可用。"))?,"uniqueCode":session.device_id,"pointList":stringify(&settings["list"] )?,"geofence":stringify(&settings["geofence"] )?,"isSequencePoint":as_text("isSequencePoint"),"stepNumbers":stringify(&json!(preview.step_buckets))?,"gitudeLatitude":stringify(&json!(points))?,"okPointList":"[]","isFaceStatus":face_status,"uploadType":0,"identify":identify,"limitSpeed":as_text("limitSpeed"),"limitStride":as_text("endStride"),"limitStepFrequency":as_text("endLimitStepFrequency"),"f":preview.points.len(),"m":0,"h":0,"isValid":1});
     Ok((
         preparation,
         Some(Ticket {
@@ -359,12 +362,71 @@ mod tests {
         let ticket = ticket.expect("ticket");
         assert_eq!(ticket.payload["sportRange"], "2.02");
         assert!(ticket.payload.get("environment").is_none());
-        assert_eq!(ticket.payload["isFaceStatus"], "0");
+        assert_eq!(ticket.payload["isFaceStatus"], "1");
         let points: Value =
             serde_json::from_str(ticket.payload["gitudeLatitude"].as_str().expect("text"))
                 .expect("points");
         assert_eq!(points[0]["f"], true);
         assert_eq!(points.as_array().expect("array").len(), 900);
+    }
+    #[test]
+    fn face_requirements_must_be_explicitly_disabled_before_preserving_initial_state() {
+        for key in [
+            "isStartFace",
+            "isEndFace",
+            "isMidwayFace",
+            "needRegisterFace",
+        ] {
+            for value in [
+                None,
+                Some(Value::Null),
+                Some(json!("1")),
+                Some(json!(1)),
+                Some(json!(true)),
+                Some(json!("unknown")),
+            ] {
+                let mut settings = sample_settings();
+                if let Some(value) = value {
+                    settings[key] = value;
+                } else {
+                    settings.as_object_mut().expect("settings").remove(key);
+                }
+                let (result, ticket) = prepare_settings(
+                    "synthetic-account".into(),
+                    sample_preview(),
+                    &settings,
+                    &sample_session(),
+                    1700000900000,
+                )
+                .expect("prepare");
+                assert!(!result.blockers.is_empty());
+                assert!(ticket.is_none());
+            }
+        }
+        for value in [Value::Null, json!([{"distance":1000}]), json!("[]")] {
+            let mut settings = sample_settings();
+            settings["middleFaces"] = value;
+            let (_, ticket) = prepare_settings(
+                "synthetic-account".into(),
+                sample_preview(),
+                &settings,
+                &sample_session(),
+                1700000900000,
+            )
+            .expect("prepare");
+            assert!(ticket.is_none());
+        }
+        let (_, ticket) = prepare_settings(
+            "synthetic-account".into(),
+            sample_preview(),
+            &sample_settings(),
+            &sample_session(),
+            1700000900000,
+        )
+        .expect("prepare");
+        let ticket = ticket.expect("supported state");
+        assert_eq!(ticket.payload["isFaceStatus"], "1");
+        assert_eq!(ticket.payload["isValid"], 1);
     }
     #[test]
     fn randomized_preview_points_and_step_buckets_are_the_actual_payload() {
