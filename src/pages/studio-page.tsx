@@ -121,6 +121,12 @@ function StudioContent({ accountId }: { accountId: string }) {
   const [start, setStart] = useState(() =>
     localDateTime(Date.now() - 20 * 60000),
   );
+  const [errorScope, setErrorScope] = useState<
+    'location' | 'preset' | 'generate' | 'export'
+  >('location');
+  const [noticeScope, setNoticeScope] = useState<'location' | 'preset'>(
+    'location',
+  );
   const [error, setError] = useState<string | null>(null),
     [notice, setNotice] = useState<string | null>(null),
     [name, setName] = useState(''),
@@ -129,6 +135,29 @@ function StudioContent({ accountId }: { accountId: string }) {
   const generating = useRef(false),
     saveLock = useRef(false);
   const preview = studio.preview;
+  const feedback = (scope: 'location' | 'preset' | 'generate') => {
+    const message =
+      errorScope === scope
+        ? error || (scope === 'generate' ? studio.error : null)
+        : null;
+    return (
+      <>
+        {message && (
+          <p
+            role='alert'
+            className='rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive'
+          >
+            {message}
+          </p>
+        )}
+        {scope !== 'generate' && noticeScope === scope && notice && (
+          <p role='status' className='rounded-lg bg-accent p-4 text-sm'>
+            {notice}
+          </p>
+        )}
+      </>
+    );
+  };
   const update = (value: StudioConfig) => {
     const next = paceConfig(value);
     locationSequence.current++;
@@ -147,6 +176,9 @@ function StudioContent({ accountId }: { accountId: string }) {
   async function locate() {
     if (locating) return;
     const sequence = ++locationSequence.current;
+    setErrorScope('location');
+    setNotice(null);
+    setNoticeScope('location');
     setLocating(true);
     setError(null);
     try {
@@ -174,6 +206,7 @@ function StudioContent({ accountId }: { accountId: string }) {
   async function generate() {
     if (generating.current) return;
     generating.current = true;
+    setErrorScope('generate');
     setError(null);
     try {
       const input = sampleRun(
@@ -196,6 +229,9 @@ function StudioContent({ accountId }: { accountId: string }) {
   async function save() {
     if (saveLock.current) return;
     saveLock.current = true;
+    setErrorScope('preset');
+    setNoticeScope('preset');
+    setNotice(null);
     setSaving(true);
     setError(null);
     try {
@@ -228,13 +264,15 @@ function StudioContent({ accountId }: { accountId: string }) {
   }
   async function exportPreview() {
     if (!preview) return;
+    setError(null);
     try {
       if (isTauri() && (await invoke<boolean>('mobile_platform'))) {
         await invoke('export_mobile_preview', { input: preview.input });
         return;
       }
     } catch {
-      useStudioStore.setState({ error: '无法保存预览，请重试。' });
+      setErrorScope('export');
+      setError('无法保存预览，请重试。');
       return;
     }
 
@@ -303,19 +341,6 @@ function StudioContent({ accountId }: { accountId: string }) {
           </button>
         ))}
       </nav>
-      {(error || studio.error) && (
-        <p
-          role='alert'
-          className='rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive'
-        >
-          {error || studio.error}
-        </p>
-      )}
-      {notice && (
-        <p role='status' className='rounded-xl bg-accent p-4 text-sm'>
-          {notice}
-        </p>
-      )}
       {stepper.current.id === 'location' && (
         <section className='space-y-5 rounded-xl border border-border bg-card p-5 sm:p-7'>
           <div>
@@ -383,6 +408,7 @@ function StudioContent({ accountId }: { accountId: string }) {
             waypoints={config.route}
             onPick={(latitude, longitude) => {
               if ((config.route?.length ?? 0) >= 50) {
+                setErrorScope('location');
                 setError('最多选择 50 个路线点，请先撤销或清空。');
                 return;
               }
@@ -394,6 +420,7 @@ function StudioContent({ accountId }: { accountId: string }) {
               });
             }}
           />
+          {feedback('location')}
           <div className='flex justify-end'>
             <Button
               disabled={
@@ -427,7 +454,6 @@ function StudioContent({ accountId }: { accountId: string }) {
               <h2 className='text-lg font-semibold'>基准值与偏移范围</h2>
               <Button
                 type='button'
-                size='sm'
                 variant='default'
                 disabled={saving || studio.busy}
                 onClick={() => setSaveOpen((v) => !v)}
@@ -539,7 +565,7 @@ function StudioContent({ accountId }: { accountId: string }) {
             </div>
           </div>
           <section className='rounded-xl bg-muted/30 p-5' aria-label='自动估算'>
-            <p className='text-sm font-medium'>其余参数，自动计算</p>
+            <p className='text-sm font-medium'>预计运动数据</p>
             <dl className='mt-4 grid grid-cols-2 gap-5 sm:grid-cols-4'>
               {[
                 [
@@ -660,6 +686,8 @@ function StudioContent({ accountId }: { accountId: string }) {
               </div>
             </div>
           )}
+          {feedback('preset')}
+          {feedback('generate')}
           <div className='flex flex-wrap justify-between gap-3'>
             <Button
               type='button'
@@ -681,6 +709,7 @@ function StudioContent({ accountId }: { accountId: string }) {
         <section className='space-y-5'>
           <RunPreviewCard
             preview={preview}
+            exportError={errorScope === 'export' ? error : null}
             exportPreview={exportPreview}
             mapLoaded={mapEnabled}
             onMapLoad={() => setMapEnabled(true)}

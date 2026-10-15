@@ -5,11 +5,13 @@ import type { RunPreview } from '@/models/run';
 export function RunPreviewCard({
   preview,
   exportPreview,
+  exportError,
   mapLoaded,
   onMapLoad,
 }: {
   preview: RunPreview;
   exportPreview: () => Promise<void>;
+  exportError?: string | null;
   mapLoaded?: boolean;
   onMapLoad?: () => void;
 }) {
@@ -24,6 +26,14 @@ export function RunPreviewCard({
             导出预览
           </Button>
         </div>
+        {exportError && (
+          <p
+            role='alert'
+            className='mx-5 mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive'
+          >
+            {exportError}
+          </p>
+        )}
         <div className='grid grid-cols-2 gap-5 p-5 sm:grid-cols-4'>
           {[
             ['距离', `${(preview.actualDistanceM / 1000).toFixed(3)} km`],
