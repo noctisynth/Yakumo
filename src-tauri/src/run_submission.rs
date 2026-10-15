@@ -29,6 +29,7 @@ pub struct Attempt {
     pub receipt: Receipt,
 }
 pub struct Ticket {
+    pub algorithm: String,
     pub account_id: String,
     pub digest: String,
     pub identify: String,
@@ -194,6 +195,7 @@ fn prepare_settings(
     Ok((
         preparation,
         Some(Ticket {
+            algorithm: preview.algorithm.into(),
             account_id,
             digest: preview.digest,
             identify,
@@ -312,6 +314,7 @@ mod tests {
     }
     fn sample_preview() -> crate::run_generator::RunPreview {
         generate(RunInput {
+            route: vec![],
             seed: "synthetic".into(),
             start_time: 1700000000000,
             latitude: 0.0,

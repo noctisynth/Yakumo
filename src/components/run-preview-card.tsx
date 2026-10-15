@@ -42,6 +42,7 @@ export function RunPreviewCard({
             latitude={preview.input.latitude}
             longitude={preview.input.longitude}
             points={preview.points}
+            waypoints={preview.input.route}
             defaultLoaded={mapLoaded}
             onLoad={onMapLoad}
           />
@@ -80,7 +81,9 @@ export function RunPreviewCard({
               '中心坐标',
               `${preview.input.latitude.toFixed(7)}, ${preview.input.longitude.toFixed(7)}`,
             ],
-            ['圈数', String(preview.input.laps)],
+            preview.input.route?.length
+              ? ['路线', `${preview.input.route.length} 个选点 · 沿线往返`]
+              : ['圈数', String(preview.input.laps)],
             ['生成种子', preview.input.seed],
           ].map(([label, value]) => (
             <div key={label}>

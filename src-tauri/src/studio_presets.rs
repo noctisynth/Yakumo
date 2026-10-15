@@ -7,6 +7,8 @@ pub fn invalid() -> AccountError {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PresetConfig {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub route: Vec<crate::run_generator::RoutePoint>,
     pub latitude: f64,
     pub longitude: f64,
     pub distance_m: f64,
@@ -25,7 +27,8 @@ impl PresetConfig {
             ("positionM", 100.0),
             ("startMinutes", 60.0),
         ];
-        if !self.latitude.is_finite()
+        if !crate::run_generator::validate_route(&self.route)
+            || !self.latitude.is_finite()
             || self.latitude.abs() > 85.0
             || !self.longitude.is_finite()
             || self.longitude.abs() > 179.0

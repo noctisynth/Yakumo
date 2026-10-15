@@ -1,3 +1,4 @@
+import type { RoutePoint } from '@/models/run';
 export const offsetKeys = [
   'distanceM',
   'durationS',
@@ -9,6 +10,7 @@ export const offsetKeys = [
 export type OffsetKey = (typeof offsetKeys)[number];
 export type Offsets = Record<OffsetKey, [number, number]>;
 export interface StudioConfig {
+  route?: RoutePoint[];
   latitude: number | null;
   longitude: number | null;
   distanceM: number;

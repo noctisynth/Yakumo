@@ -2,11 +2,13 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import type { RunPoint } from '@/models/run';
+import type { RoutePoint, RunPoint } from '@/models/run';
 export function StudioMap({
   latitude,
   longitude,
   onPick,
+  waypoints,
+  routeEditing = false,
   points,
   defaultLoaded = false,
   onLoad,
@@ -14,6 +16,8 @@ export function StudioMap({
   latitude: number | null;
   longitude: number | null;
   onPick?: (latitude: number, longitude: number) => void;
+  routeEditing?: boolean;
+  waypoints?: RoutePoint[];
   points?: RunPoint[];
   defaultLoaded?: boolean;
   onLoad?: () => void;
@@ -73,7 +77,24 @@ export function StudioMap({
         maxZoom: 18,
       });
     }
-    if (latitude !== null && longitude !== null) {
+    if (waypoints?.length) {
+      L.polyline(
+        waypoints.map((p) => [p.latitude, p.longitude] as [number, number]),
+        { color: '#c6a76b', weight: 3, dashArray: '6 5' },
+      ).addTo(layer.current);
+      for (const [index, p] of waypoints.entries()) {
+        L.circleMarker([p.latitude, p.longitude], {
+          radius: 7,
+          color: '#242943',
+          weight: 2,
+          fillColor: '#e8c784',
+          fillOpacity: 1,
+        })
+          .bindTooltip(String(index + 1), { permanent: true, direction: 'top' })
+          .addTo(layer.current);
+      }
+    }
+    if (latitude !== null && longitude !== null && !waypoints?.length) {
       L.circleMarker([latitude, longitude], {
         radius: 7,
         color: '#242943',
@@ -83,7 +104,7 @@ export function StudioMap({
       }).addTo(layer.current);
       if (!points?.length) map.current.panTo([latitude, longitude]);
     }
-  }, [loaded, latitude, longitude, points]);
+  }, [loaded, latitude, longitude, points, waypoints]);
   return (
     <div className='overflow-hidden rounded-xl border border-border bg-muted/30'>
       {loaded ? (
@@ -102,7 +123,11 @@ export function StudioMap({
       ) : (
         <div className='flex min-h-64 flex-col items-center justify-center gap-4 p-6 text-center'>
           <p className='text-sm font-medium'>
-            {onPick ? '在真实地图上选择运动中心' : '在真实地图上查看合成轨迹'}
+            {onPick
+              ? routeEditing
+                ? '在真实地图上绘制运动路线'
+                : '在真实地图上选择运动中心'
+              : '在真实地图上查看合成轨迹'}
           </p>
           <p className='max-w-md text-xs leading-6 text-muted-foreground'>
             地图由 OpenStreetMap

@@ -8,6 +8,8 @@ import {
   LoaderCircle,
   LocateFixed,
   Save,
+  Trash2,
+  Undo2,
   WandSparkles,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -131,6 +133,7 @@ function StudioContent({ accountId }: { accountId: string }) {
   const generating = useRef(false),
     saveLock = useRef(false);
   const preview = studio.preview;
+  const [routeMode, setRouteMode] = useState(Boolean(config.route?.length));
   const update = (next: StudioConfig) => {
     locationSequence.current++;
     setLocating(false);
@@ -155,8 +158,18 @@ function StudioContent({ accountId }: { accountId: string }) {
       if (sequence !== locationSequence.current) return;
       update({
         ...config,
-        latitude: point.latitude,
-        longitude: point.longitude,
+        route: routeMode
+          ? [
+              ...(config.route ?? []).slice(0, 49),
+              { latitude: point.latitude, longitude: point.longitude },
+            ]
+          : undefined,
+        latitude:
+          routeMode && config.route?.length ? config.latitude : point.latitude,
+        longitude:
+          routeMode && config.route?.length
+            ? config.longitude
+            : point.longitude,
       });
       setNotice(
         `已填入当前位置（精度约 ${Math.ceil(point.accuracy)} 米），可继续在地图调整。`,
@@ -315,11 +328,15 @@ function StudioContent({ accountId }: { accountId: string }) {
         <section className='space-y-5 rounded-xl border border-border bg-card p-5 sm:p-7'>
           <div>
             <div className='flex flex-wrap items-center justify-between gap-3'>
-              <h2 className='text-lg font-semibold'>先选一个运动中心</h2>
+              <h2 className='text-lg font-semibold'>
+                {routeMode ? '沿着道路，逐点绘制路线' : '先选一个运动中心'}
+              </h2>
               <Button
                 type='button'
                 variant='outline'
-                disabled={locating}
+                disabled={
+                  locating || (routeMode && (config.route?.length ?? 0) >= 50)
+                }
                 onClick={() => void locate()}
               >
                 {locating ? (
@@ -334,43 +351,131 @@ function StudioContent({ accountId }: { accountId: string }) {
               点击地图选点，也可手动填写坐标。仅点击获取位置后请求权限，不会自动定位。
             </p>
           </div>
+          <section className='flex flex-wrap gap-2' aria-label='路线绘制方式'>
+            <Button
+              size='sm'
+              aria-pressed={!routeMode}
+              variant={routeMode ? 'outline' : 'default'}
+              onClick={() => {
+                if (!routeMode) return;
+                setRouteMode(false);
+                update({ ...config, route: undefined });
+              }}
+            >
+              中心环形
+            </Button>
+            <Button
+              size='sm'
+              aria-pressed={routeMode}
+              variant={routeMode ? 'default' : 'outline'}
+              onClick={() => {
+                if (routeMode) return;
+                setRouteMode(true);
+                update({
+                  ...config,
+                  route: [],
+                  offsets: { ...config.offsets, positionM: [0, 0] },
+                });
+              }}
+            >
+              多点路线
+            </Button>
+          </section>
+          {routeMode && (
+            <div className='space-y-3 rounded-lg bg-muted/30 p-4'>
+              <div className='flex flex-wrap items-center justify-between gap-3'>
+                <p className='text-sm font-medium'>
+                  已选 {config.route?.length ?? 0} / 50 个点
+                </p>
+                <div className='flex gap-2'>
+                  <Button
+                    size='sm'
+                    variant='outline'
+                    disabled={!config.route?.length}
+                    onClick={() =>
+                      update({ ...config, route: config.route?.slice(0, -1) })
+                    }
+                  >
+                    <Undo2 className='size-3.5' />
+                    撤销选点
+                  </Button>
+                  <Button
+                    size='sm'
+                    variant='ghost'
+                    disabled={!config.route?.length}
+                    onClick={() => update({ ...config, route: [] })}
+                  >
+                    <Trash2 className='size-3.5' />
+                    清空
+                  </Button>
+                </div>
+              </div>
+              <p className='text-xs leading-6 text-muted-foreground'>
+                按经过顺序点击地图，弯道请补点；至少 2 点，总长度 50 米至 30
+                公里。到达末端后沿原路折返，按目标距离结束；此模式不使用圈数或中心偏移。沿线速度随种子平滑变化（约
+                ±5%）。选点直连，未进行道路匹配。
+              </p>
+            </div>
+          )}
           <StudioMap
             defaultLoaded={mapEnabled}
             onLoad={() => setMapEnabled(true)}
             latitude={config.latitude}
             longitude={config.longitude}
-            onPick={(latitude, longitude) =>
-              update({ ...config, latitude, longitude })
-            }
+            routeEditing={routeMode}
+            waypoints={routeMode ? config.route : undefined}
+            onPick={(latitude, longitude) => {
+              if (routeMode && (config.route?.length ?? 0) >= 50) {
+                setError('最多选择 50 个路线点，请先撤销或清空。');
+                return;
+              }
+              update({
+                ...config,
+                latitude:
+                  routeMode && config.route?.length
+                    ? config.latitude
+                    : latitude,
+                longitude:
+                  routeMode && config.route?.length
+                    ? config.longitude
+                    : longitude,
+                route: routeMode
+                  ? [...(config.route ?? []), { latitude, longitude }]
+                  : undefined,
+              });
+            }}
           />
-          <div className='grid grid-cols-2 gap-4'>
-            {(['latitude', 'longitude'] as const).map((key, i) => (
-              <div key={key} className='space-y-2'>
-                <Label htmlFor={`run-${key}`}>
-                  {i === 0 ? '中心纬度' : '中心经度'}
-                </Label>
-                <Input
-                  id={`run-${key}`}
-                  type='number'
-                  step='any'
-                  min={i === 0 ? -85 : -179}
-                  max={i === 0 ? 85 : 179}
-                  value={config[key] ?? ''}
-                  onChange={(e) =>
-                    update({
-                      ...config,
-                      [key]:
-                        e.target.value === '' ? null : Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-            ))}
-          </div>
+          {!routeMode && (
+            <div className='grid grid-cols-2 gap-4'>
+              {(['latitude', 'longitude'] as const).map((key, i) => (
+                <div key={key} className='space-y-2'>
+                  <Label htmlFor={`run-${key}`}>
+                    {i === 0 ? '中心纬度' : '中心经度'}
+                  </Label>
+                  <Input
+                    id={`run-${key}`}
+                    type='number'
+                    step='any'
+                    min={i === 0 ? -85 : -179}
+                    max={i === 0 ? 85 : 179}
+                    value={config[key] ?? ''}
+                    onChange={(e) =>
+                      update({
+                        ...config,
+                        [key]:
+                          e.target.value === '' ? null : Number(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          )}
           <div className='flex justify-end'>
             <Button
               disabled={
                 locating ||
+                (routeMode && (config.route?.length ?? 0) < 2) ||
                 config.latitude === null ||
                 config.longitude === null ||
                 !Number.isFinite(config.latitude) ||
@@ -414,66 +519,72 @@ function StudioContent({ accountId }: { accountId: string }) {
             </p>
           </div>
           <div className='grid gap-5 md:grid-cols-2'>
-            {controls.map(([key, label, unit, max, step]) => (
-              <div
-                key={key}
-                className='space-y-5 rounded-xl border border-border p-4'
-              >
-                <div className='space-y-2'>
-                  <Label htmlFor={`run-${key}`}>
-                    {label} / {unit}
-                  </Label>
-                  <Input
-                    id={`run-${key}`}
-                    type='number'
+            {controls
+              .filter(([key]) => !routeMode || key !== 'laps')
+              .map(([key, label, unit, max, step]) => (
+                <div
+                  key={key}
+                  className='space-y-5 rounded-xl border border-border p-4'
+                >
+                  <div className='space-y-2'>
+                    <Label htmlFor={`run-${key}`}>
+                      {label} / {unit}
+                    </Label>
+                    <Input
+                      id={`run-${key}`}
+                      type='number'
+                      step={step}
+                      min={
+                        key === 'distanceM' ? 100 : key === 'durationS' ? 60 : 1
+                      }
+                      max={
+                        key === 'distanceM'
+                          ? 30000
+                          : key === 'durationS'
+                            ? 7200
+                            : key === 'steps'
+                              ? 50000
+                              : 10
+                      }
+                      required
+                      value={Number.isFinite(config[key]) ? config[key] : ''}
+                      disabled={studio.busy || saving}
+                      onChange={(e) =>
+                        update({
+                          ...config,
+                          [key]:
+                            e.target.value === ''
+                              ? NaN
+                              : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <OffsetControl
+                    field={key}
+                    label={`${label}偏移`}
+                    unit={unit}
+                    max={max}
                     step={step}
-                    min={
-                      key === 'distanceM' ? 100 : key === 'durationS' ? 60 : 1
-                    }
-                    max={
-                      key === 'distanceM'
-                        ? 30000
-                        : key === 'durationS'
-                          ? 7200
-                          : key === 'steps'
-                            ? 50000
-                            : 10
-                    }
-                    required
-                    value={Number.isFinite(config[key]) ? config[key] : ''}
+                    config={config}
+                    update={update}
                     disabled={studio.busy || saving}
-                    onChange={(e) =>
-                      update({
-                        ...config,
-                        [key]:
-                          e.target.value === '' ? NaN : Number(e.target.value),
-                      })
-                    }
                   />
                 </div>
-                <OffsetControl
-                  field={key}
-                  label={`${label}偏移`}
-                  unit={unit}
-                  max={max}
-                  step={step}
-                  config={config}
-                  update={update}
-                  disabled={studio.busy || saving}
-                />
-              </div>
-            ))}
+              ))}
           </div>
           <div className='grid gap-6 md:grid-cols-2'>
-            <OffsetControl
-              field='positionM'
-              label='中心位置偏移（南北 / 东西）'
-              unit='米'
-              max={100}
-              config={config}
-              update={update}
-              disabled={studio.busy || saving}
-            />
+            {!routeMode && (
+              <OffsetControl
+                field='positionM'
+                label='中心位置偏移（南北 / 东西）'
+                unit='米'
+                max={100}
+                config={config}
+                update={update}
+                disabled={studio.busy || saving}
+              />
+            )}
             <OffsetControl
               field='startMinutes'
               label='开始时间偏移'

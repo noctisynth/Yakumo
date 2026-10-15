@@ -4,7 +4,43 @@ use sha2::{Digest, Sha256};
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RoutePoint {
+    pub latitude: f64,
+    pub longitude: f64,
+}
+fn route_distance(a: &RoutePoint, b: &RoutePoint) -> f64 {
+    let h = ((b.latitude - a.latitude).to_radians() / 2.0).sin().powi(2)
+        + a.latitude.to_radians().cos()
+            * b.latitude.to_radians().cos()
+            * ((b.longitude - a.longitude).to_radians() / 2.0)
+                .sin()
+                .powi(2);
+    12_742_000.0 * h.clamp(0.0, 1.0).sqrt().asin()
+}
+pub fn validate_route(route: &[RoutePoint]) -> bool {
+    route.is_empty()
+        || ((2..=50).contains(&route.len())
+            && route.iter().all(|p| {
+                p.latitude.is_finite()
+                    && p.longitude.is_finite()
+                    && p.latitude.abs() <= 85.0
+                    && p.longitude.abs() <= 179.0
+            })
+            && route
+                .windows(2)
+                .all(|p| route_distance(&p[0], &p[1]) >= 1.0)
+            && (50.0..=30000.0).contains(
+                &route
+                    .windows(2)
+                    .map(|p| route_distance(&p[0], &p[1]))
+                    .sum::<f64>(),
+            ))
+}
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RunInput {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub route: Vec<RoutePoint>,
     pub seed: String,
     pub start_time: u64,
     pub latitude: f64,
@@ -53,6 +89,12 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
             "请检查参数：距离 100–30000 米、时长 60–7200 秒、圈数 1–10、有效坐标、步数及合理速度/步频。 ",
         )
     };
+    if !validate_route(&input.route) {
+        return Err(AccountError::new(
+            "invalid_route",
+            "路线需要 2–50 个有效选点，相邻点至少相距 1 米，总长度 50 米至 30 公里。",
+        ));
+    }
     if input.seed.is_empty()
         || input.seed.len() > 128
         || !input.latitude.is_finite()
@@ -85,16 +127,55 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
     let seed = Sha256::digest(input.seed.as_bytes());
     let phase = u32::from_le_bytes([seed[0], seed[1], seed[2], seed[3]]) as f64 / u32::MAX as f64
         * std::f64::consts::TAU;
+    let mut cumulative = vec![0.0];
+    for pair in input.route.windows(2) {
+        cumulative
+            .push(cumulative.last().copied().unwrap_or(0.0) + route_distance(&pair[0], &pair[1]));
+    }
+    let path_length = cumulative.last().copied().unwrap_or(0.0);
+    let along = |travel: f64| -> (f64, f64) {
+        // Return along the selected line; never invent a shortcut to the start.
+        let cycle = travel.rem_euclid(path_length * 2.0);
+        let position = if cycle <= path_length {
+            cycle
+        } else {
+            path_length * 2.0 - cycle
+        };
+        let index = cumulative
+            .partition_point(|d| *d <= position)
+            .saturating_sub(1)
+            .min(input.route.len() - 2);
+        let fraction = (position - cumulative[index]) / (cumulative[index + 1] - cumulative[index]);
+        let a = &input.route[index];
+        let b = &input.route[index + 1];
+        (
+            a.latitude + (b.latitude - a.latitude) * fraction,
+            a.longitude + (b.longitude - a.longitude) * fraction,
+        )
+    };
     let route = |radius: f64| -> Vec<Point> {
         (0..=input.duration_s)
             .map(|second| {
                 let theta = phase
                     + std::f64::consts::TAU * input.laps as f64 * second as f64
                         / input.duration_s as f64;
+                let (a, o) = if input.route.is_empty() {
+                    (
+                        input.latitude + radius * theta.cos() / 111_195.0,
+                        input.longitude
+                            + radius * theta.sin()
+                                / (111_195.0 * input.latitude.to_radians().cos()),
+                    )
+                } else {
+                    let t = second as f64 / input.duration_s as f64;
+                    let frequency = std::f64::consts::TAU * 3.0;
+                    let progress =
+                        t + 0.05 / frequency * ((frequency * t + phase).sin() - phase.sin());
+                    along(radius * progress)
+                };
                 Point {
-                    a: input.latitude + radius * theta.cos() / 111_195.0,
-                    o: input.longitude
-                        + radius * theta.sin() / (111_195.0 * input.latitude.to_radians().cos()),
+                    a,
+                    o,
                     t: input.start_time + second as u64 * 1000,
                     s: 0.0,
                     i: false,
@@ -110,7 +191,14 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
             .map(|pair| distance(&pair[0], &pair[1]))
             .sum::<f64>()
     };
-    let (mut lo, mut hi) = (0.0, 10000.0);
+    let (mut lo, mut hi) = (
+        0.0,
+        if input.route.is_empty() {
+            10000.0
+        } else {
+            input.distance_m * 2.0
+        },
+    );
     for _ in 0..45 {
         let mid = (lo + hi) / 2.0;
         if length(&route(mid)) < input.distance_m {
@@ -125,7 +213,7 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
     }
     points[0].s = points[1].s;
     let actual = length(&points);
-    if (actual - input.distance_m).abs() > 0.001 {
+    if (actual - input.distance_m).abs() > 0.001 || points.iter().any(|p| p.s > 12.0) {
         return Err(invalid());
     }
     let mut buckets = Vec::new();
@@ -139,13 +227,18 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
         previous = total;
     }
     let pace_s = (input.duration_s as f64 * 1000.0 / input.distance_m).round() as u32;
+    let algorithm = if input.route.is_empty() {
+        "circle-v1"
+    } else {
+        "waypoints-v1"
+    };
     Ok(RunPreview {
         end_time: input.start_time + input.duration_s as u64 * 1000,
         pace: format!("{}'{:02}\"", pace_s / 60, pace_s % 60),
         average_kmh: speed * 3.6,
         input,
         digest,
-        algorithm: "circle-v1",
+        algorithm,
         source: "synthetic",
         points,
         step_buckets: buckets,
@@ -163,6 +256,7 @@ mod tests {
     use super::*;
     fn input() -> RunInput {
         RunInput {
+            route: vec![],
             seed: "synthetic-seed".into(),
             start_time: 1700000000000,
             latitude: 0.0,
@@ -202,6 +296,85 @@ mod tests {
         for distance in [f64::NAN, f64::INFINITY, -1.0] {
             let mut value = input();
             value.distance_m = distance;
+            assert!(generate(value).is_err());
+        }
+    }
+    #[test]
+    fn waypoints_follow_selected_line_with_seeded_speed_and_consistent_totals() {
+        let mut value = input();
+        value.route = vec![
+            RoutePoint {
+                latitude: 0.0,
+                longitude: 0.0,
+            },
+            RoutePoint {
+                latitude: 0.0,
+                longitude: 0.002,
+            },
+            RoutePoint {
+                latitude: 0.002,
+                longitude: 0.002,
+            },
+        ];
+        for n in 0..32 {
+            value.seed = format!("route-{n}");
+            let a = generate(value.clone()).expect("waypoint generation");
+            assert_eq!(a.algorithm, "waypoints-v1");
+            assert_eq!(a.source, "synthetic");
+            assert!((a.actual_distance_m - value.distance_m).abs() < 0.001);
+            assert_eq!(a.step_buckets.iter().sum::<u32>(), value.steps);
+            assert_eq!(a.digest, generate(value.clone()).expect("repeat").digest);
+            assert!(
+                a.points
+                    .iter()
+                    .all(|p| p.a.abs() < 1e-10 || (p.o - 0.002).abs() < 1e-10)
+            );
+            assert!(
+                a.points
+                    .windows(2)
+                    .all(|p| p[1].t - p[0].t == 1000 && p[1].s <= 12.0)
+            );
+            assert!(a.points.windows(2).any(|p| (p[0].s - p[1].s).abs() > 0.001));
+        }
+    }
+    #[test]
+    fn invalid_routes_fail_and_legacy_inputs_remain_compatible() {
+        let legacy = serde_json::to_value(input()).expect("serialize");
+        assert!(legacy.get("route").is_none());
+        assert_eq!(
+            generate(serde_json::from_value(legacy).expect("legacy"))
+                .expect("circle")
+                .algorithm,
+            "circle-v1"
+        );
+        for route in [
+            vec![RoutePoint {
+                latitude: 0.0,
+                longitude: 0.0,
+            }],
+            vec![
+                RoutePoint {
+                    latitude: 0.0,
+                    longitude: 0.0,
+                },
+                RoutePoint {
+                    latitude: 0.0,
+                    longitude: 0.0,
+                },
+            ],
+            vec![
+                RoutePoint {
+                    latitude: f64::NAN,
+                    longitude: 0.0,
+                },
+                RoutePoint {
+                    latitude: 0.0,
+                    longitude: 0.001,
+                },
+            ],
+        ] {
+            let mut value = input();
+            value.route = route;
             assert!(generate(value).is_err());
         }
     }

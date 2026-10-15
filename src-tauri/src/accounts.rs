@@ -144,7 +144,7 @@ mod tests {
             .expect("login")
             .active_id
             .expect("id");
-        let config:PresetConfig=serde_json::from_value(serde_json::json!({"latitude":0,"longitude":0,"distanceM":2000.3,"durationS":900,"steps":2400,"laps":5,"offsets":{"distanceM":[-30,30],"durationS":[-15,15],"steps":[-50,50],"laps":[0,0],"positionM":[0,0],"startMinutes":[0,0]}})).expect("config");
+        let config:PresetConfig=serde_json::from_value(serde_json::json!({"route":[{"latitude":0,"longitude":0},{"latitude":0,"longitude":0.002}],"latitude":0,"longitude":0,"distanceM":2000.3,"durationS":900,"steps":2400,"laps":5,"offsets":{"distanceM":[-30,30],"durationS":[-15,15],"steps":[-50,50],"laps":[0,0],"positionM":[0,0],"startMinutes":[0,0]}})).expect("config");
         let saved = app
             .studio_presets(
                 &a,
@@ -201,6 +201,15 @@ mod tests {
                 .distance_m,
             2000.3
         );
+        assert_eq!(
+            restarted
+                .studio_presets(&a, PresetAction::List, 100)
+                .expect("route restored")[0]
+                .config
+                .route
+                .len(),
+            2
+        );
         let renamed = restarted
             .studio_presets(
                 &a,
@@ -236,6 +245,7 @@ mod tests {
             .active_id
             .expect("id");
         let ticket = crate::run_submission::Ticket {
+            algorithm: "waypoints-v1".into(),
             account_id: id.clone(),
             digest: "a".repeat(64),
             identify: "synthetic-identify".into(),
@@ -247,6 +257,7 @@ mod tests {
         assert!(app.receipts(&id, 100).expect("empty").is_empty());
         storage.fail.store(false, Ordering::SeqCst);
         let (_, mut receipt) = app.reserve(&id, &ticket, 100000).expect("reserve");
+        assert_eq!(receipt.algorithm, "waypoints-v1");
         assert!(app.reserve(&id, &ticket, 100000).is_err());
         let mut restarted = manager(&storage);
         assert!(restarted.reserve(&id, &ticket, 100000).is_err());
@@ -859,7 +870,7 @@ impl AccountManager {
             message: "提交意图已保存；结果尚未确认，请勿重传。".into(),
             record_id: None,
             created_at: now,
-            algorithm: "circle-v1".into(),
+            algorithm: ticket.algorithm.clone(),
             source: "synthetic".into(),
         };
         data.attempts.push(crate::run_submission::Attempt {

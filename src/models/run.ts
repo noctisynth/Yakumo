@@ -1,4 +1,9 @@
+export interface RoutePoint {
+  latitude: number;
+  longitude: number;
+}
 export interface RunInput {
+  route?: RoutePoint[];
   seed: string;
   startTime: number;
   latitude: number;

@@ -20,17 +20,36 @@ export function sampleRun(
       throw new Error('偏移范围无效，请检查参数。');
     return lo + random() * (hi - lo);
   };
+  if (
+    config.route?.length &&
+    (config.route.length < 2 ||
+      config.route.length > 50 ||
+      config.route.some(
+        (p) =>
+          !Number.isFinite(p.latitude) ||
+          !Number.isFinite(p.longitude) ||
+          Math.abs(p.latitude) > 85 ||
+          Math.abs(p.longitude) > 179,
+      ))
+  )
+    throw new Error('请选择 2 至 50 个有效路线点。');
   if (config.latitude === null || config.longitude === null)
     throw new Error('请先在地图选点或填写坐标。');
-  const latitude = config.latitude + draw('positionM') / 111195;
-  const longitude =
-    config.longitude +
-    draw('positionM') / (111195 * Math.cos((config.latitude * Math.PI) / 180));
+  const latitude = config.route?.length
+    ? config.route[0].latitude
+    : config.latitude + draw('positionM') / 111195;
+  const longitude = config.route?.length
+    ? config.route[0].longitude
+    : config.longitude +
+      draw('positionM') /
+        (111195 * Math.cos((config.latitude * Math.PI) / 180));
   const distanceM =
     Math.round((config.distanceM + draw('distanceM')) * 10) / 10;
   const durationS = Math.round(config.durationS + draw('durationS'));
   const steps = Math.round(config.steps + draw('steps'));
-  const laps = Math.round(config.laps + draw('laps'));
+  const laps = config.route?.length
+    ? 1
+    : Math.round(config.laps + draw('laps'));
   const actualStart =
     Math.round((startTime + draw('startMinutes') * 60000) / 1000) * 1000;
   if (
@@ -63,6 +82,7 @@ export function sampleRun(
   )
     throw new Error('本次偏移超出了有效范围，请调整基准值或缩小偏移。');
   return {
+    ...(config.route?.length ? { route: structuredClone(config.route) } : {}),
     seed,
     startTime: actualStart,
     latitude,
