@@ -40,7 +40,7 @@ export function HomePage() {
     dashboard.records.loading;
   return (
     <div className='space-y-7 lg:space-y-9'>
-      <section className='flex flex-wrap items-end justify-between gap-5'>
+      <section className='flex flex-wrap items-center justify-between gap-5'>
         <div>
           <p className='text-[10px] tracking-[0.25em] text-muted-foreground'>
             OVERVIEW / 01
@@ -54,7 +54,8 @@ export function HomePage() {
         </div>
         <Button
           variant='outline'
-          className='h-10 gap-2 rounded-md bg-card'
+          size='sm'
+          className='bg-card'
           disabled={busy}
           onClick={() => {
             void dashboard.overview();

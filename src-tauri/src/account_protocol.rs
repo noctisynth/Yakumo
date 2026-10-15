@@ -29,6 +29,16 @@ pub struct Session {
 }
 
 pub trait Authentication: Send {
+    fn identity(
+        &self,
+        session: &Session,
+        now: u64,
+    ) -> AccountResult<crate::account_avatar::AccountIdentity> {
+        Ok(crate::account_avatar::AccountIdentity {
+            display_name: None,
+            avatar: Ok(self.avatar(session, now)?),
+        })
+    }
     fn avatar(&self, session: &Session, now: u64) -> AccountResult<Option<String>>;
     fn login(
         &self,
@@ -197,6 +207,13 @@ fn parse_session(
 }
 
 impl Authentication for SchoolAuthentication {
+    fn identity(
+        &self,
+        session: &Session,
+        now: u64,
+    ) -> AccountResult<crate::account_avatar::AccountIdentity> {
+        crate::account_avatar::AvatarReader::new(SCHOOL_ORIGIN).read_identity(session, now)
+    }
     fn avatar(&self, session: &Session, now: u64) -> AccountResult<Option<String>> {
         crate::account_avatar::AvatarReader::new(SCHOOL_ORIGIN).read(session, now)
     }

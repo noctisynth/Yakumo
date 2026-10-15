@@ -5,12 +5,15 @@ import {
   ArrowRight,
   Bookmark,
   Check,
+  LoaderCircle,
+  LocateFixed,
   Save,
   WandSparkles,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { AccountRequired } from '@/components/account-required';
+import { DateTimePicker } from '@/components/date-time-picker';
 import { RunPreviewCard } from '@/components/run-preview-card';
 import { StudioMap } from '@/components/studio-map';
 import { SubmissionPanel } from '@/components/submission-panel';
@@ -23,6 +26,10 @@ import { localDateTime, sampleRun } from '@/lib/studio-sampling';
 import { cn } from '@/lib/utils';
 import type { OffsetKey, StudioConfig } from '@/models/studio';
 import { defaultConfig } from '@/models/studio';
+import {
+  locationError,
+  requestQueryLocation,
+} from '@/services/location-service';
 import { editPresets, presetError } from '@/services/preset-service';
 import { useStudioDraftStore } from '@/stores/studio-draft-store';
 import { useStudioStore } from '@/stores/studio-store';
@@ -97,6 +104,8 @@ function OffsetControl({
   );
 }
 function StudioContent({ accountId }: { accountId: string }) {
+  const [locating, setLocating] = useState(false);
+  const locationSequence = useRef(0);
   const studio = useStudioStore();
   const stepper = flow.useStepper();
   useEffect(() => {
@@ -123,11 +132,41 @@ function StudioContent({ accountId }: { accountId: string }) {
     saveLock = useRef(false);
   const preview = studio.preview;
   const update = (next: StudioConfig) => {
+    locationSequence.current++;
+    setLocating(false);
     setConfig(next);
     useStudioDraftStore.getState().set(accountId, next);
     setNotice(null);
     setError(null);
   };
+  useEffect(
+    () => () => {
+      locationSequence.current++;
+    },
+    [],
+  );
+  async function locate() {
+    if (locating) return;
+    const sequence = ++locationSequence.current;
+    setLocating(true);
+    setError(null);
+    try {
+      const point = await requestQueryLocation();
+      if (sequence !== locationSequence.current) return;
+      update({
+        ...config,
+        latitude: point.latitude,
+        longitude: point.longitude,
+      });
+      setNotice(
+        `已填入当前位置（精度约 ${Math.ceil(point.accuracy)} 米），可继续在地图调整。`,
+      );
+    } catch (e) {
+      if (sequence === locationSequence.current) setError(locationError(e));
+    } finally {
+      if (sequence === locationSequence.current) setLocating(false);
+    }
+  }
   async function generate() {
     if (generating.current) return;
     generating.current = true;
@@ -275,9 +314,24 @@ function StudioContent({ accountId }: { accountId: string }) {
       {stepper.current.id === 'location' && (
         <section className='space-y-5 rounded-xl border border-border bg-card p-5 sm:p-7'>
           <div>
-            <h2 className='text-lg font-semibold'>先选一个运动中心</h2>
+            <div className='flex flex-wrap items-center justify-between gap-3'>
+              <h2 className='text-lg font-semibold'>先选一个运动中心</h2>
+              <Button
+                type='button'
+                variant='outline'
+                disabled={locating}
+                onClick={() => void locate()}
+              >
+                {locating ? (
+                  <LoaderCircle className='size-4 animate-spin' />
+                ) : (
+                  <LocateFixed className='size-4' />
+                )}
+                {locating ? '正在获取位置…' : '获取当前位置'}
+              </Button>
+            </div>
             <p className='mt-2 text-xs leading-6 text-muted-foreground'>
-              点击地图选点，也可手动填写坐标。地图不会自动获取设备位置。
+              点击地图选点，也可手动填写坐标。仅点击获取位置后请求权限，不会自动定位。
             </p>
           </div>
           <StudioMap
@@ -316,6 +370,7 @@ function StudioContent({ accountId }: { accountId: string }) {
           <div className='flex justify-end'>
             <Button
               disabled={
+                locating ||
                 config.latitude === null ||
                 config.longitude === null ||
                 !Number.isFinite(config.latitude) ||
@@ -325,7 +380,7 @@ function StudioContent({ accountId }: { accountId: string }) {
               }
               onClick={() => void stepper.next()}
             >
-              下一步：设置参数
+              设置参数
               <ArrowRight className='size-4' />
             </Button>
           </div>
@@ -340,8 +395,20 @@ function StudioContent({ accountId }: { accountId: string }) {
           }}
         >
           <div>
-            <h2 className='text-lg font-semibold'>基准值与偏移范围</h2>
-            <p className='mt-2 text-xs leading-6 text-muted-foreground'>
+            <div className='flex flex-wrap items-center justify-between gap-3'>
+              <h2 className='text-lg font-semibold'>基准值与偏移范围</h2>
+              <Button
+                type='button'
+                size='sm'
+                variant='default'
+                disabled={saving || studio.busy}
+                onClick={() => setSaveOpen((v) => !v)}
+              >
+                <Save className='size-3.5' />
+                保存为预设
+              </Button>
+            </div>
+            <p className='mt-3 text-xs leading-6 text-muted-foreground'>
               拖动两端设置相对基准的最小、最大偏移，0
               表示不偏移。速度和配速由最终距离与时长计算。
             </p>
@@ -418,37 +485,30 @@ function StudioContent({ accountId }: { accountId: string }) {
             />
           </div>
           <div className='space-y-2'>
-            <Label htmlFor='run-start'>起始时间 / 本地时间</Label>
-            <Input
-              id='run-start'
-              type='datetime-local'
-              step='1'
-              required
+            <p className='text-sm font-medium'>起始时间 / 本地时间</p>
+            <DateTimePicker
               value={start}
               disabled={studio.busy}
-              onChange={(e) => {
+              onChange={(value) => {
                 studio.clear();
-                setStart(e.target.value);
+                setStart(value);
               }}
             />
           </div>
           <p className='text-xs leading-6 text-muted-foreground'>
             每次生成使用新的随机种子，最终值完整保留在预览中。整数计数仍为整数；本地检查不代表学校判定。
           </p>
-          <div className='border-t border-border pt-5'>
-            <Button
-              type='button'
-              variant='outline'
-              disabled={saving || studio.busy}
-              onClick={() => setSaveOpen((v) => !v)}
-            >
-              <Save className='size-4' />
-              保存为预设
-            </Button>
-            {saveOpen && (
+          {saveOpen && (
+            <div className='border-t border-border pt-5'>
               <div className='mt-4 flex flex-wrap gap-3'>
                 <Input
                   aria-label='预设名称'
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      if (name.trim() && !saving) void save();
+                    }
+                  }}
                   placeholder='例如：常用操场'
                   maxLength={80}
                   value={name}
@@ -466,8 +526,8 @@ function StudioContent({ accountId }: { accountId: string }) {
                   保存选点和参数，不保存本次时间或提交授权。
                 </p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
           <div className='flex flex-wrap justify-between gap-3'>
             <Button
               type='button'
@@ -498,7 +558,7 @@ function StudioContent({ accountId }: { accountId: string }) {
               返回调整参数
             </Button>
             <Button onClick={() => void stepper.next()}>
-              下一步：确认提交
+              确认提交
               <ArrowRight className='size-4' />
             </Button>
           </div>

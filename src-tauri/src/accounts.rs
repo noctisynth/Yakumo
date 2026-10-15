@@ -13,6 +13,8 @@ pub const MAX_ACCOUNTS: usize = 20;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Account {
+    #[serde(default)]
+    display_name: Option<String>,
     id: String,
     school: String,
     session: Session,
@@ -56,6 +58,20 @@ mod tests {
 
     struct TestAuthentication;
     impl Authentication for TestAuthentication {
+        fn identity(
+            &self,
+            session: &Session,
+            now: u64,
+        ) -> AccountResult<crate::account_avatar::AccountIdentity> {
+            Ok(crate::account_avatar::AccountIdentity {
+                display_name: if session.username.starts_with("named-") {
+                    Some(format!("合成姓名-{}", session.username))
+                } else {
+                    None
+                },
+                avatar: Ok(self.avatar(session, now)?),
+            })
+        }
         fn avatar(&self, session: &Session, _now: u64) -> AccountResult<Option<String>> {
             if session.username == "avatar-failure" {
                 return Err(AccountError::protocol());
@@ -93,6 +109,31 @@ mod tests {
         }
     }
 
+    #[test]
+    fn account_names_are_cached_and_isolated_across_restart() {
+        let storage = TestStorage::default();
+        let mut app = manager(&storage);
+        let a = app
+            .login(input("named-a", "one"), 100)
+            .expect("a")
+            .active_id
+            .expect("a id");
+        app.login(input("named-b", "two"), 100).expect("b");
+        let mut restored = manager(&storage);
+        let snapshot = restored.list(100).expect("snapshot");
+        let name = snapshot
+            .accounts
+            .iter()
+            .find(|p| p.id == a)
+            .expect("a")
+            .display_name
+            .as_deref();
+        assert_eq!(name, Some("合成姓名-named-a"));
+        assert_ne!(
+            snapshot.accounts[0].display_name,
+            snapshot.accounts[1].display_name
+        );
+    }
     #[test]
     fn studio_presets_persist_isolate_and_preserve_data_on_failure() {
         use crate::studio_presets::{PresetAction, PresetConfig};
@@ -603,6 +644,7 @@ impl AccountData {
                     school: account.school.clone(),
                     school_name: "西南石油大学",
                     username: account.session.username.clone(),
+                    display_name: account.display_name.clone(),
                     expires_at: account.session.expires_at,
                     expired: account.session.expires_at <= now,
                     avatar_url: account.session.avatar_url.clone(),
@@ -619,6 +661,7 @@ pub struct AccountSummary {
     pub school: String,
     pub school_name: &'static str,
     pub username: String,
+    pub display_name: Option<String>,
     pub expires_at: u64,
     pub expired: bool,
     pub avatar_url: Option<String>,
@@ -849,18 +892,22 @@ impl AccountManager {
         if account.session.expires_at <= now || !self.avatar_checked.insert(id.to_string()) {
             return false;
         }
-        let Ok(avatar) = self.authentication.avatar(&account.session, now) else {
+        let Ok(identity) = self.authentication.identity(&account.session, now) else {
             return false;
         };
-        if avatar
-            .as_ref()
-            .is_some_and(|value| !crate::account_avatar::valid_cached_avatar(value))
-            || account.session.avatar_url == avatar
+        let mut changed = account.display_name != identity.display_name;
+        account.display_name = identity.display_name;
+        if let Ok(avatar) = identity.avatar
+            && avatar
+                .as_ref()
+                .is_none_or(|value| crate::account_avatar::valid_cached_avatar(value))
+            && account.session.avatar_url != avatar
         {
-            return false;
+            account.session.avatar_url = avatar;
+            changed = true;
         }
-        account.session.avatar_url = avatar;
-        true
+
+        changed
     }
 
     pub fn login(&mut self, input: LoginInput, now: u64) -> AccountResult<AccountSnapshot> {
@@ -901,6 +948,7 @@ impl AccountManager {
             }
             let id = Uuid::new_v4().to_string();
             data.accounts.push(Account {
+                display_name: None,
                 id: id.clone(),
                 school: input.school,
                 session,

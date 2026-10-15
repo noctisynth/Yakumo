@@ -1,6 +1,7 @@
 import { Check, Plus, Trash2, UsersRound } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { AccountAvatar } from '@/components/account-avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAccounts } from '@/hooks/use-accounts';
@@ -127,16 +128,28 @@ export function AccountsPage() {
               {accounts.map((account) => (
                 <li
                   key={account.id}
-                  className='space-y-4 rounded-2xl border border-border/70 bg-card p-5'
+                  className='relative isolate space-y-4 overflow-hidden rounded-2xl border border-border/70 bg-card p-5 sm:p-6'
                 >
+                  <span
+                    aria-hidden='true'
+                    className='pointer-events-none absolute -right-2 -bottom-4 -z-10 max-w-full truncate text-5xl leading-none font-semibold tracking-tighter text-foreground/[0.035] sm:text-7xl'
+                  >
+                    {account.username}
+                  </span>
                   <div className='flex flex-wrap items-start justify-between gap-3'>
-                    <div className='min-w-0 flex-1'>
-                      <p className='break-all text-base font-medium'>
-                        {account.username}
-                      </p>
-                      <p className='mt-1 text-xs text-muted-foreground'>
-                        {account.schoolName}
-                      </p>
+                    <div className='flex min-w-0 flex-1 items-center gap-4'>
+                      <AccountAvatar
+                        avatarUrl={account.avatarUrl}
+                        className='size-12'
+                      />
+                      <div className='min-w-0'>
+                        <p className='break-all text-base font-medium'>
+                          {account.displayName?.trim() || account.username}
+                        </p>
+                        <p className='mt-1 text-xs text-muted-foreground'>
+                          {account.schoolName}
+                        </p>
+                      </div>
                     </div>
                     <div className='flex flex-wrap gap-2'>
                       {activeId === account.id && (
@@ -183,7 +196,7 @@ export function AccountsPage() {
                       重新登录
                     </Button>
                     <Button
-                      variant='ghost'
+                      variant='destructive'
                       disabled={disabled}
                       aria-label={`移除账号 ${account.username}`}
                       onClick={() => setConfirmId(account.id)}

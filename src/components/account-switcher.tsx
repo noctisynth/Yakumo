@@ -35,7 +35,7 @@ export function AccountSwitcher() {
       <DropdownMenu.Trigger asChild>
         <button
           type='button'
-          aria-label={`当前账号：${active?.username ?? '未登录'}，打开账号菜单`}
+          aria-label={`当前账号：${active?.displayName || active?.username || '未登录'}，打开账号菜单`}
           disabled={pending}
           className='flex w-full min-w-0 items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 text-left transition-colors outline-none hover:bg-accent/70 focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-accent disabled:opacity-60'
         >
@@ -45,7 +45,7 @@ export function AccountSwitcher() {
           />
           <span className='min-w-0 flex-1'>
             <span className='block truncate text-sm font-medium'>
-              {active?.username ?? '未登录账号'}
+              {active?.displayName || active?.username || '未登录账号'}
             </span>
             <span
               className={cn(
@@ -89,7 +89,7 @@ export function AccountSwitcher() {
                   if (account.id !== activeId) void switchAccount(account.id);
                 }}
                 className={itemClassName}
-                aria-label={`切换到 ${account.username}${account.expired ? '，登录已过期' : ''}`}
+                aria-label={`切换到 ${account.displayName ? `${account.displayName}（${account.username}）` : account.username}${account.expired ? '，登录已过期' : ''}`}
               >
                 <AccountAvatar
                   avatarUrl={account.avatarUrl}
@@ -97,12 +97,14 @@ export function AccountSwitcher() {
                 />
                 <span className='min-w-0 flex-1'>
                   <span className='block truncate font-medium'>
-                    {account.username}
+                    {account.displayName || account.username}
                   </span>
                   <span className='mt-0.5 block truncate text-[11px] text-muted-foreground'>
                     {account.expired
                       ? '登录已过期，请重新登录'
-                      : account.schoolName}
+                      : account.displayName
+                        ? `${account.schoolName} · ${account.username}`
+                        : account.schoolName}
                   </span>
                 </span>
                 {account.id === activeId && (

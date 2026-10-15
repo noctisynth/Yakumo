@@ -3,6 +3,7 @@ export interface AccountSummary {
   school: string;
   schoolName: string;
   username: string;
+  displayName?: string | null;
   expiresAt: number;
   expired: boolean;
   avatarUrl?: string | null;

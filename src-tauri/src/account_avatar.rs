@@ -134,6 +134,21 @@ pub fn valid_cached_avatar(value: &str) -> bool {
         .is_some_and(|bytes| encode_image(&bytes, mime).is_ok())
 }
 
+pub struct AccountIdentity {
+    pub display_name: Option<String>,
+    pub avatar: AccountResult<Option<String>>,
+}
+fn display_name(data: &serde_json::Map<String, serde_json::Value>) -> Option<String> {
+    ["realName", "name", "nickName"]
+        .iter()
+        .filter_map(|key| data.get(*key).and_then(serde_json::Value::as_str))
+        .map(str::trim)
+        .find(|name| {
+            !name.is_empty() && name.chars().count() <= 128 && !name.chars().any(char::is_control)
+        })
+        .map(str::to_owned)
+}
+
 pub struct AvatarReader<'a> {
     origin: &'a str,
     allow_local: bool,
@@ -151,6 +166,24 @@ impl<'a> AvatarReader<'a> {
         if session.expires_at <= now {
             return Ok(None);
         }
+        let data = self.profile(session, now)?;
+        self.read_image(&data)
+    }
+    pub fn read_identity(&self, session: &Session, now: u64) -> AccountResult<AccountIdentity> {
+        if session.expires_at <= now {
+            return Err(unavailable());
+        }
+        let data = self.profile(session, now)?;
+        Ok(AccountIdentity {
+            display_name: display_name(&data),
+            avatar: self.read_image(&data),
+        })
+    }
+    fn profile(
+        &self,
+        session: &Session,
+        now: u64,
+    ) -> AccountResult<serde_json::Map<String, serde_json::Value>> {
         let timestamp = now.checked_mul(1000).ok_or_else(unavailable)?.to_string();
         let sign = signature(&session.access_token, &session.raw_app_id, &timestamp)?;
         let profile = response(
@@ -163,10 +196,16 @@ impl<'a> AvatarReader<'a> {
                 .header("timestamp", &timestamp)
                 .header("sign", sign),
         )?;
-        let data = profile
+        profile
             .get("data")
             .and_then(serde_json::Value::as_object)
-            .ok_or_else(unavailable)?;
+            .cloned()
+            .ok_or_else(unavailable)
+    }
+    fn read_image(
+        &self,
+        data: &serde_json::Map<String, serde_json::Value>,
+    ) -> AccountResult<Option<String>> {
         let value = match data.get("imageRouteUrl") {
             None | Some(serde_json::Value::Null) => return Ok(None),
             Some(serde_json::Value::String(value)) => value,
@@ -257,6 +296,22 @@ mod tests {
         (origin, worker)
     }
 
+    #[test]
+    fn profile_name_prefers_real_name_and_keeps_nickname_as_fallback() {
+        let value =
+            serde_json::json!({"realName":"合成姓名","name":"其他姓名","nickName":"合成昵称"});
+        assert_eq!(
+            display_name(value.as_object().expect("object")).as_deref(),
+            Some("合成姓名")
+        );
+        let value = serde_json::json!({"realName":"","name":null,"nickName":"合成昵称"});
+        assert_eq!(
+            display_name(value.as_object().expect("object")).as_deref(),
+            Some("合成昵称")
+        );
+        let value = serde_json::json!({"realName":"bad\nname","nickName":123});
+        assert!(display_name(value.as_object().expect("object")).is_none());
+    }
     #[test]
     fn reads_actual_profile_field_with_signed_session_but_downloads_without_credentials() {
         let png = b"\x89PNG\r\n\x1a\nsynthetic".to_vec();
