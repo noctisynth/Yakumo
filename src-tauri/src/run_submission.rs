@@ -316,6 +316,7 @@ mod tests {
         generate(RunInput {
             target_pace_seconds_per_km: None,
             estimated_cadence: None,
+            coordinate_noise_m: None,
             route: vec![],
             seed: "synthetic".into(),
             start_time: 1700000000000,
@@ -364,6 +365,54 @@ mod tests {
                 .expect("points");
         assert_eq!(points[0]["f"], true);
         assert_eq!(points.as_array().expect("array").len(), 900);
+    }
+    #[test]
+    fn randomized_preview_points_and_step_buckets_are_the_actual_payload() {
+        let mut input = sample_preview().input;
+        input.coordinate_noise_m = Some(0.8);
+        input.route = vec![
+            crate::run_generator::RoutePoint {
+                latitude: 0.0,
+                longitude: 0.0,
+            },
+            crate::run_generator::RoutePoint {
+                latitude: 0.0,
+                longitude: 0.01,
+            },
+        ];
+        let preview = generate(input).expect("preview");
+        let expected_points = preview
+            .points
+            .iter()
+            .map(|p| serde_json::to_value(p).expect("point"))
+            .collect::<Vec<_>>();
+        let expected_steps = serde_json::to_value(&preview.step_buckets).expect("steps");
+        let digest = preview.digest.clone();
+        let (_, ticket) = prepare_settings(
+            "synthetic-account".into(),
+            preview,
+            &sample_settings(),
+            &sample_session(),
+            1700000900000,
+        )
+        .expect("prepare");
+        let ticket = ticket.expect("ticket");
+        assert_eq!(ticket.algorithm, "waypoints-v3");
+        assert_eq!(ticket.digest, digest);
+        let points: Vec<Value> =
+            serde_json::from_str(ticket.payload["gitudeLatitude"].as_str().expect("text"))
+                .expect("points");
+        for (expected, actual) in expected_points.iter().zip(&points) {
+            for (key, value) in expected.as_object().expect("object") {
+                assert_eq!(&actual[key], value);
+            }
+            assert_eq!(actual["f"], true);
+        }
+        assert_eq!(expected_points.len(), points.len());
+        let steps: Value =
+            serde_json::from_str(ticket.payload["stepNumbers"].as_str().expect("text"))
+                .expect("steps");
+        assert_eq!(steps, expected_steps);
     }
     #[test]
     fn post_transport_uses_same_snapshot_and_double_form() {

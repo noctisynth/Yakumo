@@ -45,6 +45,8 @@ pub struct RunInput {
     pub target_pace_seconds_per_km: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub estimated_cadence: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub coordinate_noise_m: Option<f64>,
     pub seed: String,
     pub start_time: u64,
     pub latitude: f64,
@@ -74,6 +76,7 @@ pub struct RunPreview {
     pub points: Vec<Point>,
     pub step_buckets: Vec<u32>,
     pub actual_distance_m: f64,
+    pub coordinate_noise_m: f64,
     pub pace: String,
     pub average_kmh: f64,
     pub end_time: u64,
@@ -99,7 +102,10 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
             "路线需要 2–50 个有效选点，相邻点至少相距 1 米，总长度 50 米至 30 公里。",
         ));
     }
-    if input.seed.is_empty()
+    if input
+        .coordinate_noise_m
+        .is_some_and(|v| !v.is_finite() || !(0.0..=3.0).contains(&v))
+        || input.seed.is_empty()
         || input.seed.len() > 128
         || !input.latitude.is_finite()
         || !input.longitude.is_finite()
@@ -138,10 +144,21 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
                     < 0.5 => {}
         _ => return Err(invalid()),
     }
+    let algorithm = if input.route.is_empty() {
+        "circle-v1"
+    } else {
+        "waypoints-v3"
+    };
     let digest = format!(
         "{:x}",
-        Sha256::digest(serde_json::to_vec(&input).map_err(|_| invalid())?)
+        Sha256::digest(serde_json::to_vec(&(algorithm, &input)).map_err(|_| invalid())?)
     );
+    let coordinate_noise_m = if input.route.is_empty() {
+        0.0
+    } else {
+        input.coordinate_noise_m.unwrap_or(0.8).min(speed * 0.6)
+    };
+    let motion = crate::run_variation::motion(input.duration_s, &input.seed, coordinate_noise_m);
     let seed = Sha256::digest(input.seed.as_bytes());
     let phase = u32::from_le_bytes([seed[0], seed[1], seed[2], seed[3]]) as f64 / u32::MAX as f64
         * std::f64::consts::TAU;
@@ -194,11 +211,12 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
                                 / (111_195.0 * input.latitude.to_radians().cos()),
                     )
                 } else {
-                    let t = second as f64 / input.duration_s as f64;
-                    let frequency = std::f64::consts::TAU * 3.0;
-                    let progress =
-                        t + 0.05 / frequency * ((frequency * t + phase).sin() - phase.sin());
-                    along(radius * progress)
+                    let movement = &motion[second as usize];
+                    let (latitude, longitude) = along(radius * movement.progress);
+                    (
+                        latitude + movement.north / 111_195.0,
+                        longitude + movement.east / (111_195.0 * latitude.to_radians().cos()),
+                    )
                 };
                 Point {
                     a,
@@ -207,7 +225,11 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
                     s: 0.0,
                     i: false,
                     c: second,
-                    e: (input.steps as u64 * second as u64 / input.duration_s as u64) as u32,
+                    e: if input.route.is_empty() {
+                        (input.steps as u64 * second as u64 / input.duration_s as u64) as u32
+                    } else {
+                        (input.steps as f64 * motion[second as usize].progress).round() as u32
+                    },
                 }
             })
             .collect()
@@ -249,16 +271,11 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
         .step_by(60)
         .chain(std::iter::once(input.duration_s))
     {
-        let total = (input.steps as u64 * second as u64 / input.duration_s as u64) as u32;
+        let total = points[second as usize].e;
         buckets.push(total - previous);
         previous = total;
     }
     let pace_s = (input.duration_s as f64 * 1000.0 / input.distance_m).round() as u32;
-    let algorithm = if input.route.is_empty() {
-        "circle-v1"
-    } else {
-        "waypoints-v2"
-    };
     Ok(RunPreview {
         end_time: input.start_time + input.duration_s as u64 * 1000,
         pace: format!("{}'{:02}\"", pace_s / 60, pace_s % 60),
@@ -270,6 +287,7 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
         points,
         step_buckets: buckets,
         actual_distance_m: actual,
+        coordinate_noise_m,
         checks: vec![
             "逐段距离与目标误差小于 1 毫米",
             "逐秒时间、速度与有效时长一致",
@@ -285,6 +303,7 @@ mod tests {
         RunInput {
             target_pace_seconds_per_km: None,
             estimated_cadence: None,
+            coordinate_noise_m: None,
             route: vec![],
             seed: "synthetic-seed".into(),
             start_time: 1700000000000,
@@ -347,8 +366,9 @@ mod tests {
         ];
         for n in 0..32 {
             value.seed = format!("route-{n}");
+            value.coordinate_noise_m = Some(0.0);
             let a = generate(value.clone()).expect("waypoint generation");
-            assert_eq!(a.algorithm, "waypoints-v2");
+            assert_eq!(a.algorithm, "waypoints-v3");
             assert_eq!(a.source, "synthetic");
             assert!((a.actual_distance_m - value.distance_m).abs() < 0.001);
             assert_eq!(a.step_buckets.iter().sum::<u32>(), value.steps);
@@ -371,6 +391,7 @@ mod tests {
         for (target, duration, end_lon) in [(100.0, 60, 0.1), (30000.0, 7200, 0.0005)] {
             let mut value = input();
             value.distance_m = target;
+            value.coordinate_noise_m = Some(0.0);
             value.duration_s = duration;
             value.steps = (duration as f64 / 60.0 * 160.0).round() as u32;
             value.route = vec![
@@ -401,6 +422,7 @@ mod tests {
             }
         }
         let mut closed = input();
+        closed.coordinate_noise_m = Some(0.0);
         closed.route = vec![
             RoutePoint {
                 latitude: 0.0,
@@ -443,6 +465,87 @@ mod tests {
         value.steps = 1920;
         value.duration_s += 10;
         assert!(generate(value).is_err());
+    }
+    #[test]
+    fn random_coordinates_are_bounded_smooth_reproducible_and_reconciled() {
+        let mut value = input();
+        value.coordinate_noise_m = Some(0.8);
+        value.route = vec![
+            RoutePoint {
+                latitude: 0.0,
+                longitude: 0.0,
+            },
+            RoutePoint {
+                latitude: 0.0,
+                longitude: 0.01,
+            },
+        ];
+        for n in 0..24 {
+            value.seed = format!("coordinates-{n}");
+            let preview = generate(value.clone()).expect("noisy route");
+            let repeat = generate(value.clone()).expect("repeat");
+            assert_eq!(
+                serde_json::to_string(&preview).expect("preview"),
+                serde_json::to_string(&repeat).expect("repeat")
+            );
+            assert!((preview.actual_distance_m - value.distance_m).abs() < 0.001);
+            assert!(preview.points.iter().any(|p| p.a.abs() > 1e-7));
+            assert!(preview.points.iter().all(|p| p.a.abs() * 111195.0 <= 0.8
+                && p.o >= -0.8 / 111195.0
+                && p.o <= 0.01 + 0.8 / 111195.0));
+            assert!(
+                preview
+                    .points
+                    .windows(2)
+                    .all(|p| (p[1].a - p[0].a).abs() * 111195.0 < 0.3
+                        && p[1].e >= p[0].e
+                        && p[1].s <= 12.0)
+            );
+            let mut previous = 0;
+            for (index, bucket) in preview.step_buckets.iter().enumerate() {
+                let second = ((index + 1) * 60).min(value.duration_s as usize);
+                assert_eq!(*bucket, preview.points[second].e - previous);
+                previous = preview.points[second].e;
+            }
+            assert_eq!(previous, value.steps);
+        }
+        let a = generate(value.clone()).expect("a");
+        value.seed.push('b');
+        let b = generate(value.clone()).expect("b");
+        assert_ne!(a.points[100].a, b.points[100].a);
+        value.coordinate_noise_m = Some(0.0);
+        let zero = generate(value.clone()).expect("zero");
+        assert!(zero.points.iter().all(|p| p.a == 0.0));
+        value.coordinate_noise_m = Some(4.0);
+        assert!(generate(value.clone()).is_err());
+        value.coordinate_noise_m = Some(f64::NAN);
+        assert!(generate(value).is_err());
+    }
+    #[test]
+    fn noisy_extreme_ratios_keep_time_distance_and_speed_constraints() {
+        for (target, duration, noise) in
+            [(100.0, 60, 0.8), (30000.0, 7200, 3.0), (3600.0, 7200, 3.0)]
+        {
+            let mut value = input();
+            value.distance_m = target;
+            value.duration_s = duration;
+            value.steps = (duration as f64 / 60.0 * 120.0).round() as u32;
+            value.coordinate_noise_m = Some(noise);
+            value.route = vec![
+                RoutePoint {
+                    latitude: 0.0,
+                    longitude: 0.0,
+                },
+                RoutePoint {
+                    latitude: 0.0,
+                    longitude: 0.0005,
+                },
+            ];
+            let preview = generate(value).expect("noisy bounded route");
+            assert!((preview.actual_distance_m - target).abs() < 0.001);
+            assert!(preview.coordinate_noise_m <= noise);
+            assert!(preview.points.iter().all(|p| p.s <= 12.0));
+        }
     }
     #[test]
     fn invalid_routes_fail_and_legacy_inputs_remain_compatible() {

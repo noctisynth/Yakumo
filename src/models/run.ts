@@ -4,6 +4,7 @@ export interface RoutePoint {
 }
 export interface RunInput {
   route?: RoutePoint[];
+  coordinateNoiseM?: number;
   targetPaceSecondsPerKm?: number;
   estimatedCadence?: number;
   seed: string;
@@ -32,6 +33,7 @@ export interface RunPreview {
   points: RunPoint[];
   stepBuckets: number[];
   actualDistanceM: number;
+  coordinateNoiseM?: number;
   pace: string;
   averageKmh: number;
   endTime: number;

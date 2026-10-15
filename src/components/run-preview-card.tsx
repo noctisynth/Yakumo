@@ -1,4 +1,5 @@
-import { Download } from 'lucide-react';
+import { Download, ScanSearch } from 'lucide-react';
+import { useState } from 'react';
 import { StudioMap } from '@/components/studio-map';
 import { Button } from '@/components/ui/button';
 import type { RunPreview } from '@/models/run';
@@ -15,6 +16,7 @@ export function RunPreviewCard({
   mapLoaded?: boolean;
   onMapLoad?: () => void;
 }) {
+  const [detail, setDetail] = useState(false);
   return (
     <>
       {' '}
@@ -47,12 +49,31 @@ export function RunPreviewCard({
             </div>
           ))}
         </div>
-        <div className='px-5'>
+        <div className='space-y-3 px-5'>
+          <div className='flex flex-wrap items-center justify-between gap-3'>
+            <p className='text-xs text-muted-foreground'>
+              最终上报轨迹 · 坐标浮动最多{' '}
+              {(
+                preview.coordinateNoiseM ??
+                preview.input.coordinateNoiseM ??
+                0
+              ).toFixed(2)}{' '}
+              米
+            </p>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => setDetail((value) => !value)}
+            >
+              <ScanSearch className='size-3.5' />
+              {detail ? '查看全程' : '查看局部'}
+            </Button>
+          </div>
           <StudioMap
-            latitude={preview.input.latitude}
-            longitude={preview.input.longitude}
+            latitude={preview.points[0]?.a ?? preview.input.latitude}
+            longitude={preview.points[0]?.o ?? preview.input.longitude}
             points={preview.points}
-            waypoints={preview.input.route}
+            detail={detail}
             defaultLoaded={mapLoaded}
             onLoad={onMapLoad}
           />

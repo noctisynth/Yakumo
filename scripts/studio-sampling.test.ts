@@ -136,3 +136,26 @@ test('one preset varies between seeds while zero ranges preserve final metrics',
     b.estimatedCadence,
   ]);
 });
+
+test('coordinate variation is included in the exact generation input', () => {
+  const c = paceConfig({
+    ...defaultConfig(),
+    latitude: 0,
+    longitude: 0,
+    route: [
+      { latitude: 0, longitude: 0 },
+      { latitude: 0, longitude: 0.002 },
+    ],
+  });
+  expect(sampleRun(c, 1700000000000, 'noise').coordinateNoiseM).toBe(0.8);
+  expect(
+    sampleRun({ ...c, coordinateNoiseM: 0 }, 1700000000000, 'noise')
+      .coordinateNoiseM,
+  ).toBe(0);
+  expect(() =>
+    sampleRun({ ...c, coordinateNoiseM: NaN }, 1700000000000, 'noise'),
+  ).toThrow();
+  expect(() =>
+    sampleRun({ ...c, coordinateNoiseM: 4 }, 1700000000000, 'noise'),
+  ).toThrow();
+});

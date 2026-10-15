@@ -16,6 +16,7 @@ mod exercise_service;
 mod mobile_vault;
 mod run_generator;
 mod run_submission;
+mod run_variation;
 mod studio_presets;
 
 use account_error::{AccountError, AccountResult};

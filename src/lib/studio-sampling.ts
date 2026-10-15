@@ -5,6 +5,13 @@ export function sampleRun(
   startTime: number,
   seed: string,
 ): RunInput {
+  if (
+    config.coordinateNoiseM !== undefined &&
+    (!Number.isFinite(config.coordinateNoiseM) ||
+      config.coordinateNoiseM < 0 ||
+      config.coordinateNoiseM > 3)
+  )
+    throw new Error('轨迹坐标浮动范围应为 0 至 3 米。');
   let state = 2166136261;
   for (const char of seed)
     state = Math.imul(state ^ char.charCodeAt(0), 16777619);
@@ -121,6 +128,9 @@ export function sampleRun(
           estimatedCadence: actualCadence,
         }),
     ...(config.route?.length ? { route: structuredClone(config.route) } : {}),
+    ...(config.route?.length
+      ? { coordinateNoiseM: config.coordinateNoiseM ?? 0.8 }
+      : {}),
     seed,
     startTime: actualStart,
     latitude,
@@ -150,6 +160,7 @@ export function paceConfig(config: StudioConfig): StudioConfig {
     paceSecondsPerKm,
     cadence,
     cadenceOffset: config.cadenceOffset ?? [-3, 3],
+    coordinateNoiseM: config.coordinateNoiseM ?? 0.8,
     durationS,
     steps: Math.round((durationS / 60) * cadence),
     laps: 1,

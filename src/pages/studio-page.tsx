@@ -633,6 +633,29 @@ function StudioContent({ accountId }: { accountId: string }) {
               </div>
             </div>
           </details>
+          <div className='space-y-4 rounded-xl border border-border p-4'>
+            <div className='flex items-center justify-between gap-3'>
+              <p className='text-sm font-medium'>轨迹坐标浮动</p>
+              <span className='text-xs tabular-nums text-muted-foreground'>
+                最多 {config.coordinateNoiseM ?? 0.8} 米
+              </span>
+            </div>
+            <Slider
+              aria-label='轨迹坐标浮动'
+              min={0}
+              max={3}
+              step={0.1}
+              value={[config.coordinateNoiseM ?? 0.8]}
+              disabled={studio.busy || saving}
+              onValueChange={(value) =>
+                update({ ...config, coordinateNoiseM: value[0] })
+              }
+            />
+            <p className='text-xs leading-6 text-muted-foreground'>
+              沿选线加入连续的小幅浮动；低速时自动收窄。0
+              表示不浮动，最终轨迹可在预览中放大查看。
+            </p>
+          </div>
           <OffsetControl
             field='startMinutes'
             label='开始时间偏移'

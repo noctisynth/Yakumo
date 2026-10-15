@@ -15,6 +15,8 @@ pub struct PresetConfig {
     pub cadence: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cadence_offset: Option<[f64; 2]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub coordinate_noise_m: Option<f64>,
     pub latitude: f64,
     pub longitude: f64,
     pub distance_m: f64,
@@ -33,7 +35,10 @@ impl PresetConfig {
             ("positionM", 100.0),
             ("startMinutes", 60.0),
         ];
-        if !crate::run_generator::validate_route(&self.route)
+        if self
+            .coordinate_noise_m
+            .is_some_and(|v| !v.is_finite() || !(0.0..=3.0).contains(&v))
+            || !crate::run_generator::validate_route(&self.route)
             || !self.latitude.is_finite()
             || self.latitude.abs() > 85.0
             || !self.longitude.is_finite()

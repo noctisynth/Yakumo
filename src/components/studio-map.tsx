@@ -12,6 +12,7 @@ export function StudioMap({
   waypoints,
   routeEditing = false,
   points,
+  detail = false,
   defaultLoaded = false,
   onLoad,
 }: {
@@ -22,6 +23,7 @@ export function StudioMap({
   routeEditing?: boolean;
   waypoints?: RoutePoint[];
   points?: RunPoint[];
+  detail?: boolean;
   defaultLoaded?: boolean;
   onLoad?: () => void;
 }) {
@@ -49,7 +51,8 @@ export function StudioMap({
     );
     map.current = m;
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
+      maxNativeZoom: 19,
+      maxZoom: 22,
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
     })
@@ -81,14 +84,10 @@ export function StudioMap({
     if (!loaded || !map.current || !layer.current) return;
     layer.current.clearLayers();
     if (points?.length) {
-      const line = L.polyline(
+      L.polyline(
         points.map((p) => [p.a, p.o] as [number, number]),
-        { color: '#c6a76b', weight: 3 },
+        { color: '#c6a76b', weight: 3, smoothFactor: 0 },
       ).addTo(layer.current);
-      map.current.fitBounds(line.getBounds(), {
-        padding: [24, 24],
-        maxZoom: 18,
-      });
     }
     if (waypoints?.length) {
       L.polyline(
@@ -125,6 +124,18 @@ export function StudioMap({
       Math.min(map.current.getMaxZoom(), Math.max(map.current.getZoom(), 16)),
     );
   }, [loaded, focusPoint]);
+  useEffect(() => {
+    if (!loaded || !map.current || !points?.length) return;
+    if (detail) {
+      const point = points[Math.min(10, points.length - 1)];
+      map.current.setView([point.a, point.o], 22);
+    } else {
+      map.current.fitBounds(
+        L.latLngBounds(points.map((p) => [p.a, p.o] as [number, number])),
+        { padding: [24, 24], maxZoom: 18 },
+      );
+    }
+  }, [loaded, points, detail]);
   return (
     <div className='overflow-hidden rounded-xl border border-border bg-muted/30'>
       {loaded ? (
