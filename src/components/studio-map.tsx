@@ -8,6 +8,7 @@ export function StudioMap({
   latitude,
   longitude,
   onPick,
+  focusPoint,
   waypoints,
   routeEditing = false,
   points,
@@ -17,6 +18,7 @@ export function StudioMap({
   latitude: number | null;
   longitude: number | null;
   onPick?: (latitude: number, longitude: number) => void;
+  focusPoint?: RoutePoint;
   routeEditing?: boolean;
   waypoints?: RoutePoint[];
   points?: RunPoint[];
@@ -116,6 +118,13 @@ export function StudioMap({
       if (!points?.length) map.current.panTo([latitude, longitude]);
     }
   }, [loaded, latitude, longitude, points, waypoints]);
+  useEffect(() => {
+    if (!loaded || !map.current || !focusPoint) return;
+    map.current.setView(
+      [focusPoint.latitude, focusPoint.longitude],
+      Math.min(map.current.getMaxZoom(), Math.max(map.current.getZoom(), 16)),
+    );
+  }, [loaded, focusPoint]);
   return (
     <div className='overflow-hidden rounded-xl border border-border bg-muted/30'>
       {loaded ? (

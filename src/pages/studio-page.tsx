@@ -26,6 +26,7 @@ import { Slider } from '@/components/ui/slider';
 import { useDashboardAccount } from '@/hooks/use-dashboard-account';
 import { localDateTime, paceConfig, sampleRun } from '@/lib/studio-sampling';
 import { cn } from '@/lib/utils';
+import type { RoutePoint } from '@/models/run';
 import type { OffsetKey, StudioConfig } from '@/models/studio';
 import { defaultConfig } from '@/models/studio';
 import {
@@ -116,6 +117,7 @@ function StudioContent({ accountId }: { accountId: string }) {
       : paceConfig(defaultConfig());
   });
   const [mapEnabled, setMapEnabled] = useState(false);
+  const [mapFocus, setMapFocus] = useState<RoutePoint>();
   const [start, setStart] = useState(() =>
     localDateTime(Date.now() - 20 * 60000),
   );
@@ -159,6 +161,7 @@ function StudioContent({ accountId }: { accountId: string }) {
         latitude: config.route?.length ? config.latitude : point.latitude,
         longitude: config.route?.length ? config.longitude : point.longitude,
       });
+      setMapFocus({ latitude: point.latitude, longitude: point.longitude });
       setNotice(
         `已填入当前位置（精度约 ${Math.ceil(point.accuracy)} 米），可继续在地图调整。`,
       );
@@ -261,7 +264,7 @@ function StudioContent({ accountId }: { accountId: string }) {
             选好位置与范围，每次生成前都由你确认。
           </p>
         </div>
-        <Button asChild variant='outline'>
+        <Button asChild variant='default'>
           <Link to='/studio/presets'>
             <Bookmark className='size-4' />
             预设列表
@@ -371,6 +374,7 @@ function StudioContent({ accountId }: { accountId: string }) {
             </p>
           </div>
           <StudioMap
+            focusPoint={mapFocus}
             defaultLoaded={mapEnabled}
             onLoad={() => setMapEnabled(true)}
             latitude={config.latitude}
