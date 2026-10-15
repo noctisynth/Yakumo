@@ -16,6 +16,7 @@ mod exercise_service;
 mod mobile_vault;
 mod run_generator;
 mod run_submission;
+mod studio_presets;
 
 use account_error::{AccountError, AccountResult};
 use accounts::{AccountManager, AccountSnapshot, LoginInput};
@@ -119,6 +120,27 @@ async fn read_exercise(
         http_status: None,
         business_code: None,
     })?
+}
+
+#[tauri::command]
+async fn studio_presets(
+    state: tauri::State<'_, Accounts>,
+    account_id: String,
+    action: studio_presets::PresetAction,
+) -> AccountResult<Vec<studio_presets::StudioPreset>> {
+    let state = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| AccountError::new("clock_error", "系统时间异常。"))?
+            .as_secs();
+        state
+            .lock()
+            .map_err(|_| AccountError::storage())?
+            .studio_presets(&account_id, action, now)
+    })
+    .await
+    .map_err(|_| AccountError::new("internal_error", "预设操作未能完成，请重试。"))?
 }
 
 #[tauri::command]
@@ -389,6 +411,7 @@ pub fn run() {
             mobile_platform,
             export_mobile_preview,
             preview_run,
+            studio_presets,
             read_exercise
         ])
         .run(tauri::generate_context!())

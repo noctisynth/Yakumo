@@ -39,6 +39,7 @@ jobs:
           bun run test:android-config
           bun run test:accounts
           bun run test:dashboard
+          bun run test:studio
       - name: Frontend production build
         run: bun run build
       - name: Setup Semifold

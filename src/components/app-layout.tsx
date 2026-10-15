@@ -40,16 +40,18 @@ export function AppLayout() {
   const accountError = useAccountsStore((state) => state.error);
   const location = useLocation();
   const parentPage =
-    location.pathname === '/accounts/login'
-      ? { to: '/accounts', label: '账号管理', title: '登录账号' }
-      : /^\/records\/[^/]+$/.test(location.pathname)
-        ? { to: '/records', label: '运动记录', title: '记录详情' }
-        : (
-            {
-              '/profile': { to: '/me', label: '我的', title: '账号资料' },
-              '/accounts': { to: '/me', label: '我的', title: '账号管理' },
-            } as Record<string, { to: string; label: string; title: string }>
-          )[location.pathname];
+    location.pathname === '/studio/presets'
+      ? { to: '/studio', label: '生成工作室', title: '预设列表' }
+      : location.pathname === '/accounts/login'
+        ? { to: '/accounts', label: '账号管理', title: '登录账号' }
+        : /^\/records\/[^/]+$/.test(location.pathname)
+          ? { to: '/records', label: '运动记录', title: '记录详情' }
+          : (
+              {
+                '/profile': { to: '/me', label: '我的', title: '账号资料' },
+                '/accounts': { to: '/me', label: '我的', title: '账号管理' },
+              } as Record<string, { to: string; label: string; title: string }>
+            )[location.pathname];
   const hasParent = Boolean(parentPage);
   const current = navigation.find((item) =>
     item.to === '/'

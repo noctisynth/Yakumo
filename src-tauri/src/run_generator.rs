@@ -9,7 +9,7 @@ pub struct RunInput {
     pub start_time: u64,
     pub latitude: f64,
     pub longitude: f64,
-    pub distance_m: u32,
+    pub distance_m: f64,
     pub duration_s: u32,
     pub steps: u32,
     pub laps: u32,
@@ -59,7 +59,7 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
         || !input.longitude.is_finite()
         || input.latitude.abs() > 85.0
         || input.longitude.abs() > 179.0
-        || !(100..=30000).contains(&input.distance_m)
+        || (!input.distance_m.is_finite() || !(100.0..=30000.0).contains(&input.distance_m))
         || !(60..=7200).contains(&input.duration_s)
         || !(1..=10).contains(&input.laps)
         || input.steps > 50000
@@ -68,9 +68,9 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
     {
         return Err(invalid());
     }
-    let speed = input.distance_m as f64 / input.duration_s as f64;
+    let speed = input.distance_m / input.duration_s as f64;
     let cadence = input.steps as f64 * 60.0 / input.duration_s as f64;
-    let stride = input.distance_m as f64 / input.steps.max(1) as f64;
+    let stride = input.distance_m / input.steps.max(1) as f64;
     if !(0.5..=12.0).contains(&speed)
         || !(30.0..=300.0).contains(&cadence)
         || !(0.2..=3.0).contains(&stride)
@@ -113,7 +113,7 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
     let (mut lo, mut hi) = (0.0, 10000.0);
     for _ in 0..45 {
         let mid = (lo + hi) / 2.0;
-        if length(&route(mid)) < input.distance_m as f64 {
+        if length(&route(mid)) < input.distance_m {
             lo = mid;
         } else {
             hi = mid;
@@ -125,7 +125,7 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
     }
     points[0].s = points[1].s;
     let actual = length(&points);
-    if (actual - input.distance_m as f64).abs() > 0.001 {
+    if (actual - input.distance_m).abs() > 0.001 {
         return Err(invalid());
     }
     let mut buckets = Vec::new();
@@ -138,7 +138,7 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
         buckets.push(total - previous);
         previous = total;
     }
-    let pace_s = (input.duration_s as f64 * 1000.0 / input.distance_m as f64).round() as u32;
+    let pace_s = (input.duration_s as f64 * 1000.0 / input.distance_m).round() as u32;
     Ok(RunPreview {
         end_time: input.start_time + input.duration_s as u64 * 1000,
         pace: format!("{}'{:02}\"", pace_s / 60, pace_s % 60),
@@ -167,7 +167,7 @@ mod tests {
             start_time: 1700000000000,
             latitude: 0.0,
             longitude: 0.0,
-            distance_m: 2021,
+            distance_m: 2021.0,
             duration_s: 899,
             steps: 2397,
             laps: 5,
@@ -190,6 +190,20 @@ mod tests {
             assert!((p[1].s - distance(&p[0], &p[1])).abs() < 1e-9);
         }
         assert!(distance(&a.points[0], a.points.last().expect("last")) < 0.001);
+    }
+    #[test]
+    fn fractional_metres_are_reproducible_and_nonfinite_distances_fail() {
+        let mut value = input();
+        value.distance_m = 2021.7;
+        let preview = generate(value.clone()).expect("decimal distance");
+        assert!((preview.actual_distance_m - 2021.7).abs() < 0.001);
+        assert_eq!(preview.input.steps, 2397);
+        assert_eq!(preview.digest, generate(value).expect("repeat").digest);
+        for distance in [f64::NAN, f64::INFINITY, -1.0] {
+            let mut value = input();
+            value.distance_m = distance;
+            assert!(generate(value).is_err());
+        }
     }
     #[test]
     fn rejects_impossible_and_unbounded_inputs() {

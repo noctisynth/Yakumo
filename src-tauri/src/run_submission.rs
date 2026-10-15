@@ -145,7 +145,7 @@ fn prepare_settings(
         (Some(r), Some(s), Some(lo), Some(hi))
             if r > 0.0 && s >= 0.0 && lo >= 0.0 && (hi == -1.0 || hi >= lo) =>
         {
-            if (input.distance_m / 10) as f64 / 100.0 < r
+            if (input.distance_m / 10.0).floor() / 100.0 < r
                 || (input.steps as f64) < s
                 || (input.duration_s as f64) < lo * 60.0
                 || (hi != -1.0 && input.duration_s as f64 > hi * 60.0)
@@ -167,7 +167,7 @@ fn prepare_settings(
             "轨迹为合成数据；服务端可能拒绝或判定无效。".into(),
             format!(
                 "协议上报距离向下保留两位公里：{:.2} km。",
-                (input.distance_m / 10) as f64 / 100.0
+                (input.distance_m / 10.0).floor() / 100.0
             ),
             "不执行开始接口、真实定位或人脸流程；不伪造设备环境证明。".into(),
             "HTTP 明文入口会传输账号认证与运动数据。".into(),
@@ -189,7 +189,7 @@ fn prepare_settings(
         .collect();
     let stringify =
         |value: &Value| serde_json::to_string(value).map_err(|_| failed("生成载荷失败。"));
-    let reported_km = (input.distance_m / 10) as f64 / 100.0;
+    let reported_km = (input.distance_m / 10.0).floor() / 100.0;
     let payload = json!({"sportType":1,"startTime":input.start_time,"endTime":preview.end_time,"sportTime":input.duration_s,"sportRange":format!("{reported_km:.2}"),"gpsDistance":format!("{reported_km:.2}"),"speed":preview.pace,"avgSpeed":format!("{:.2}",preview.average_kmh),"brand":"Yakumo","model":"Synthetic","system":std::env::consts::OS,"version":"unknown","appVersion":"2.0.22","appType":"Android","versionCode":20220,"versionName":"2.0.22","signatureMD5":crate::exercise_service::signature_metadata().map_err(|_|failed("兼容材料不可用。"))?,"uniqueCode":session.device_id,"pointList":stringify(&settings["list"] )?,"geofence":stringify(&settings["geofence"] )?,"isSequencePoint":as_text("isSequencePoint"),"stepNumbers":stringify(&json!(preview.step_buckets))?,"gitudeLatitude":stringify(&json!(points))?,"okPointList":"[]","isFaceStatus":"0","uploadType":0,"identify":identify,"limitSpeed":as_text("limitSpeed"),"limitStride":as_text("endStride"),"limitStepFrequency":as_text("endLimitStepFrequency"),"f":preview.points.len(),"m":0,"h":0,"isValid":1});
     Ok((
         preparation,
@@ -316,7 +316,7 @@ mod tests {
             start_time: 1700000000000,
             latitude: 0.0,
             longitude: 0.0,
-            distance_m: 2021,
+            distance_m: 2021.0,
             duration_s: 899,
             steps: 2397,
             laps: 5,

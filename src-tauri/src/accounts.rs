@@ -94,6 +94,98 @@ mod tests {
     }
 
     #[test]
+    fn studio_presets_persist_isolate_and_preserve_data_on_failure() {
+        use crate::studio_presets::{PresetAction, PresetConfig};
+        let storage = TestStorage::default();
+        let mut app = manager(&storage);
+        let a = app
+            .login(input("synthetic-a", "one"), 100)
+            .expect("login")
+            .active_id
+            .expect("id");
+        let config:PresetConfig=serde_json::from_value(serde_json::json!({"latitude":0,"longitude":0,"distanceM":2000.3,"durationS":900,"steps":2400,"laps":5,"offsets":{"distanceM":[-30,30],"durationS":[-15,15],"steps":[-50,50],"laps":[0,0],"positionM":[0,0],"startMinutes":[0,0]}})).expect("config");
+        let saved = app
+            .studio_presets(
+                &a,
+                PresetAction::Save {
+                    id: None,
+                    name: "合成预设".into(),
+                    config: config.clone(),
+                },
+                100,
+            )
+            .expect("save");
+        let id = saved[0].id.clone();
+        let b = app
+            .login(input("synthetic-b", "two"), 100)
+            .expect("login b")
+            .active_id
+            .expect("id b");
+        assert!(
+            app.studio_presets(&b, PresetAction::List, 100)
+                .expect("list b")
+                .is_empty()
+        );
+        assert!(
+            app.studio_presets(&b, PresetAction::Remove { id: id.clone() }, 100)
+                .is_err()
+        );
+        app.switch(&a, 100).expect("switch");
+        storage.fail.store(true, Ordering::SeqCst);
+        assert!(
+            app.studio_presets(
+                &a,
+                PresetAction::Save {
+                    id: Some(id.clone()),
+                    name: "失败更新".into(),
+                    config: config.clone()
+                },
+                100
+            )
+            .is_err()
+        );
+        storage.fail.store(false, Ordering::SeqCst);
+        assert_eq!(
+            app.studio_presets(&a, PresetAction::List, 100)
+                .expect("preserved")[0]
+                .name,
+            "合成预设"
+        );
+        let mut restarted = manager(&storage);
+        assert_eq!(
+            restarted
+                .studio_presets(&a, PresetAction::List, 100)
+                .expect("restart")[0]
+                .config
+                .distance_m,
+            2000.3
+        );
+        let renamed = restarted
+            .studio_presets(
+                &a,
+                PresetAction::Save {
+                    id: Some(id.clone()),
+                    name: "新名称".into(),
+                    config,
+                },
+                100,
+            )
+            .expect("rename");
+        assert_eq!(renamed[0].name, "新名称");
+        assert!(
+            restarted
+                .studio_presets(&a, PresetAction::Remove { id }, 100)
+                .expect("remove")
+                .is_empty()
+        );
+        assert!(
+            restarted
+                .studio_presets(&a, PresetAction::List, 4001)
+                .is_err()
+        );
+    }
+
+    #[test]
     fn submission_journal_survives_restart_isolates_users_and_blocks_duplicates() {
         let storage = TestStorage::default();
         let mut app = manager(&storage);
@@ -437,6 +529,8 @@ pub struct AccountData {
     accounts: Vec<Account>,
     #[serde(default)]
     attempts: Vec<crate::run_submission::Attempt>,
+    #[serde(default)]
+    presets: Vec<crate::studio_presets::StudioPreset>,
 }
 
 impl Default for AccountData {
@@ -446,6 +540,7 @@ impl Default for AccountData {
             active_id: None,
             accounts: Vec::new(),
             attempts: Vec::new(),
+            presets: Vec::new(),
         }
     }
 }
@@ -455,12 +550,21 @@ impl AccountData {
         if self.version != 1
             || self.accounts.len() > MAX_ACCOUNTS
             || self.attempts.len() > 5000
+            || self.presets.len() > 100
             || self
                 .active_id
                 .as_ref()
                 .is_some_and(|id| !self.accounts.iter().any(|account| &account.id == id))
         {
             return Err(AccountError::protocol());
+        }
+        for (index, preset) in self.presets.iter().enumerate() {
+            preset.validate()?;
+            if !self.accounts.iter().any(|a| a.id == preset.account_id)
+                || self.presets[..index].iter().any(|p| p.id == preset.id)
+            {
+                return Err(AccountError::invalid());
+            }
         }
         for (index, account) in self.accounts.iter().enumerate() {
             if Uuid::parse_str(&account.id).is_err()
@@ -568,6 +672,67 @@ impl AccountManager {
         let snapshot = data.snapshot(now);
         self.data = Some(data);
         Ok(snapshot)
+    }
+
+    pub fn studio_presets(
+        &mut self,
+        account_id: &str,
+        action: crate::studio_presets::PresetAction,
+        now: u64,
+    ) -> AccountResult<Vec<crate::studio_presets::StudioPreset>> {
+        self.active_session(account_id, now)?;
+        let mut data = self.data()?.clone();
+        match action {
+            crate::studio_presets::PresetAction::List => {}
+            crate::studio_presets::PresetAction::Save { id, name, config } => {
+                let preset = crate::studio_presets::StudioPreset {
+                    id: id.clone().unwrap_or_else(|| Uuid::new_v4().to_string()),
+                    account_id: account_id.to_string(),
+                    name: name.trim().to_string(),
+                    config,
+                };
+                preset.validate()?;
+                if let Some(id) = id {
+                    let entry = data
+                        .presets
+                        .iter_mut()
+                        .find(|p| p.id == id && p.account_id == account_id)
+                        .ok_or_else(crate::studio_presets::invalid)?;
+                    *entry = preset;
+                } else {
+                    if data
+                        .presets
+                        .iter()
+                        .filter(|p| p.account_id == account_id)
+                        .count()
+                        >= 30
+                    {
+                        return Err(AccountError::new(
+                            "preset_limit",
+                            "每个账号最多保存 30 个预设。",
+                        ));
+                    }
+                    data.presets.push(preset);
+                }
+                self.commit(data.clone(), now)?;
+            }
+            crate::studio_presets::PresetAction::Remove { id } => {
+                if !data
+                    .presets
+                    .iter()
+                    .any(|p| p.id == id && p.account_id == account_id)
+                {
+                    return Err(crate::studio_presets::invalid());
+                }
+                data.presets.retain(|p| p.id != id);
+                self.commit(data.clone(), now)?;
+            }
+        }
+        Ok(data
+            .presets
+            .into_iter()
+            .filter(|p| p.account_id == account_id)
+            .collect())
     }
 
     pub fn list(&mut self, now: u64) -> AccountResult<AccountSnapshot> {
@@ -777,6 +942,7 @@ impl AccountManager {
             ));
         }
         data.accounts.retain(|account| account.id != id);
+        data.presets.retain(|preset| preset.account_id != id);
         if data.active_id.as_deref() == Some(id) {
             data.active_id = None;
         }

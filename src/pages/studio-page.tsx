@@ -1,86 +1,187 @@
+import { defineStepper } from '@stepperize/react';
 import { invoke, isTauri } from '@tauri-apps/api/core';
-import { Download, WandSparkles } from 'lucide-react';
-import { useState } from 'react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bookmark,
+  Check,
+  Save,
+  WandSparkles,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import { AccountRequired } from '@/components/account-required';
+import { RunPreviewCard } from '@/components/run-preview-card';
+import { StudioMap } from '@/components/studio-map';
 import { SubmissionPanel } from '@/components/submission-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { useDashboardAccount } from '@/hooks/use-dashboard-account';
-import type { RunPreview } from '@/models/run';
+import { localDateTime, sampleRun } from '@/lib/studio-sampling';
+import { cn } from '@/lib/utils';
+import type { OffsetKey, StudioConfig } from '@/models/studio';
+import { defaultConfig } from '@/models/studio';
+import { editPresets, presetError } from '@/services/preset-service';
+import { useStudioDraftStore } from '@/stores/studio-draft-store';
 import { useStudioStore } from '@/stores/studio-store';
 
-const fields = [
-  ['latitude', '中心纬度', '-85', '85'],
-  ['longitude', '中心经度', '-179', '179'],
-  ['distanceM', '距离 / 米', '100', '30000'],
-  ['durationS', '有效时长 / 秒', '60', '7200'],
-  ['steps', '总步数', '1', '50000'],
-  ['laps', '圈数', '1', '10'],
+const steps = [
+  { id: 'location', title: '地图选点' },
+  { id: 'parameters', title: '基准与偏移' },
+  { id: 'preview', title: '检查预览' },
+  { id: 'confirm', title: '确认提交' },
 ] as const;
-function RoutePreview({ preview }: { preview: RunPreview }) {
-  const points = preview.points;
-  const minA = Math.min(...points.map((p) => p.a)),
-    maxA = Math.max(...points.map((p) => p.a));
-  const minO = Math.min(...points.map((p) => p.o)),
-    maxO = Math.max(...points.map((p) => p.o));
-  const line = points
-    .filter(
-      (_, i) =>
-        i % Math.max(1, Math.floor(points.length / 500)) === 0 ||
-        i === points.length - 1,
-    )
-    .map(
-      (p) =>
-        `${30 + ((p.o - minO) / Math.max(1e-9, maxO - minO)) * 340},${230 - ((p.a - minA) / Math.max(1e-9, maxA - minA)) * 200}`,
-    )
-    .join(' ');
+const flow = defineStepper(steps);
+const controls = [
+  ['distanceM', '距离', '米', 1000, 0.1],
+  ['durationS', '时长', '秒', 600, 1],
+  ['steps', '步数', '步', 2000, 1],
+  ['laps', '圈数', '圈', 3, 1],
+] as const;
+function OffsetControl({
+  field,
+  label,
+  unit,
+  max,
+  step = 1,
+  config,
+  update,
+  disabled,
+}: {
+  field: OffsetKey;
+  label: string;
+  unit: string;
+  max: number;
+  step?: number;
+  config: StudioConfig;
+  update: (config: StudioConfig) => void;
+  disabled: boolean;
+}) {
+  const range = config.offsets[field];
   return (
-    <svg
-      viewBox='0 0 400 260'
-      className='w-full'
-      role='img'
-      aria-label='合成闭环轨迹示意，非真实地图'
-    >
-      <title>合成闭环轨迹示意，未匹配道路</title>
-      <path
-        d='M0 65H400 M0 130H400 M0 195H400 M100 0V260 M200 0V260 M300 0V260'
-        className='stroke-border'
-        fill='none'
+    <div className='space-y-4'>
+      <div className='flex items-center justify-between gap-3 text-xs'>
+        <span className='text-muted-foreground'>{label}</span>
+        <output className='tabular-nums'>
+          {range[0] > 0 ? '+' : ''}
+          {range[0]} 至 {range[1] > 0 ? '+' : ''}
+          {range[1]} {unit}
+        </output>
+      </div>
+      <Slider
+        aria-label={`${label}范围`}
+        disabled={disabled}
+        min={-max}
+        max={max}
+        step={step}
+        value={range}
+        onValueChange={(value) =>
+          update({
+            ...config,
+            offsets: { ...config.offsets, [field]: [value[0], value[1]] },
+          })
+        }
       />
-      <polyline
-        points={line}
-        fill='none'
-        className='stroke-primary'
-        strokeWidth='2'
-      />
-      <circle
-        cx={line.split(' ')[0]?.split(',')[0]}
-        cy={line.split(' ')[0]?.split(',')[1]}
-        r='5'
-        className='fill-primary'
-      />
-    </svg>
+      <div className='flex justify-between text-[10px] text-muted-foreground'>
+        <span>
+          −{max} {unit}
+        </span>
+        <span>0</span>
+        <span>
+          +{max} {unit}
+        </span>
+      </div>
+    </div>
   );
 }
-function StudioContent() {
+function StudioContent({ accountId }: { accountId: string }) {
   const studio = useStudioStore();
-  const [values, setValues] = useState(() => {
-    const input = studio.preview?.input;
-    return {
-      latitude: input ? String(input.latitude) : '',
-      longitude: input ? String(input.longitude) : '',
-      distanceM: String(input?.distanceM ?? 2000),
-      durationS: String(input?.durationS ?? 900),
-      steps: String(input?.steps ?? 2400),
-      laps: String(input?.laps ?? 5),
-      seed: input?.seed ?? 'yakumo-1',
-      start: new Date(input?.startTime ?? Date.now() - 900000)
-        .toISOString()
-        .slice(0, 19),
-    };
+  const stepper = flow.useStepper();
+  useEffect(() => {
+    document
+      .querySelector<HTMLButtonElement>(`#studio-step-${stepper.current.id}`)
+      ?.focus();
+  }, [stepper.current.id]);
+  const [config, setConfig] = useState(() => {
+    const draft = useStudioDraftStore.getState();
+    return draft.accountId === accountId && draft.config
+      ? structuredClone(draft.config)
+      : defaultConfig();
   });
+  const [mapEnabled, setMapEnabled] = useState(false);
+  const [start, setStart] = useState(() =>
+    localDateTime(Date.now() - 20 * 60000),
+  );
+  const [error, setError] = useState<string | null>(null),
+    [notice, setNotice] = useState<string | null>(null),
+    [name, setName] = useState(''),
+    [saving, setSaving] = useState(false),
+    [saveOpen, setSaveOpen] = useState(false);
+  const generating = useRef(false),
+    saveLock = useRef(false);
   const preview = studio.preview;
+  const update = (next: StudioConfig) => {
+    setConfig(next);
+    useStudioDraftStore.getState().set(accountId, next);
+    setNotice(null);
+    setError(null);
+  };
+  async function generate() {
+    if (generating.current) return;
+    generating.current = true;
+    setError(null);
+    try {
+      const input = sampleRun(
+        config,
+        new Date(start).getTime(),
+        crypto.randomUUID(),
+      );
+      await studio.generate(input);
+      if (
+        useStudioStore.getState().accountId === accountId &&
+        useStudioStore.getState().preview
+      )
+        await stepper.goTo('preview');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '参数无效，请检查后重试。');
+    } finally {
+      generating.current = false;
+    }
+  }
+  async function save() {
+    if (saveLock.current) return;
+    saveLock.current = true;
+    setSaving(true);
+    setError(null);
+    try {
+      sampleRun(
+        {
+          ...config,
+          offsets: {
+            distanceM: [0, 0],
+            durationS: [0, 0],
+            steps: [0, 0],
+            laps: [0, 0],
+            positionM: [0, 0],
+            startMinutes: [0, 0],
+          },
+        },
+        new Date(start).getTime(),
+        'validation',
+      );
+      await editPresets(accountId, { kind: 'save', name, config });
+      setNotice('预设已加密保存，可在预设列表中使用。');
+      setSaveOpen(false);
+      setName('');
+    } catch (e) {
+      setError(presetError(e));
+    } finally {
+      saveLock.current = false;
+      setSaving(false);
+    }
+  }
   async function exportPreview() {
     if (!preview) return;
     try {
@@ -104,177 +205,333 @@ function StudioContent() {
     a.click();
     URL.revokeObjectURL(url);
   }
+
   return (
     <div className='space-y-7'>
-      <header>
-        <p className='text-[10px] tracking-[0.25em] text-muted-foreground'>
-          STUDIO / SYNTHETIC RUN
-        </p>
-        <h1 className='mt-3 text-3xl font-semibold'>让每个参数，都有依据。</h1>
-        <p className='mt-3 text-sm text-muted-foreground'>
-          输入参数 → 生成轨迹 → 检查预览 → 明确确认后提交。
-        </p>
+      <header className='flex flex-wrap items-end justify-between gap-4'>
+        <div>
+          <p className='text-[10px] tracking-[0.25em] text-muted-foreground'>
+            STUDIO / CREATE AT YOUR PACE
+          </p>
+          <h1 className='mt-3 text-3xl font-semibold'>
+            从选点，到清晰的预览。
+          </h1>
+          <p className='mt-3 text-sm text-muted-foreground'>
+            选好位置与范围，每次生成前都由你确认。
+          </p>
+        </div>
+        <Button asChild variant='outline'>
+          <Link to='/studio/presets'>
+            <Bookmark className='size-4' />
+            预设列表
+          </Link>
+        </Button>
       </header>
-      <div className='grid items-start gap-6 xl:grid-cols-[340px_1fr]'>
-        <form
-          className='space-y-5 rounded-xl border border-border bg-card p-5'
-          onSubmit={(e) => {
-            e.preventDefault();
-            void studio.generate({
-              seed: values.seed,
-              startTime: Date.parse(`${values.start}Z`),
-              latitude: Number(values.latitude),
-              longitude: Number(values.longitude),
-              distanceM: Number(values.distanceM),
-              durationS: Number(values.durationS),
-              steps: Number(values.steps),
-              laps: Number(values.laps),
-            });
-          }}
+      <nav
+        id='studio-steps'
+        aria-label='生成步骤'
+        className='grid grid-cols-4 gap-2 rounded-xl border border-border bg-card p-3 sm:p-5'
+      >
+        {steps.map((s, i) => (
+          <button
+            key={s.id}
+            id={`studio-step-${s.id}`}
+            type='button'
+            disabled={i > stepper.index || studio.busy}
+            aria-current={s.id === stepper.current.id ? 'step' : undefined}
+            onClick={() => void stepper.goTo(s.id)}
+            className={cn(
+              'flex min-h-12 flex-col items-center justify-center gap-2 rounded-lg px-1 py-3 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default sm:flex-row sm:gap-3 sm:text-sm',
+              i === stepper.index
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground',
+            )}
+          >
+            <span
+              className={cn(
+                'flex size-6 shrink-0 items-center justify-center rounded-full border text-xs',
+                i === stepper.index ? 'border-primary' : 'border-border',
+              )}
+            >
+              {i < stepper.index ? <Check className='size-3' /> : i + 1}
+            </span>
+            {s.title}
+          </button>
+        ))}
+      </nav>
+      {(error || studio.error) && (
+        <p
+          role='alert'
+          className='rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive'
         >
-          <h2 className='text-sm font-semibold'>01 / 参数</h2>
+          {error || studio.error}
+        </p>
+      )}
+      {notice && (
+        <p role='status' className='rounded-xl bg-accent p-4 text-sm'>
+          {notice}
+        </p>
+      )}
+      {stepper.current.id === 'location' && (
+        <section className='space-y-5 rounded-xl border border-border bg-card p-5 sm:p-7'>
+          <div>
+            <h2 className='text-lg font-semibold'>先选一个运动中心</h2>
+            <p className='mt-2 text-xs leading-6 text-muted-foreground'>
+              点击地图选点，也可手动填写坐标。地图不会自动获取设备位置。
+            </p>
+          </div>
+          <StudioMap
+            defaultLoaded={mapEnabled}
+            onLoad={() => setMapEnabled(true)}
+            latitude={config.latitude}
+            longitude={config.longitude}
+            onPick={(latitude, longitude) =>
+              update({ ...config, latitude, longitude })
+            }
+          />
           <div className='grid grid-cols-2 gap-4'>
-            {fields.map(([key, label, min, max]) => (
+            {(['latitude', 'longitude'] as const).map((key, i) => (
               <div key={key} className='space-y-2'>
-                <Label htmlFor={`run-${key}`}>{label}</Label>
+                <Label htmlFor={`run-${key}`}>
+                  {i === 0 ? '中心纬度' : '中心经度'}
+                </Label>
                 <Input
                   id={`run-${key}`}
-                  required
                   type='number'
-                  min={min}
-                  max={max}
-                  step={key === 'latitude' || key === 'longitude' ? 'any' : '1'}
-                  value={values[key]}
-                  onChange={(e) => {
-                    studio.clear();
-                    setValues({ ...values, [key]: e.target.value });
-                  }}
-                  disabled={studio.busy}
+                  step='any'
+                  min={i === 0 ? -85 : -179}
+                  max={i === 0 ? 85 : 179}
+                  value={config[key] ?? ''}
+                  onChange={(e) =>
+                    update({
+                      ...config,
+                      [key]:
+                        e.target.value === '' ? null : Number(e.target.value),
+                    })
+                  }
                 />
               </div>
             ))}
           </div>
-          <div className='space-y-2'>
-            <Label htmlFor='run-seed'>随机种子</Label>
-            <Input
-              id='run-seed'
-              value={values.seed}
-              required
-              maxLength={128}
-              onChange={(e) => {
-                studio.clear();
-                setValues({ ...values, seed: e.target.value });
-              }}
-              disabled={studio.busy}
+          <div className='flex justify-end'>
+            <Button
+              disabled={
+                config.latitude === null ||
+                config.longitude === null ||
+                !Number.isFinite(config.latitude) ||
+                !Number.isFinite(config.longitude) ||
+                Math.abs(config.latitude) > 85 ||
+                Math.abs(config.longitude) > 179
+              }
+              onClick={() => void stepper.next()}
+            >
+              下一步：设置参数
+              <ArrowRight className='size-4' />
+            </Button>
+          </div>
+        </section>
+      )}
+      {stepper.current.id === 'parameters' && (
+        <form
+          className='space-y-6 rounded-xl border border-border bg-card p-5 sm:p-7'
+          onSubmit={(e) => {
+            e.preventDefault();
+            void generate();
+          }}
+        >
+          <div>
+            <h2 className='text-lg font-semibold'>基准值与偏移范围</h2>
+            <p className='mt-2 text-xs leading-6 text-muted-foreground'>
+              拖动两端设置相对基准的最小、最大偏移，0
+              表示不偏移。速度和配速由最终距离与时长计算。
+            </p>
+          </div>
+          <div className='grid gap-5 md:grid-cols-2'>
+            {controls.map(([key, label, unit, max, step]) => (
+              <div
+                key={key}
+                className='space-y-5 rounded-xl border border-border p-4'
+              >
+                <div className='space-y-2'>
+                  <Label htmlFor={`run-${key}`}>
+                    {label} / {unit}
+                  </Label>
+                  <Input
+                    id={`run-${key}`}
+                    type='number'
+                    step={step}
+                    min={
+                      key === 'distanceM' ? 100 : key === 'durationS' ? 60 : 1
+                    }
+                    max={
+                      key === 'distanceM'
+                        ? 30000
+                        : key === 'durationS'
+                          ? 7200
+                          : key === 'steps'
+                            ? 50000
+                            : 10
+                    }
+                    required
+                    value={Number.isFinite(config[key]) ? config[key] : ''}
+                    disabled={studio.busy || saving}
+                    onChange={(e) =>
+                      update({
+                        ...config,
+                        [key]:
+                          e.target.value === '' ? NaN : Number(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+                <OffsetControl
+                  field={key}
+                  label={`${label}偏移`}
+                  unit={unit}
+                  max={max}
+                  step={step}
+                  config={config}
+                  update={update}
+                  disabled={studio.busy || saving}
+                />
+              </div>
+            ))}
+          </div>
+          <div className='grid gap-6 md:grid-cols-2'>
+            <OffsetControl
+              field='positionM'
+              label='中心位置偏移（南北 / 东西）'
+              unit='米'
+              max={100}
+              config={config}
+              update={update}
+              disabled={studio.busy || saving}
+            />
+            <OffsetControl
+              field='startMinutes'
+              label='开始时间偏移'
+              unit='分钟'
+              max={60}
+              config={config}
+              update={update}
+              disabled={studio.busy || saving}
             />
           </div>
           <div className='space-y-2'>
-            <Label htmlFor='run-start'>起始时间 / UTC</Label>
+            <Label htmlFor='run-start'>起始时间 / 本地时间</Label>
             <Input
               id='run-start'
               type='datetime-local'
-              required
               step='1'
-              value={values.start}
+              required
+              value={start}
+              disabled={studio.busy}
               onChange={(e) => {
                 studio.clear();
-                setValues({ ...values, start: e.target.value });
+                setStart(e.target.value);
               }}
-              disabled={studio.busy}
             />
           </div>
           <p className='text-xs leading-6 text-muted-foreground'>
-            相同参数和种子产生相同结果。坐标由你输入，路线不代表真实采集或道路。
+            每次生成使用新的随机种子，最终值完整保留在预览中。整数计数仍为整数；本地检查不代表学校判定。
           </p>
-          <Button type='submit' disabled={studio.busy} className='w-full'>
-            <WandSparkles className='size-4' />
-            {studio.busy ? '正在生成…' : '生成并检查'}
-          </Button>
-          {studio.error && (
-            <p role='alert' className='text-sm text-destructive'>
-              {studio.error}
-            </p>
-          )}
+          <div className='border-t border-border pt-5'>
+            <Button
+              type='button'
+              variant='outline'
+              disabled={saving || studio.busy}
+              onClick={() => setSaveOpen((v) => !v)}
+            >
+              <Save className='size-4' />
+              保存为预设
+            </Button>
+            {saveOpen && (
+              <div className='mt-4 flex flex-wrap gap-3'>
+                <Input
+                  aria-label='预设名称'
+                  placeholder='例如：常用操场'
+                  maxLength={80}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={saving}
+                />
+                <Button
+                  type='button'
+                  disabled={saving || !name.trim()}
+                  onClick={() => void save()}
+                >
+                  {saving ? '正在保存…' : '确认保存预设'}
+                </Button>
+                <p className='w-full text-xs text-muted-foreground'>
+                  保存选点和参数，不保存本次时间或提交授权。
+                </p>
+              </div>
+            )}
+          </div>
+          <div className='flex flex-wrap justify-between gap-3'>
+            <Button
+              type='button'
+              variant='outline'
+              disabled={studio.busy}
+              onClick={() => void stepper.prev()}
+            >
+              <ArrowLeft className='size-4' />
+              上一步
+            </Button>
+            <Button type='submit' disabled={studio.busy || saving}>
+              <WandSparkles className='size-4' />
+              {studio.busy ? '正在生成…' : '生成并检查'}
+            </Button>
+          </div>
         </form>
-        <section className='min-w-0 space-y-5'>
-          {preview ? (
-            <>
-              <div className='overflow-hidden rounded-xl border border-border bg-card'>
-                <div className='flex items-center justify-between gap-2 border-b border-border p-5'>
-                  <h2 className='text-sm font-semibold'>02 / 合成预览</h2>
-                  <Button size='sm' variant='outline' onClick={exportPreview}>
-                    <Download className='size-3.5' />
-                    导出预览
-                  </Button>
-                </div>
-                <div className='grid grid-cols-2 gap-5 p-5 sm:grid-cols-4'>
-                  {[
-                    [
-                      '距离',
-                      `${(preview.actualDistanceM / 1000).toFixed(3)} km`,
-                    ],
-                    ['时长', `${preview.input.durationS} 秒`],
-                    ['配速', preview.pace],
-                    ['平均速度', `${preview.averageKmh.toFixed(2)} km/h`],
-                  ].map(([label, value]) => (
-                    <div key={label}>
-                      <p className='text-xs text-muted-foreground'>{label}</p>
-                      <p className='mt-2 text-lg font-medium tabular-nums'>
-                        {value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <div className='px-5'>
-                  <RoutePreview preview={preview} />
-                </div>
-                <p className='px-5 pb-5 text-[11px] text-muted-foreground'>
-                  轨迹为示意比例，不是地图 · {preview.points.length} 个点 ·{' '}
-                  {preview.input.steps} 步
-                </p>
-              </div>
-              <div className='rounded-xl border border-border bg-card p-5'>
-                <h2 className='text-sm font-semibold'>一致性检查</h2>
-                <ul className='mt-4 space-y-2 text-xs text-muted-foreground'>
-                  {preview.checks.map((check) => (
-                    <li key={check}>✓ {check}</li>
-                  ))}
-                </ul>
-                <p className='mt-4 break-all border-t border-border pt-4 text-[10px] leading-5 text-muted-foreground'>
-                  来源 {preview.source} · 算法 {preview.algorithm}
-                  <br />
-                  SHA-256 {preview.digest}
-                </p>
-                <p className='mt-3 text-xs text-primary'>
-                  本地一致性通过，不代表学校判定合格。
-                </p>
-              </div>
-              <details className='rounded-xl border border-border p-5 text-xs'>
-                <summary className='cursor-pointer'>
-                  分钟步数增量 · {preview.stepBuckets.length} 桶
-                </summary>
-                <p className='mt-3 break-words leading-6 text-muted-foreground'>
-                  {preview.stepBuckets.join(' / ')}
-                </p>
-              </details>
-            </>
-          ) : (
-            <div className='flex min-h-96 flex-col items-center justify-center rounded-xl border border-dashed border-border p-8 text-center'>
-              <WandSparkles className='mb-5 size-8 text-primary/60' />
-              <h2 className='text-lg font-medium'>从一组参数开始</h2>
-              <p className='mt-3 max-w-xs text-xs leading-6 text-muted-foreground'>
-                生成后在这里查看轨迹、配速和一致性报告。数据只在本次会话保留，导出由你手动发起。
-              </p>
-            </div>
-          )}
-          <SubmissionPanel key={preview?.digest ?? 'empty'} preview={preview} />
+      )}
+      {stepper.current.id === 'preview' && preview && (
+        <section className='space-y-5'>
+          <RunPreviewCard
+            preview={preview}
+            exportPreview={exportPreview}
+            mapLoaded={mapEnabled}
+            onMapLoad={() => setMapEnabled(true)}
+          />
+          <div className='flex flex-wrap justify-between gap-3'>
+            <Button variant='outline' onClick={() => void stepper.prev()}>
+              返回调整参数
+            </Button>
+            <Button onClick={() => void stepper.next()}>
+              下一步：确认提交
+              <ArrowRight className='size-4' />
+            </Button>
+          </div>
         </section>
-      </div>
+      )}
+      {stepper.current.id === 'confirm' && preview && (
+        <section className='space-y-5'>
+          <div className='rounded-xl border border-border bg-card p-5'>
+            <h2 className='text-lg font-semibold'>
+              检查完成，由你决定是否提交。
+            </h2>
+            <p className='mt-3 text-sm text-muted-foreground'>
+              {(preview.actualDistanceM / 1000).toFixed(3)} km ·{' '}
+              {preview.input.durationS} 秒 · {preview.input.steps} 步
+            </p>
+            <p className='mt-3 text-xs text-muted-foreground'>
+              合成来源会保留；学校规则、重复防护和结果核对仍适用。
+            </p>
+          </div>
+          <SubmissionPanel key={preview.digest} preview={preview} />
+          <Button variant='outline' onClick={() => void stepper.prev()}>
+            返回预览
+          </Button>
+        </section>
+      )}
     </div>
   );
 }
 export function StudioPage() {
   const { active, ready } = useDashboardAccount();
-  if (!ready) return <AccountRequired />;
-  return <StudioContent key={active?.id} />;
+  return ready && active ? (
+    <StudioContent key={active.id} accountId={active.id} />
+  ) : (
+    <AccountRequired />
+  );
 }
