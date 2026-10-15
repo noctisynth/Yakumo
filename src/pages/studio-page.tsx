@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { useDashboardAccount } from '@/hooks/use-dashboard-account';
-import { localDateTime, sampleRun } from '@/lib/studio-sampling';
+import { localDateTime, paceConfig, sampleRun } from '@/lib/studio-sampling';
 import { cn } from '@/lib/utils';
 import type { OffsetKey, StudioConfig } from '@/models/studio';
 import { defaultConfig } from '@/models/studio';
@@ -43,12 +43,6 @@ const steps = [
   { id: 'confirm', title: '确认提交' },
 ] as const;
 const flow = defineStepper(steps);
-const controls = [
-  ['distanceM', '距离', '米', 1000, 0.1],
-  ['durationS', '时长', '秒', 600, 1],
-  ['steps', '步数', '步', 2000, 1],
-  ['laps', '圈数', '圈', 3, 1],
-] as const;
 function OffsetControl({
   field,
   label,
@@ -118,8 +112,8 @@ function StudioContent({ accountId }: { accountId: string }) {
   const [config, setConfig] = useState(() => {
     const draft = useStudioDraftStore.getState();
     return draft.accountId === accountId && draft.config
-      ? structuredClone(draft.config)
-      : defaultConfig();
+      ? paceConfig(structuredClone(draft.config))
+      : paceConfig(defaultConfig());
   });
   const [mapEnabled, setMapEnabled] = useState(false);
   const [start, setStart] = useState(() =>
@@ -133,8 +127,8 @@ function StudioContent({ accountId }: { accountId: string }) {
   const generating = useRef(false),
     saveLock = useRef(false);
   const preview = studio.preview;
-  const [routeMode, setRouteMode] = useState(Boolean(config.route?.length));
-  const update = (next: StudioConfig) => {
+  const update = (value: StudioConfig) => {
+    const next = paceConfig(value);
     locationSequence.current++;
     setLocating(false);
     setConfig(next);
@@ -158,18 +152,12 @@ function StudioContent({ accountId }: { accountId: string }) {
       if (sequence !== locationSequence.current) return;
       update({
         ...config,
-        route: routeMode
-          ? [
-              ...(config.route ?? []).slice(0, 49),
-              { latitude: point.latitude, longitude: point.longitude },
-            ]
-          : undefined,
-        latitude:
-          routeMode && config.route?.length ? config.latitude : point.latitude,
-        longitude:
-          routeMode && config.route?.length
-            ? config.longitude
-            : point.longitude,
+        route: [
+          ...(config.route ?? []).slice(0, 49),
+          { latitude: point.latitude, longitude: point.longitude },
+        ],
+        latitude: config.route?.length ? config.latitude : point.latitude,
+        longitude: config.route?.length ? config.longitude : point.longitude,
       });
       setNotice(
         `已填入当前位置（精度约 ${Math.ceil(point.accuracy)} 米），可继续在地图调整。`,
@@ -211,6 +199,7 @@ function StudioContent({ accountId }: { accountId: string }) {
       sampleRun(
         {
           ...config,
+          cadenceOffset: [0, 0],
           offsets: {
             distanceM: [0, 0],
             durationS: [0, 0],
@@ -328,15 +317,11 @@ function StudioContent({ accountId }: { accountId: string }) {
         <section className='space-y-5 rounded-xl border border-border bg-card p-5 sm:p-7'>
           <div>
             <div className='flex flex-wrap items-center justify-between gap-3'>
-              <h2 className='text-lg font-semibold'>
-                {routeMode ? '沿着道路，逐点绘制路线' : '先选一个运动中心'}
-              </h2>
+              <h2 className='text-lg font-semibold'>沿着道路，逐点绘制路线</h2>
               <Button
                 type='button'
                 variant='outline'
-                disabled={
-                  locating || (routeMode && (config.route?.length ?? 0) >= 50)
-                }
+                disabled={locating || (config.route?.length ?? 0) >= 50}
                 onClick={() => void locate()}
               >
                 {locating ? (
@@ -348,134 +333,68 @@ function StudioContent({ accountId }: { accountId: string }) {
               </Button>
             </div>
             <p className='mt-2 text-xs leading-6 text-muted-foreground'>
-              点击地图选点，也可手动填写坐标。仅点击获取位置后请求权限，不会自动定位。
+              点击地图依次选点。仅点击获取位置后请求权限，不会自动定位。
             </p>
           </div>
-          <section className='flex flex-wrap gap-2' aria-label='路线绘制方式'>
-            <Button
-              size='sm'
-              aria-pressed={!routeMode}
-              variant={routeMode ? 'outline' : 'default'}
-              onClick={() => {
-                if (!routeMode) return;
-                setRouteMode(false);
-                update({ ...config, route: undefined });
-              }}
-            >
-              中心环形
-            </Button>
-            <Button
-              size='sm'
-              aria-pressed={routeMode}
-              variant={routeMode ? 'default' : 'outline'}
-              onClick={() => {
-                if (routeMode) return;
-                setRouteMode(true);
-                update({
-                  ...config,
-                  route: [],
-                  offsets: { ...config.offsets, positionM: [0, 0] },
-                });
-              }}
-            >
-              多点路线
-            </Button>
-          </section>
-          {routeMode && (
-            <div className='space-y-3 rounded-lg bg-muted/30 p-4'>
-              <div className='flex flex-wrap items-center justify-between gap-3'>
-                <p className='text-sm font-medium'>
-                  已选 {config.route?.length ?? 0} / 50 个点
-                </p>
-                <div className='flex gap-2'>
-                  <Button
-                    size='sm'
-                    variant='outline'
-                    disabled={!config.route?.length}
-                    onClick={() =>
-                      update({ ...config, route: config.route?.slice(0, -1) })
-                    }
-                  >
-                    <Undo2 className='size-3.5' />
-                    撤销选点
-                  </Button>
-                  <Button
-                    size='sm'
-                    variant='ghost'
-                    disabled={!config.route?.length}
-                    onClick={() => update({ ...config, route: [] })}
-                  >
-                    <Trash2 className='size-3.5' />
-                    清空
-                  </Button>
-                </div>
-              </div>
-              <p className='text-xs leading-6 text-muted-foreground'>
-                按经过顺序点击地图，弯道请补点；至少 2 点，总长度 50 米至 30
-                公里。到达末端后沿原路折返，按目标距离结束；此模式不使用圈数或中心偏移。沿线速度随种子平滑变化（约
-                ±5%）。选点直连，未进行道路匹配。
+          <div className='space-y-3 rounded-lg bg-muted/30 p-4'>
+            <div className='flex flex-wrap items-center justify-between gap-3'>
+              <p className='text-sm font-medium'>
+                已选 {config.route?.length ?? 0} / 50 个点
               </p>
+              <div className='flex gap-2'>
+                <Button
+                  size='sm'
+                  variant='outline'
+                  disabled={!config.route?.length}
+                  onClick={() =>
+                    update({ ...config, route: config.route?.slice(0, -1) })
+                  }
+                >
+                  <Undo2 className='size-3.5' />
+                  撤销选点
+                </Button>
+                <Button
+                  size='sm'
+                  variant='ghost'
+                  disabled={!config.route?.length}
+                  onClick={() => update({ ...config, route: [] })}
+                >
+                  <Trash2 className='size-3.5' />
+                  清空
+                </Button>
+              </div>
             </div>
-          )}
+            <p className='text-xs leading-6 text-muted-foreground'>
+              按经过顺序点击地图，弯道请补点；至少 2 点，总长度 50 米至 30
+              公里。按目标距离截断，闭合路线按顺序循环，开放路线原路折返。沿线速度随种子平滑变化（约
+              ±5%）。选点直连，未进行道路匹配。
+            </p>
+          </div>
           <StudioMap
             defaultLoaded={mapEnabled}
             onLoad={() => setMapEnabled(true)}
             latitude={config.latitude}
             longitude={config.longitude}
-            routeEditing={routeMode}
-            waypoints={routeMode ? config.route : undefined}
+            routeEditing
+            waypoints={config.route}
             onPick={(latitude, longitude) => {
-              if (routeMode && (config.route?.length ?? 0) >= 50) {
+              if ((config.route?.length ?? 0) >= 50) {
                 setError('最多选择 50 个路线点，请先撤销或清空。');
                 return;
               }
               update({
                 ...config,
-                latitude:
-                  routeMode && config.route?.length
-                    ? config.latitude
-                    : latitude,
-                longitude:
-                  routeMode && config.route?.length
-                    ? config.longitude
-                    : longitude,
-                route: routeMode
-                  ? [...(config.route ?? []), { latitude, longitude }]
-                  : undefined,
+                latitude: config.route?.length ? config.latitude : latitude,
+                longitude: config.route?.length ? config.longitude : longitude,
+                route: [...(config.route ?? []), { latitude, longitude }],
               });
             }}
           />
-          {!routeMode && (
-            <div className='grid grid-cols-2 gap-4'>
-              {(['latitude', 'longitude'] as const).map((key, i) => (
-                <div key={key} className='space-y-2'>
-                  <Label htmlFor={`run-${key}`}>
-                    {i === 0 ? '中心纬度' : '中心经度'}
-                  </Label>
-                  <Input
-                    id={`run-${key}`}
-                    type='number'
-                    step='any'
-                    min={i === 0 ? -85 : -179}
-                    max={i === 0 ? 85 : 179}
-                    value={config[key] ?? ''}
-                    onChange={(e) =>
-                      update({
-                        ...config,
-                        [key]:
-                          e.target.value === '' ? null : Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-          )}
           <div className='flex justify-end'>
             <Button
               disabled={
                 locating ||
-                (routeMode && (config.route?.length ?? 0) < 2) ||
+                (config.route?.length ?? 0) < 2 ||
                 config.latitude === null ||
                 config.longitude === null ||
                 !Number.isFinite(config.latitude) ||
@@ -515,86 +434,184 @@ function StudioContent({ accountId }: { accountId: string }) {
             </div>
             <p className='mt-3 text-xs leading-6 text-muted-foreground'>
               拖动两端设置相对基准的最小、最大偏移，0
-              表示不偏移。速度和配速由最终距离与时长计算。
+              表示不偏移。填写距离和配速，其余参数同步计算。
             </p>
           </div>
           <div className='grid gap-5 md:grid-cols-2'>
-            {controls
-              .filter(([key]) => !routeMode || key !== 'laps')
-              .map(([key, label, unit, max, step]) => (
-                <div
-                  key={key}
-                  className='space-y-5 rounded-xl border border-border p-4'
-                >
-                  <div className='space-y-2'>
-                    <Label htmlFor={`run-${key}`}>
-                      {label} / {unit}
-                    </Label>
-                    <Input
-                      id={`run-${key}`}
-                      type='number'
-                      step={step}
-                      min={
-                        key === 'distanceM' ? 100 : key === 'durationS' ? 60 : 1
-                      }
-                      max={
-                        key === 'distanceM'
-                          ? 30000
-                          : key === 'durationS'
-                            ? 7200
-                            : key === 'steps'
-                              ? 50000
-                              : 10
-                      }
-                      required
-                      value={Number.isFinite(config[key]) ? config[key] : ''}
-                      disabled={studio.busy || saving}
-                      onChange={(e) =>
-                        update({
-                          ...config,
-                          [key]:
-                            e.target.value === ''
-                              ? NaN
-                              : Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <OffsetControl
-                    field={key}
-                    label={`${label}偏移`}
-                    unit={unit}
-                    max={max}
-                    step={step}
-                    config={config}
-                    update={update}
-                    disabled={studio.busy || saving}
-                  />
-                </div>
-              ))}
-          </div>
-          <div className='grid gap-6 md:grid-cols-2'>
-            {!routeMode && (
+            <div className='space-y-5 rounded-xl border border-border p-4'>
+              <div className='space-y-2'>
+                <Label htmlFor='run-distanceM'>距离 / 公里</Label>
+                <Input
+                  id='run-distanceM'
+                  type='number'
+                  min={0.1}
+                  max={30}
+                  step={0.01}
+                  required
+                  value={
+                    Number.isFinite(config.distanceM)
+                      ? config.distanceM / 1000
+                      : ''
+                  }
+                  disabled={studio.busy || saving}
+                  onChange={(e) =>
+                    update({
+                      ...config,
+                      distanceM:
+                        e.target.value === ''
+                          ? NaN
+                          : Number(e.target.value) * 1000,
+                    })
+                  }
+                />
+              </div>
               <OffsetControl
-                field='positionM'
-                label='中心位置偏移（南北 / 东西）'
+                field='distanceM'
+                label='距离偏移'
                 unit='米'
-                max={100}
+                max={1000}
+                step={0.1}
                 config={config}
                 update={update}
                 disabled={studio.busy || saving}
               />
-            )}
-            <OffsetControl
-              field='startMinutes'
-              label='开始时间偏移'
-              unit='分钟'
-              max={60}
-              config={config}
-              update={update}
-              disabled={studio.busy || saving}
-            />
+            </div>
+            <div className='space-y-5 rounded-xl border border-border p-4'>
+              <p className='text-sm font-medium'>预期配速 / 每公里</p>
+              <div className='grid grid-cols-2 gap-3'>
+                <div className='space-y-2'>
+                  <Label htmlFor='run-pace-minutes'>分钟</Label>
+                  <Input
+                    id='run-pace-minutes'
+                    type='number'
+                    min={0}
+                    max={20}
+                    step={1}
+                    required
+                    disabled={studio.busy || saving}
+                    value={Math.floor((config.paceSecondsPerKm ?? 450) / 60)}
+                    onChange={(e) =>
+                      update({
+                        ...config,
+                        paceSecondsPerKm:
+                          Number(e.target.value) * 60 +
+                          ((config.paceSecondsPerKm ?? 450) % 60),
+                      })
+                    }
+                  />
+                </div>
+                <div className='space-y-2'>
+                  <Label htmlFor='run-pace-seconds'>秒</Label>
+                  <Input
+                    id='run-pace-seconds'
+                    type='number'
+                    min={0}
+                    max={59}
+                    step={1}
+                    required
+                    disabled={studio.busy || saving}
+                    value={(config.paceSecondsPerKm ?? 450) % 60}
+                    onChange={(e) =>
+                      update({
+                        ...config,
+                        paceSecondsPerKm:
+                          Math.floor((config.paceSecondsPerKm ?? 450) / 60) *
+                            60 +
+                          Number(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+              <OffsetControl
+                field='durationS'
+                label='配速偏移'
+                unit='秒/公里'
+                max={60}
+                config={config}
+                update={update}
+                disabled={studio.busy || saving}
+              />
+            </div>
           </div>
+          <section className='rounded-xl bg-muted/30 p-5' aria-label='自动估算'>
+            <p className='text-sm font-medium'>其余参数，自动计算</p>
+            <dl className='mt-4 grid grid-cols-2 gap-5 sm:grid-cols-4'>
+              {[
+                [
+                  '预计时长',
+                  `${Math.floor(config.durationS / 60)} 分 ${config.durationS % 60} 秒`,
+                ],
+                ['估算步数', `${config.steps.toLocaleString()} 步`],
+                [
+                  '平均速度',
+                  `${((config.distanceM / config.durationS) * 3.6).toFixed(2)} km/h`,
+                ],
+                [
+                  '估算单步距离',
+                  `${(config.distanceM / config.steps).toFixed(2)} 米`,
+                ],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <dt className='text-xs text-muted-foreground'>{label}</dt>
+                  <dd className='mt-2 text-sm font-medium tabular-nums'>
+                    {value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <p className='mt-4 text-xs leading-6 text-muted-foreground'>
+              以上为基准估算；生成时抽取距离、配速与步频，再统一计算时长、速度与步数。步数使用假设步频{' '}
+              {config.cadence ?? 160} 步/分钟，并非设备实测。
+            </p>
+          </section>
+          <details className='rounded-xl border border-border p-4'>
+            <summary className='cursor-pointer text-sm'>调整估算步频</summary>
+            <div className='mt-4 space-y-2'>
+              <Label htmlFor='run-cadence'>步频 / 步每分钟</Label>
+              <Input
+                id='run-cadence'
+                type='number'
+                min={30}
+                max={300}
+                step={1}
+                value={config.cadence ?? 160}
+                disabled={studio.busy || saving}
+                onChange={(e) =>
+                  update({ ...config, cadence: Number(e.target.value) })
+                }
+              />
+              <p className='text-xs leading-6 text-muted-foreground'>
+                距离和配速不能唯一确定步数；有个人实测步频时可在这里替换假设值。
+              </p>
+              <div className='space-y-3 pt-3'>
+                <p className='text-xs text-muted-foreground'>
+                  步频偏移 {config.cadenceOffset?.[0] ?? -3} 至 +
+                  {config.cadenceOffset?.[1] ?? 3} 步/分钟
+                </p>
+                <Slider
+                  aria-label='步频偏移'
+                  min={-30}
+                  max={30}
+                  step={1}
+                  value={config.cadenceOffset ?? [-3, 3]}
+                  disabled={studio.busy || saving}
+                  onValueChange={(value) =>
+                    update({ ...config, cadenceOffset: [value[0], value[1]] })
+                  }
+                />
+              </div>
+            </div>
+          </details>
+          <OffsetControl
+            field='startMinutes'
+            label='开始时间偏移'
+            unit='分钟'
+            max={60}
+            config={config}
+            update={update}
+            disabled={studio.busy || saving}
+          />
           <div className='space-y-2'>
             <p className='text-sm font-medium'>起始时间 / 本地时间</p>
             <DateTimePicker

@@ -9,6 +9,12 @@ pub fn invalid() -> AccountError {
 pub struct PresetConfig {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub route: Vec<crate::run_generator::RoutePoint>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pace_seconds_per_km: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cadence: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cadence_offset: Option<[f64; 2]>,
     pub latitude: f64,
     pub longitude: f64,
     pub distance_m: f64,
@@ -40,6 +46,24 @@ impl PresetConfig {
             || self.offsets.len() != limits.len()
         {
             return Err(invalid());
+        }
+        if self.cadence_offset.is_some_and(|[a, b]| {
+            !a.is_finite() || !b.is_finite() || a > b || a < -30.0 || b > 30.0
+        }) {
+            return Err(invalid());
+        }
+        if let Some(pace) = self.pace_seconds_per_km {
+            let cadence = self.cadence.unwrap_or(160.0);
+            let duration = (self.distance_m / 1000.0 * pace).round();
+            if !pace.is_finite()
+                || !(120.0..=1200.0).contains(&pace)
+                || !cadence.is_finite()
+                || !(30.0..=300.0).contains(&cadence)
+                || (duration - self.duration_s as f64).abs() > 0.5
+                || ((duration / 60.0 * cadence).round() - self.steps as f64).abs() > 0.5
+            {
+                return Err(invalid());
+            }
         }
         let speed = self.distance_m / self.duration_s as f64;
         let cadence = self.steps as f64 * 60.0 / self.duration_s as f64;

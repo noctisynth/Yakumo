@@ -314,6 +314,8 @@ mod tests {
     }
     fn sample_preview() -> crate::run_generator::RunPreview {
         generate(RunInput {
+            target_pace_seconds_per_km: None,
+            estimated_cadence: None,
             route: vec![],
             seed: "synthetic".into(),
             start_time: 1700000000000,

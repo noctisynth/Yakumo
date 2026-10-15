@@ -82,8 +82,23 @@ export function RunPreviewCard({
               `${preview.input.latitude.toFixed(7)}, ${preview.input.longitude.toFixed(7)}`,
             ],
             preview.input.route?.length
-              ? ['路线', `${preview.input.route.length} 个选点 · 沿线往返`]
+              ? [
+                  '路线',
+                  `${preview.input.route.length} 个选点 · 按目标距离行进`,
+                ]
               : ['圈数', String(preview.input.laps)],
+            ...(preview.input.estimatedCadence === undefined
+              ? []
+              : [
+                  [
+                    '估算步频（非实测）',
+                    `${preview.input.estimatedCadence} 步/分钟`,
+                  ],
+                  [
+                    '抽取配速',
+                    `${preview.input.targetPaceSecondsPerKm?.toFixed(2)} 秒/公里`,
+                  ],
+                ]),
             ['生成种子', preview.input.seed],
           ].map(([label, value]) => (
             <div key={label}>

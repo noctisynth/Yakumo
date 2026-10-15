@@ -129,7 +129,7 @@ function Presets({ accountId }: { accountId: string }) {
             <p className='text-xs tabular-nums text-muted-foreground'>
               {p.config.route?.length
                 ? `多点路线 · ${p.config.route.length} 个选点 · 起点`
-                : '中心'}{' '}
+                : '旧预设 · 需重新选线 · 中心'}{' '}
               {p.config.latitude?.toFixed(5)}, {p.config.longitude?.toFixed(5)}
             </p>
             <dl className='grid grid-cols-3 gap-3'>

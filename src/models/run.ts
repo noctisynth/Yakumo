@@ -4,6 +4,8 @@ export interface RoutePoint {
 }
 export interface RunInput {
   route?: RoutePoint[];
+  targetPaceSecondsPerKm?: number;
+  estimatedCadence?: number;
   seed: string;
   startTime: number;
   latitude: number;

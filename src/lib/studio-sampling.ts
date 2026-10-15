@@ -45,14 +45,46 @@ export function sampleRun(
         (111195 * Math.cos((config.latitude * Math.PI) / 180));
   const distanceM =
     Math.round((config.distanceM + draw('distanceM')) * 10) / 10;
-  const durationS = Math.round(config.durationS + draw('durationS'));
-  const steps = Math.round(config.steps + draw('steps'));
+  const pace =
+    config.paceSecondsPerKm === undefined
+      ? undefined
+      : config.paceSecondsPerKm + draw('durationS');
+  const durationS =
+    pace === undefined
+      ? Math.round(config.durationS + draw('durationS'))
+      : Math.round((distanceM / 1000) * pace);
+  const [cadenceLo, cadenceHi] = config.cadenceOffset ?? [-3, 3];
+  if (
+    ![cadenceLo, cadenceHi].every(Number.isFinite) ||
+    cadenceLo > cadenceHi ||
+    cadenceLo < -30 ||
+    cadenceHi > 30
+  )
+    throw new Error('步频偏移范围无效。');
+  const actualCadence =
+    Math.round(
+      ((config.cadence ?? 160) +
+        cadenceLo +
+        random() * (cadenceHi - cadenceLo)) *
+        10,
+    ) / 10;
+  const steps =
+    pace === undefined
+      ? Math.round(config.steps + draw('steps'))
+      : Math.round((durationS / 60) * actualCadence);
   const laps = config.route?.length
     ? 1
     : Math.round(config.laps + draw('laps'));
   const actualStart =
     Math.round((startTime + draw('startMinutes') * 60000) / 1000) * 1000;
   if (
+    (pace !== undefined &&
+      (!Number.isFinite(pace) ||
+        pace < 120 ||
+        pace > 1200 ||
+        !Number.isFinite(actualCadence) ||
+        actualCadence < 30 ||
+        actualCadence > 300)) ||
     ![
       latitude,
       longitude,
@@ -82,6 +114,12 @@ export function sampleRun(
   )
     throw new Error('本次偏移超出了有效范围，请调整基准值或缩小偏移。');
   return {
+    ...(pace === undefined
+      ? {}
+      : {
+          targetPaceSecondsPerKm: pace,
+          estimatedCadence: actualCadence,
+        }),
     ...(config.route?.length ? { route: structuredClone(config.route) } : {}),
     seed,
     startTime: actualStart,
@@ -98,4 +136,28 @@ export function localDateTime(time: number): string {
   return new Date(time - d.getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 19);
+}
+
+export function paceConfig(config: StudioConfig): StudioConfig {
+  const paceSecondsPerKm =
+    config.paceSecondsPerKm ??
+    Math.round((config.durationS * 1000) / config.distanceM);
+  const cadence = config.cadence ?? 160;
+  const durationS = Math.round((config.distanceM / 1000) * paceSecondsPerKm);
+  return {
+    ...config,
+    route: config.route ?? [],
+    paceSecondsPerKm,
+    cadence,
+    cadenceOffset: config.cadenceOffset ?? [-3, 3],
+    durationS,
+    steps: Math.round((durationS / 60) * cadence),
+    laps: 1,
+    offsets: {
+      ...config.offsets,
+      steps: [0, 0],
+      laps: [0, 0],
+      positionM: [0, 0],
+    },
+  };
 }

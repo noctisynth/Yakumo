@@ -162,7 +162,7 @@ export function StudioMap({
               href='https://www.openstreetmap.org/copyright'
               target='_blank'
               rel='noreferrer'
-              className='absolute right-2 bottom-2 z-10 rounded-md border border-border bg-card/95 px-2 py-1 text-[11px] leading-4 text-foreground shadow-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring'
+              className='absolute right-0 bottom-0 z-10 rounded-tl-md border border-border bg-card/95 px-2 py-1 text-[11px] leading-4 text-foreground shadow-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring'
             >
               © OpenStreetMap contributors
             </a>

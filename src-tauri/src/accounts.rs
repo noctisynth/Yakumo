@@ -144,7 +144,7 @@ mod tests {
             .expect("login")
             .active_id
             .expect("id");
-        let config:PresetConfig=serde_json::from_value(serde_json::json!({"route":[{"latitude":0,"longitude":0},{"latitude":0,"longitude":0.002}],"latitude":0,"longitude":0,"distanceM":2000.3,"durationS":900,"steps":2400,"laps":5,"offsets":{"distanceM":[-30,30],"durationS":[-15,15],"steps":[-50,50],"laps":[0,0],"positionM":[0,0],"startMinutes":[0,0]}})).expect("config");
+        let config:PresetConfig=serde_json::from_value(serde_json::json!({"route":[{"latitude":0,"longitude":0},{"latitude":0,"longitude":0.002}],"latitude":0,"longitude":0,"paceSecondsPerKm":450,"cadence":160,"distanceM":2000.3,"durationS":900,"steps":2400,"laps":5,"offsets":{"distanceM":[-30,30],"durationS":[-15,15],"steps":[-50,50],"laps":[0,0],"positionM":[0,0],"startMinutes":[0,0]}})).expect("config");
         let saved = app
             .studio_presets(
                 &a,

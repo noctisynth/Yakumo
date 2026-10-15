@@ -41,6 +41,10 @@ pub fn validate_route(route: &[RoutePoint]) -> bool {
 pub struct RunInput {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub route: Vec<RoutePoint>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_pace_seconds_per_km: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub estimated_cadence: Option<f64>,
     pub seed: String,
     pub start_time: u64,
     pub latitude: f64,
@@ -120,6 +124,20 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
     {
         return Err(invalid());
     }
+    match (input.target_pace_seconds_per_km, input.estimated_cadence) {
+        (None, None) => {}
+        (Some(pace), Some(cadence))
+            if pace.is_finite()
+                && cadence.is_finite()
+                && (120.0..=1200.0).contains(&pace)
+                && (30.0..=300.0).contains(&cadence)
+                && ((input.distance_m / 1000.0 * pace).round() - input.duration_s as f64).abs()
+                    < 0.5
+                && ((input.duration_s as f64 / 60.0 * cadence).round() - input.steps as f64)
+                    .abs()
+                    < 0.5 => {}
+        _ => return Err(invalid()),
+    }
     let digest = format!(
         "{:x}",
         Sha256::digest(serde_json::to_vec(&input).map_err(|_| invalid())?)
@@ -133,13 +151,22 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
             .push(cumulative.last().copied().unwrap_or(0.0) + route_distance(&pair[0], &pair[1]));
     }
     let path_length = cumulative.last().copied().unwrap_or(0.0);
+    let closed = input
+        .route
+        .first()
+        .zip(input.route.last())
+        .is_some_and(|(a, b)| route_distance(a, b) < 1.0);
     let along = |travel: f64| -> (f64, f64) {
-        // Return along the selected line; never invent a shortcut to the start.
-        let cycle = travel.rem_euclid(path_length * 2.0);
-        let position = if cycle <= path_length {
-            cycle
+        // Closed paths repeat in order; open paths return along the same line.
+        let position = if closed {
+            travel.rem_euclid(path_length)
         } else {
-            path_length * 2.0 - cycle
+            let cycle = travel.rem_euclid(path_length * 2.0);
+            if cycle <= path_length {
+                cycle
+            } else {
+                path_length * 2.0 - cycle
+            }
         };
         let index = cumulative
             .partition_point(|d| *d <= position)
@@ -230,7 +257,7 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
     let algorithm = if input.route.is_empty() {
         "circle-v1"
     } else {
-        "waypoints-v1"
+        "waypoints-v2"
     };
     Ok(RunPreview {
         end_time: input.start_time + input.duration_s as u64 * 1000,
@@ -256,6 +283,8 @@ mod tests {
     use super::*;
     fn input() -> RunInput {
         RunInput {
+            target_pace_seconds_per_km: None,
+            estimated_cadence: None,
             route: vec![],
             seed: "synthetic-seed".into(),
             start_time: 1700000000000,
@@ -319,7 +348,7 @@ mod tests {
         for n in 0..32 {
             value.seed = format!("route-{n}");
             let a = generate(value.clone()).expect("waypoint generation");
-            assert_eq!(a.algorithm, "waypoints-v1");
+            assert_eq!(a.algorithm, "waypoints-v2");
             assert_eq!(a.source, "synthetic");
             assert!((a.actual_distance_m - value.distance_m).abs() < 0.001);
             assert_eq!(a.step_buckets.iter().sum::<u32>(), value.steps);
@@ -336,6 +365,84 @@ mod tests {
             );
             assert!(a.points.windows(2).any(|p| (p[0].s - p[1].s).abs() > 0.001));
         }
+    }
+    #[test]
+    fn shorter_targets_truncate_and_longer_targets_repeat_without_rescaling() {
+        for (target, duration, end_lon) in [(100.0, 60, 0.1), (30000.0, 7200, 0.0005)] {
+            let mut value = input();
+            value.distance_m = target;
+            value.duration_s = duration;
+            value.steps = (duration as f64 / 60.0 * 160.0).round() as u32;
+            value.route = vec![
+                RoutePoint {
+                    latitude: 0.0,
+                    longitude: 0.0,
+                },
+                RoutePoint {
+                    latitude: 0.0,
+                    longitude: end_lon,
+                },
+            ];
+            let preview = generate(value).expect("extreme route ratio");
+            assert!((preview.actual_distance_m - target).abs() < 0.001);
+            assert!(
+                preview
+                    .points
+                    .iter()
+                    .all(|p| p.a.abs() < 1e-10 && p.o >= 0.0 && p.o <= end_lon)
+            );
+            if target == 100.0 {
+                assert!(
+                    (preview.points.last().expect("end").o - 100.0 / 111194.92664455874).abs()
+                        < 1e-8
+                );
+            } else {
+                assert!(preview.points.windows(2).any(|p| p[1].o < p[0].o));
+            }
+        }
+        let mut closed = input();
+        closed.route = vec![
+            RoutePoint {
+                latitude: 0.0,
+                longitude: 0.0,
+            },
+            RoutePoint {
+                latitude: 0.0,
+                longitude: 0.002,
+            },
+            RoutePoint {
+                latitude: 0.002,
+                longitude: 0.002,
+            },
+            RoutePoint {
+                latitude: 0.0,
+                longitude: 0.0,
+            },
+        ];
+        let preview = generate(closed).expect("closed loop");
+        assert!((preview.actual_distance_m - 2021.0).abs() < 0.001);
+        assert!(
+            preview
+                .points
+                .windows(2)
+                .filter(|p| p[0].a < 1e-10 && p[1].a < 1e-10)
+                .all(|p| p[1].o >= p[0].o)
+        );
+    }
+    #[test]
+    fn estimated_steps_and_pace_must_match_the_recorded_assumptions() {
+        let mut value = input();
+        value.distance_m = 2000.0;
+        value.duration_s = 720;
+        value.steps = 1920;
+        value.target_pace_seconds_per_km = Some(360.0);
+        value.estimated_cadence = Some(160.0);
+        assert!(generate(value.clone()).is_ok());
+        value.steps += 10;
+        assert!(generate(value.clone()).is_err());
+        value.steps = 1920;
+        value.duration_s += 10;
+        assert!(generate(value).is_err());
     }
     #[test]
     fn invalid_routes_fail_and_legacy_inputs_remain_compatible() {
