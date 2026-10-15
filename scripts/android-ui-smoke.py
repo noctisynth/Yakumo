@@ -21,10 +21,29 @@ adb('shell','input','swipe',str(width//2),str(height*3//4),str(width//2),str(hei
 tap(label('账号管理'))
 tap(label('登录第一个账号'))
 adb('shell','settings','put','secure','show_ime_with_hard_keyboard','1')
-tap(find(lambda n:n.get('class')=='android.widget.EditText'))
-time.sleep(2)
-keyboard=adb('shell','dumpsys','input_method').decode(errors='replace')
-if not re.search(r'(mInputShown|mIsInputViewShown|inputShown)=true',keyboard):raise RuntimeError('Software keyboard did not open')
+# Accessibility bounds may be positive while the fixed bottom navigation covers them.
+# Scroll the input fully into the content viewport before tapping it.
+for _ in range(8):
+ root=snapshot()
+ nav=[list(map(int,re.findall(r'\d+',n.get('bounds','')))) for n in root.iter('node') if n.get('text')=='移动端导航' or n.get('content-desc')=='移动端导航']
+ safe_bottom=min([b[1] for b in nav if len(b)==4 and b[3]>b[1]]+[height])-16
+ inputs=[]
+ for n in root.iter('node'):
+  b=list(map(int,re.findall(r'\d+',n.get('bounds',''))))
+  if n.get('class')=='android.widget.EditText' and len(b)==4 and b[0]<b[2] and 80<=b[1]<b[3]<=safe_bottom and b[3]-b[1]>=32:inputs.append(n)
+ if inputs:
+  tap(inputs[0]);break
+ adb('shell','input','swipe',str(width//2),str(safe_bottom-24),str(width//2),str(max(100,height//3)),'350');time.sleep(1)
+else:raise RuntimeError('Login input could not be scrolled above bottom navigation')
+for _ in range(10):
+ keyboard=adb('shell','dumpsys','input_method').decode(errors='replace')
+ if re.search(r'(mInputShown|mIsInputViewShown|inputShown)=true',keyboard):break
+ time.sleep(1)
+else:
+ snapshot()
+ (output/'keyboard-failure.png').write_bytes(adb('exec-out','screencap','-p'))
+ (output/'input-method.txt').write_text(keyboard)
+ raise RuntimeError('Software keyboard did not open after visible input tap')
 (output/'keyboard.png').write_bytes(adb('exec-out','screencap','-p'))
 adb('shell','input','keyevent','4');time.sleep(1)
 adb('shell','input','keyevent','4');time.sleep(1)
