@@ -109,7 +109,7 @@ try:
         click(lambda node: node.get('text', '').lower() == 'cancel')
         wait_event('INSTALL_CANCELLED')
         stop(); clear_events(); launch(); wait_event('install_started')
-        click(lambda node: node.get('text', '').lower() == 'install')
+        click(lambda node: node.get('text', '').lower() in ['install', 'update'])
         deadline = time.monotonic() + 180
         while time.monotonic() < deadline:
             if 'versionName=99.0.2' in adb('shell', 'dumpsys', 'package', package).decode(): break

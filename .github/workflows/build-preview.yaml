@@ -6,6 +6,10 @@ on:
         description: Run isolated real cross-version installer validation
         type: boolean
         default: false
+      updater-platform:
+        description: Isolated updater platform (all, windows-x64, linux-x64, macos-arm64, macos-x64, android)
+        type: string
+        default: all
 permissions:
   contents: read
 jobs:
@@ -18,4 +22,6 @@ jobs:
   installed-updater:
     if: ${{ inputs.installed-updater || github.ref == 'refs/heads/feat/auto-update-mirrors' }}
     uses: ./.github/workflows/updater-validation.yaml
+    with:
+      platform: ${{ inputs.updater-platform || 'all' }}
     secrets: inherit

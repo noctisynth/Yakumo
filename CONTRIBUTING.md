@@ -119,6 +119,17 @@ Repository Variable `UPDATER_PUBLIC_KEY`。不要在聊天、提交、日志或�
 若仅后置通道推进失败，维护者可在 main 显式运行“Verify and recover updater channel”，重新下载
 当前版本既有 Release、验签并核对远端字节，再推进通道；该流程不写入 Release 或重新上传资产。
 
+长期 updater 公钥现已登记在公开源码中，普通构建默认使用该公钥，CI 的 `UPDATER_PUBLIC_KEY`
+须与之保持一致。维护者明确授权后建立的本机备份位于 Git 忽略的 `.signing-backup` 下：
+加密私钥、对应公钥、DPAPI 密码备份及恢复说明共同保留，目录 ACL 仅允许当前用户和 SYSTEM。
+可在原 Windows 用户中运行 `pwsh -NoProfile -File scripts/provision-updater-key.ps1 -VerifyOnly`
+恢复并实际签名验签；不打印秘密。已有公钥时脚本拒绝生成替代密钥，远端公钥不同时拒绝覆盖。
+DPAPI 备份依赖原 Windows 用户配置，复制整个工程目录不能替代异机灾备；当前未配置离线恢复介质。
+
+“Installed updater cross-version validation”使用独立 feature、临时本地 HTTPS CA 和隔离包标识，
+以长期签名验证 99.0.1 → 99.0.2 的真实安装。测试只在手动云端运行，结果写测试应用本地文件；
+不创建 Release、标签、通道清单或公开测试安装包。Android 编译和模拟器操作只在云端执行。
+
 ## 工程文档入口
 
 工程上下文按编号定位，文档注册表与层间责任见 DESIGN-001。

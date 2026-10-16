@@ -33,6 +33,7 @@ function Invoke-PrivateProcess([string]$Executable, [string[]]$Arguments, [strin
 }
 
 if ($VerifyOnly -and !(Test-Path -LiteralPath $keyFile)) { throw 'No existing backup to verify' }
+if (!(Test-Path -LiteralPath $keyFile) -and (Test-Path -LiteralPath (Join-Path $projectRoot 'src-tauri/updater-public-key.txt'))) { throw 'A trusted public key already exists; restore its original encrypted backup instead of generating a replacement' }
 if (!(Test-Path -LiteralPath $backupRoot)) { [void][IO.Directory]::CreateDirectory($backupRoot) }
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent().User
 Invoke-PrivateProcess 'icacls' @($backupRoot, '/inheritance:r', '/grant:r', "*$($identity.Value):(OI)(CI)F", '*S-1-5-18:(OI)(CI)F') '' @{}
@@ -63,8 +64,10 @@ try {
   $privateEnvironment.YAKUMO_KEY_PASSWORD = [Text.Encoding]::UTF8.GetString($restored)
   Invoke-PrivateProcess 'bun' @('scripts/updater-key-tool.ts', 'verify') '' $privateEnvironment
   $publicKey = [IO.File]::ReadAllText("$keyFile.pub").Trim()
+  $trustedPublicPath = Join-Path $projectRoot 'src-tauri/updater-public-key.txt'
+  if ((Test-Path -LiteralPath $trustedPublicPath) -and [IO.File]::ReadAllText($trustedPublicPath).Trim() -ne $publicKey) { throw 'Backup public key differs from the trusted source; refusing replacement' }
   $fingerprint = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($publicKey))).ToLowerInvariant()
-  $metadata = @{ schema = 1; repository = $repository; publicKeySha256 = $fingerprint; protection = 'Encrypted Tauri key; password protected by Windows CurrentUser DPAPI'; restoredSigningVerified = $true; createdUtc = [DateTime]::UtcNow.ToString('o') }
+  $metadata = @{ schema = 1; repository = $repository; publicKeySha256 = $fingerprint; protection = 'Encrypted Tauri key; password protected by Windows CurrentUser DPAPI'; restoredSigningVerified = $true; createdUtc = (Get-Item -LiteralPath $keyFile).CreationTimeUtc.ToString('o') }
   [IO.File]::WriteAllText((Join-Path $backupRoot 'backup-info.json'), ($metadata | ConvertTo-Json))
   [IO.File]::WriteAllText((Join-Path $backupRoot 'RECOVERY.txt'), "Keep updater.key, updater.key.pub and password.dpapi together. Run scripts/provision-updater-key.ps1 -VerifyOnly from this Windows user to verify recovery. Password recovery depends on this Windows user profile; this is not an off-device disaster backup. Never commit this directory. Do not replace the signing key after clients trust its public key.")
   if (!$VerifyOnly) { [IO.File]::WriteAllText((Join-Path $projectRoot 'src-tauri/updater-public-key.txt'), "$publicKey`n") }

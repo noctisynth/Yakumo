@@ -50,6 +50,33 @@ if (process.argv[2] === 'generate') {
       env,
       stdio: 'ignore',
     });
+  let wrongPasswordRejected = false;
+  try {
+    execFileSync(
+      'bun',
+      [
+        'run',
+        'tauri',
+        'signer',
+        'sign',
+        '--app-version',
+        version,
+        join(output, `Yakumo-${version}-windows-x64.exe`),
+      ],
+      {
+        env: {
+          ...env,
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: 'invalid-recovery-test-password',
+        },
+        stdio: 'ignore',
+        timeout: 30_000,
+      },
+    );
+  } catch {
+    wrongPasswordRejected = true;
+  }
+  if (!wrongPasswordRejected)
+    throw new Error('Encrypted key did not reject an incorrect password');
   execFileSync(
     'cargo',
     ['run', '--quiet', '--locked', '--bin', 'verify-update', '--', output],
