@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { checkVersions } from './release-tools';
 import {
   generateManifest,
+  releaseNotes,
   validateUpdaterConfiguration,
 } from './updater-tools';
 
@@ -13,11 +14,7 @@ const changelog = readFileSync('src-tauri/CHANGELOG.md', 'utf8').replaceAll(
   '\r\n',
   '\n',
 );
-const notes = changelog
-  .split(`## v${version}\n`)[1]
-  ?.split('\n## v')[0]
-  ?.trim();
-if (!notes) throw new Error('Current version release notes are required');
+const notes = releaseNotes(changelog, version);
 const manifest = generateManifest(version, notes, (filename) =>
   readFileSync(join(directory, `${filename}.sig`), 'utf8'),
 );

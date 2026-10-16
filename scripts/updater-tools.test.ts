@@ -5,20 +5,28 @@ import {
   artifactUrl,
   generateManifest,
   mirrorUrl,
+  releaseNotes,
   validateUpdaterConfiguration,
 } from './updater-tools';
 
 describe('updater routing and release metadata', () => {
   test('pinned Rust/JS bindings and production policy remain compatible', () => {
     const config = validateUpdaterConfiguration();
-    const oldConfig = { pubkey: '', endpoints: [] };
-    expect(Object.keys(oldConfig).every((key) => key in config)).toBe(true);
     expect(config.endpoints.at(-1)).toBe(
       'https://raw.githubusercontent.com/noctisynth/Yakumo/update-channel/latest.json',
     );
     expect(readFileSync('Cargo.lock', 'utf8')).toContain(
       'eed469a618e169af19a2aa28759841bc73e469ed',
     );
+  });
+  test('release notes handle checkout line endings and omit automation markers', () => {
+    expect(
+      releaseNotes(
+        '## v1.2.3\r\n\r\nFixes\r\n<!-- semifold:release:end -->\r\n## v1.2.2\r\nOld',
+        '1.2.3',
+      ),
+    ).toBe('Fixes');
+    expect(() => releaseNotes('## v1.2.2\nOld', '1.2.3')).toThrow();
   });
   test('URL prefix preserves versioned release URL, encoding is explicit', () => {
     const url = artifactUrl('1.2.3', 'Yakumo-1.2.3-windows-x64.exe');

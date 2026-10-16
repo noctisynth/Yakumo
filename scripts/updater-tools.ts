@@ -88,6 +88,17 @@ export interface Manifest {
   platforms: Record<string, { url: string; signature: string }>;
 }
 
+export function releaseNotes(changelog: string, version: string): string {
+  const notes = changelog
+    .replaceAll('\r\n', '\n')
+    .split(`## v${version}\n`)[1]
+    ?.split('\n## v')[0]
+    ?.replace(/<!--[\s\S]*?-->/g, '')
+    .trim();
+  if (!notes) throw new Error('Current version release notes are required');
+  return notes;
+}
+
 export function generateManifest(
   version: string,
   notes: string,
