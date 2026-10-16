@@ -10,29 +10,31 @@ use tauri_plugin_updater::{UpdaterBuilder, UpdaterExt};
 const CA: &[u8] = include_bytes!(env!("YAKUMO_UPDATER_TEST_CA"));
 
 pub(crate) fn configure(builder: UpdaterBuilder) -> UpdaterBuilder {
-    builder.configure_client(|builder| {
-        let builder = builder
-            .https_only(true)
-            .no_proxy()
-            .timeout(Duration::from_secs(30))
-            .redirect(reqwest_updater::redirect::Policy::limited(8));
-        let mut builder = if let Ok(certificate) = reqwest_updater::Certificate::from_pem(CA) {
-            builder.add_root_certificate(certificate)
-        } else {
-            builder
-        };
-        // Every updater host resolves to the CI machine's local fixture server.
-        // Android reaches that same server through adb reverse tcp:443.
-        for host in [
-            "ghfast.top",
-            "gh-proxy.com",
-            "github.com",
-            "raw.githubusercontent.com",
-        ] {
-            builder = builder.resolve(host, SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 443));
-        }
+    builder.configure_client(fixture_client)
+}
+
+fn fixture_client(builder: reqwest_updater::ClientBuilder) -> reqwest_updater::ClientBuilder {
+    let builder = builder
+        .https_only(true)
+        .no_proxy()
+        .timeout(Duration::from_secs(30))
+        .redirect(reqwest_updater::redirect::Policy::limited(8));
+    let mut builder = if let Ok(certificate) = reqwest_updater::Certificate::from_pem(CA) {
+        builder.add_root_certificate(certificate)
+    } else {
         builder
-    })
+    };
+    // Every updater host resolves to the CI machine's local fixture server.
+    // Android reaches that same server through adb reverse tcp:443.
+    for host in [
+        "ghfast.top",
+        "gh-proxy.com",
+        "github.com",
+        "raw.githubusercontent.com",
+    ] {
+        builder = builder.resolve(host, SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 443));
+    }
+    builder
 }
 
 fn report(app: &tauri::AppHandle, version: &str, event: &str) {
@@ -130,4 +132,45 @@ pub(crate) fn start(app: tauri::AppHandle) {
             _ => report(&app, &version, "install_failed"),
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[ignore = "Requires the explicitly started local HTTPS validation fixture"]
+    fn fixture_tls_routes_stay_local_and_reject_http() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        tauri::async_runtime::block_on(async {
+            let client = super::fixture_client(reqwest_updater::Client::builder())
+                .build()
+                .unwrap();
+            assert!(
+                client
+                    .get("http://gh-proxy.com/latest.json")
+                    .send()
+                    .await
+                    .is_err()
+            );
+            assert_eq!(
+                client
+                    .get("https://ghfast.top/latest.json")
+                    .send()
+                    .await
+                    .unwrap()
+                    .status()
+                    .as_u16(),
+                503
+            );
+            assert_eq!(
+                client
+                    .get("https://gh-proxy.com/latest.json")
+                    .send()
+                    .await
+                    .unwrap()
+                    .status()
+                    .as_u16(),
+                200
+            );
+        });
+    }
 }
