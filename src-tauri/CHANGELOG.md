@@ -1,5 +1,15 @@
 # Changelog
 
+<!-- semifold:release version=0.1.1 -->
+## v0.1.1
+
+### Bug Fixes
+
+- [`ab2ca76`](https://github.com/noctisynth/Yakumo/commit/ab2ca760aed2c8e39e5295157b6a4872e6e65a06): 补齐 Android 地图请求的应用标识，加固底图加载超时、离线反馈及重试隔离，防止空白或持续等待。
+- [`f98f2c2`](https://github.com/noctisynth/Yakumo/commit/f98f2c2580a5f126fb5eafc6dfaabf1fa9096123): 增加项目级天地图底图配置，桌面和 Android 共用国内底图及注记，失败时可切换备用地图并保留视角和选点；未配置访问 Key 时不启用。
+- [`94bc0a3`](https://github.com/noctisynth/Yakumo/commit/94bc0a32fa25a4b123162bf44f38c620d2cc4d26): 兼容学校规则的 JSON 数组文本，避免空围栏被误判为实际要求；区分配置异常与未完成核验，移除用户提示中的研发阶段文案及无效的重新生成指引。
+<!-- semifold:release:end -->
+
 <!-- semifold:release version=0.1.0 -->
 ## v0.1.0
 
