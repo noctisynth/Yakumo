@@ -1,5 +1,18 @@
 # Changelog
 
+<!-- semifold:release version=0.1.2 -->
+## v0.1.2
+
+### Bug Fixes
+
+- [`fc29bc5`](https://github.com/noctisynth/Yakumo/commit/fc29bc57c7aba1a91af08b776571adc946fdd4b4): 修复 Android 安装包仍显示默认图标的问题，统一普通、圆形和自适应品牌图标，并增加实际安装包校验，避免后续构建回退。 ([#3](https://github.com/noctisynth/Yakumo/pull/3) by @fu050409)
+- [`7b1ed8f`](https://github.com/noctisynth/Yakumo/commit/7b1ed8f66d716045ff87a8d6e7bf1df92198b3a4): 修复非空学校运动区域被一律拦截的问题，按同一坐标参照核验最终轨迹及路段，保留原始区域配置；区分真实越界与配置异常，并在发送前再次检查。 ([#3](https://github.com/noctisynth/Yakumo/pull/3) by @fu050409)
+
+### Chores
+
+- [`18d293e`](https://github.com/noctisynth/Yakumo/commit/18d293efa961046925427d6c60afcb65b4718a9f): 根据用户 Android 与 PC 实测确认完成当前使用验收，已知及后续缺陷独立跟踪，明确用户反馈与自动化验证的证据边界。 ([#3](https://github.com/noctisynth/Yakumo/pull/3) by @fu050409)
+<!-- semifold:release:end -->
+
 <!-- semifold:release version=0.1.1 -->
 ## v0.1.1
 
