@@ -37,7 +37,8 @@ Android 更新 HTTPS 显式使用随应用依赖维护的 Mozilla DER 根证书�
 Secrets 和公开 Repository Variable UPDATER_PUBLIC_KEY。源码登记公开公钥作为默认信任，编译时
 YAKUMO_UPDATER_PUBLIC_KEY 可显式设置；正式发布缺少 Secrets 或公钥变量必须失败。
 APK 发布密钥与更新签名密钥独立。
-本次授权不包含合并或正式发布，云端构建与模拟器验证保持独立。
+此前密钥与隔离验证授权不包含合并或正式发布。后续使用者已授权合并功能并准备新版，当前边界
+见 SPEC-003；隔离云端构建与模拟器验证始终独立于正式通道。
 
 真实跨版本验证使用单独 Cargo feature 与编译期测试配置，只在手动云端验证构建中启用。
 隔离版本为 99.0.1 → 99.0.2，不修改版本权威文件或 Semifold 状态，不创建 GitHub Release 或推进通道。

@@ -115,7 +115,7 @@ Repository Variable `UPDATER_PUBLIC_KEY`。不要在聊天、提交、日志或�
 `verify-update` 验证实际字节、签名和版本。Semifold 完成正式 Release 后，公开下载并核对每个
 安装包的 SHA-256，最后原子更新公开 update-channel 分支的 latest.json；客户端只读取该分支。
 镜像缓存可以延迟提示，不允许混用版本或在验签失败后切换签名。若发布后核验失败，保持旧通道，
-维护者检查实际资产状态；不要盲目重发或覆盖 Release。本轮不执行正式发布或推进通道。
+维护者检查实际资产状态；不要盲目重发或覆盖 Release。正式发布按当次授权及发布 PR 推进。
 若仅后置通道推进失败，维护者可在 main 显式运行“Verify and recover updater channel”，重新下载
 当前版本既有 Release、验签并核对远端字节，再推进通道；该流程不写入 Release 或重新上传资产。
 
