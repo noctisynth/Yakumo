@@ -21,7 +21,7 @@ history = []
 def adb(*args): return subprocess.check_output(['adb', *args], stderr=subprocess.DEVNULL)
 def read_events():
     try:
-        data = adb('shell', 'cat', '/data/user/0/' + package + '/files/validation-events.jsonl').decode() if platform == 'android' else report.read_text()
+        data = adb('shell', 'cat', '/data/user/0/' + package + '/validation-events.jsonl').decode() if platform == 'android' else report.read_text()
         return [json.loads(line) for line in data.splitlines() if line.strip()]
     except (OSError, subprocess.CalledProcessError, json.JSONDecodeError): return []
 def wait_event(event, version='99.0.1', timeout=180):
@@ -45,7 +45,7 @@ def stop():
             except ProcessLookupError: pass
     time.sleep(1)
 def clear_events():
-    if platform == 'android': adb('shell', 'rm', '-f', '/data/user/0/' + package + '/files/validation-events.jsonl')
+    if platform == 'android': adb('shell', 'rm', '-f', '/data/user/0/' + package + '/validation-events.jsonl')
     else: report.unlink(missing_ok=True)
 def launch():
     global process
@@ -92,11 +92,11 @@ try:
     case('wrong-version', 'manifest_rejected')
     case('tamper', 'download_or_verification_failed')
     if platform == 'android':
-        adb('shell', 'touch', '/data/user/0/' + package + '/files/cancel-download')
+        adb('shell', 'touch', '/data/user/0/' + package + '/cancel-download')
     else:
         appdata.mkdir(parents=True, exist_ok=True); (appdata / 'cancel-download').touch()
     case(None, 'download_cancelled')
-    if platform == 'android': adb('shell', 'rm', '/data/user/0/' + package + '/files/cancel-download')
+    if platform == 'android': adb('shell', 'rm', '/data/user/0/' + package + '/cancel-download')
     else: (appdata / 'cancel-download').unlink()
     clear_events(); launch()
     if platform == 'android':

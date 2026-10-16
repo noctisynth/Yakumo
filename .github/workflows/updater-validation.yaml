@@ -14,7 +14,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: updater-installed-validation
+  group: updater-installed-validation-${{ inputs.platform }}
   cancel-in-progress: false
 env:
   YAKUMO_UPDATER_PUBLIC_KEY: ${{ vars.UPDATER_PUBLIC_KEY }}
