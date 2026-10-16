@@ -6,11 +6,13 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
+import { applyAndroidIcons } from './android-icons';
 
 const root = 'src-tauri/gen/android';
 const gradle = join(root, 'app/build.gradle.kts');
 if (!existsSync(gradle))
   throw new Error('Run Tauri Android initialization in CI first');
+applyAndroidIcons('src-tauri/icons/android', join(root, 'app/src/main/res'));
 const source = readFileSync(gradle, 'utf8');
 let updated = source
   .replace(/compileSdk\s*=\s*\d+/, 'compileSdk = 36')
@@ -42,6 +44,16 @@ xml = xml
     '<application',
     '<application android:networkSecurityConfig="@xml/network_security_config"',
   );
+if (!/<application\b[^>]*>/.test(xml))
+  throw new Error('Android application manifest is missing');
+xml = xml.replace(/<application\b[^>]*>/, (application) =>
+  application
+    .replace(/\s+android:(?:icon|roundIcon)="[^"]*"/g, '')
+    .replace(
+      '<application',
+      '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round"',
+    ),
+);
 writeFileSync(manifest, xml);
 const resources = join(root, 'app/src/main/res/xml');
 mkdirSync(resources, { recursive: true });
@@ -56,5 +68,5 @@ writeFileSync(
   `${existsSync(rules) ? readFileSync(rules, 'utf8') : ''}\n-keep class app.yakumo.vault.** { *; }\n`,
 );
 console.log(
-  'Android overlays applied (SDK 36 / NDK r28 / native vault / scoped HTTP)',
+  'Android overlays applied (SDK 36 / NDK r28 / brand icons / native vault / scoped HTTP)',
 );
