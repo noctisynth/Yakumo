@@ -20,7 +20,7 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 
 ## 文档注册表
 
-自动更新的设计及信任边界见 SPEC-010；交付与待验证项见 TASK-004、CHECK-011。
+自动更新的设计及信任边界见 SPEC-010（含 Android 独立根证书策略）；交付与待验证项见 TASK-004、CHECK-011。
 用户已授权长期签名配置及隔离跨版本验证；验证入口仅编译进专用 feature 构建，不进入生产运行路径。
 
 文档以编号定位，文件名仅为检索辅助，不使用本地路径或文件链接。

@@ -176,14 +176,14 @@ pub(crate) async fn check_application_update(
     #[cfg(not(target_os = "ios"))]
     {
         use tauri_plugin_updater::UpdaterExt;
-        let builder = webview
-            .updater_builder()
-            .pubkey(public_key())
-            .configure_client(|client| {
-                client
-                    .https_only(true)
-                    .redirect(reqwest_updater::redirect::Policy::limited(8))
-            });
+        let builder =
+            crate::updater_transport::configure(webview.updater_builder().pubkey(public_key()))
+                .map_err(|_| {
+                    error(
+                        "tls_configuration",
+                        "无法初始化更新证书校验，请联系维护者。",
+                    )
+                })?;
         #[cfg(feature = "updater-validation")]
         let builder = crate::updater_validation::configure(builder);
         let updater = builder.build().map_err(plugin_error)?;

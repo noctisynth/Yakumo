@@ -41,9 +41,9 @@ jobs:
           target: ${{ matrix.name == 'windows-x64' && 'x86_64-pc-windows-msvc' || matrix.name == 'linux-x64' && 'x86_64-unknown-linux-gnu' || matrix.name == 'macos-x64' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }}
       - name: Prepare disposable loopback TLS certificate
         run: python scripts/prepare-updater-validation.py
-      - name: Verify fixture certificate with native macOS trust evaluation
+      - name: Verify private fixture certificate chain and hostname
         if: runner.os == 'macOS'
-        run: security verify-cert -c .verification/updater-validation/https.pem -r .verification/updater-validation/ca.pem -p ssl -s gh-proxy.com
+        run: openssl verify -CAfile .verification/updater-validation/ca.pem -verify_hostname gh-proxy.com .verification/updater-validation/https.pem
       - name: Configure macOS ad-hoc signing
         if: runner.os == 'macOS'
         run: echo 'APPLE_SIGNING_IDENTITY=-' >> "$GITHUB_ENV"

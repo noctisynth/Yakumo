@@ -6045,6 +6045,7 @@ dependencies = [
  "tempfile",
  "url",
  "uuid",
+ "webpki-root-certs",
  "zeroize",
 ]
 

@@ -16,6 +16,9 @@ eed469a618e169af19a2aa28759841bc73e469ed。JS 绑定以同提交原文件纳入 
 原生检查使用 fork 的端点列表和下载模板；额外强制 HTTPS（包括重定向）、不携带学校会话，
 只接受本仓库相同 release tag 下的公开安装包 URL。签名错误终止，不启用 verification retry。
 签名必须绑定版本，不允许降级；Android 额外检查包名、versionName、递增 versionCode 和证书连续性。
+Android 更新 HTTPS 显式使用随应用依赖维护的 Mozilla DER 根证书集合与 WebPKI 完整证书链、
+主机名验证；固定 fork 未提供 reqwest 平台验证器所需的 Android JVM/AAR 初始化。
+该边界不继承 Android 用户安装的 CA，证书集合更新随依赖和应用更新推进；桌面沿用系统验证器。
 
 候选服务为 ghfast.top 与 gh-proxy.com，其公开首页/服务文档说明 URL 前缀和 Release 代理支持；
 官方 GitHub 为最后备用。服务可变，不保证大陆或校园网可用。仅对公开资源发送无认证请求。
@@ -39,7 +42,9 @@ Secrets 和公开 Repository Variable UPDATER_PUBLIC_KEY。编译通过 YAKUMO_U
 隔离版本为 99.0.1 → 99.0.2，不修改版本权威文件或 Semifold 状态，不创建 GitHub Release 或推进通道。
 测试安装包使用长期 updater 签名；Android 沿用既有 APK 发布证书。测试结果仅写应用本地文件，
 由云端脚本读取，不进行网络上报。独立本地 HTTPS 服务模拟检查和
-镜像下载，TLS 仍强制校验；仅验证构建信任该次临时测试 CA，并将指定更新域名解析到 loopback。
+镜像下载，TLS 仍强制校验；仅验证构建以 WebPKI 严格限定该次临时测试 CA，并将指定更新域名解析到 loopback。
+Android 另用生产 HTTPS 配置读取一次既有公开 Release 校验文件并核对已知摘要，无认证或账号数据，
+以验证真实公网证书链；此探测不下载或安装正式更新，不代表大陆或校园网连通性。
 生产构建不能通过运行时环境启用这些入口，也不包含测试 CA。安装、拒绝、取消和版本变化以设备证据记录。
 
 fork 默认 zip 功能依赖的 zip 4 系列在本轮解析时已全部撤回；关闭默认功能，只启用 rustls-tls

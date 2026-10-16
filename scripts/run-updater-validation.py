@@ -31,7 +31,7 @@ def wait_event(event, version='99.0.1', timeout=180):
         if any(row['event'] == event and row['version'] == version for row in events):
             history.append({'case': event, 'version': version, 'events': events})
             return
-        if any(row['event'] in ['builder_failed', 'check_failed', 'install_failed', 'invalid_validation_version'] for row in events): raise RuntimeError('Native updater validation failed: ' + json.dumps(events))
+        if any(row['event'] in ['builder_failed', 'check_failed', 'install_failed', 'public_https_failed', 'invalid_validation_version'] for row in events): raise RuntimeError('Native updater validation failed: ' + json.dumps(events))
         time.sleep(1)
     raise RuntimeError('Timed out waiting for ' + event + ': ' + json.dumps(read_events()))
 def stop():
@@ -125,6 +125,8 @@ try:
     print('Real installed-app 99.0.1 -> 99.0.2 upgrade, mirror fallback and rejection cases passed: ' + platform)
 finally:
     if platform == 'android':
+        try: (diagnostics / 'crash.txt').write_bytes(adb('logcat', '-b', 'crash', '-d'))
+        except subprocess.CalledProcessError: pass
         try: (diagnostics / 'screen.png').write_bytes(adb('exec-out', 'screencap', '-p'))
         except subprocess.CalledProcessError: pass
     (diagnostics / 'events.json').write_text(json.dumps(read_events(), indent=2))

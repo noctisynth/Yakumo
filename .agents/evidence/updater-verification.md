@@ -1,6 +1,6 @@
 # 自动更新验证
 
-文档编号：CHECK-011。状态：实现与云端预览通过，正式更新启用待配置。更新：2026-10-16。
+文档编号：CHECK-011。状态：长期密钥配置完成，真实跨版本验证进行中。更新：2026-10-16。
 规范：SPEC-010；清单：TASK-004。本记录不继承其他功能的用户验收。
 
 ## 依赖证据
@@ -81,3 +81,50 @@ https://github.com/noctisynth/Yakumo/actions/runs/38908172854 亦全部通过。
 Android 真正系统更新安装（含权限拒绝、取消、
 跨版本升级）及 macOS/Linux 安装后的重启仍需对应环境/长期签名基线验证。
 Minisign 校验不等于系统代码签名或 Apple 公证；Android 不支持静默、分包或签名密钥轮换。
+
+## 长期签名与真实升级（后续授权）
+
+2026-10-16 用户明确授权生成、备份长期更新密钥并配置 GitHub，指定将本机备份保留在当前工程。
+已建立被 Git 忽略且由 Windows ACL 限制为当前用户和 SYSTEM 的备份目录，私钥加密保存，密码由
+CurrentUser DPAPI 保护。通过实际解密恢复签名、全部平台夹具验签和错误密码拒绝验证；没有打印
+私钥或密码，也没有把秘密放入命令行参数。仅公开公钥进入源码。
+
+公开公钥文本 SHA-256：a2bbe162bd755059fe0d00246243e6ca56790fb4b5ee18dd7e02e92793827d24。
+GitHub 已配置 TAURI_SIGNING_PRIVATE_KEY、TAURI_SIGNING_PRIVATE_KEY_PASSWORD 及公开变量
+UPDATER_PUBLIC_KEY；已核验变量与源码和备份公钥相同。Android 原有发布密钥未改变。
+前述“缺少 updater 密钥”是初次集成阶段的历史状态，在本次授权后已解决。
+备份仍依赖原 Windows 用户配置，不能视为异机或离线灾备；用户尚未提供此类介质。
+
+生产构建默认信任源码登记的公钥。隔离验证包使用专用 feature、独立包标识及 99.0.1 → 99.0.2，
+测试版本仅通过构建配置覆层设置，未修改 Cargo workspace 版本或消费 changeset。
+检查和下载域名在专用构建内解析到 loopback，本地 HTTPS 使用独立 CA 和服务器证书，保持 HTTPS-only
+及证书校验；结果仅写测试应用本地文件。原生 HTTPS fixture 实测验证了 HTTP 拒绝、TLS 证书链及
+503/200 候选响应。一次独立测试遗漏 Rustls provider 初始化的失败已修正；实际插件检查本身会初始化。
+早期测试证书改为独立 CA/叶子证书后重跑；不以关闭证书校验修复。
+
+真实升级运行：https://github.com/noctisynth/Yakumo/actions/runs/38913278243 ，代码 4fc3bed。
+
+| 平台 | 当前实证 |
+|---|---|
+| macOS arm64 | 真实安装与重启到 99.0.2；无更新、版本拒绝、篡改拒绝、下载取消和镜像回退通过 |
+| Linux x64 AppImage | 真实安装与重启到 99.0.2；相同拒绝、取消、无更新和回退场景通过 |
+| Windows x64 NSIS | 真实安装与重启到 99.0.2；相同拒绝、取消、无更新和回退场景通过 |
+| macOS x64 | 系统验证器拒绝临时私有 CA 的 CT 状态；改为测试构建专用 WebPKI CA 集合后重跑 |
+| Android API 35 x86_64 | 两版签名 APK 已构建；独立运行补充设备验证 |
+
+Android 首轮驱动曾假设 Tauri 数据目录为 files 子目录；核对 PathPlugin.getDataDir 后修正为应用
+dataDir，只调整测试证据读取和取消标记位置，不修改生产存储。补充运行：
+https://github.com/noctisynth/Yakumo/actions/runs/38915138163 。
+系统安装按钮兼容 Install/Update 两种平台文案。未创建测试 Release、标签或推进正式更新通道。
+
+公钥接入后的常规质量运行 https://github.com/noctisynth/Yakumo/actions/runs/38912690735 全部成功。
+以上真实安装来自隔离云端环境，镜像回退由本地 HTTPS 模拟，不冒充大陆/校园网真实网络或 Android arm64 真机实测。
+
+第二轮 Android 证据读取正确，但检查阶段尚未发出 HTTP 请求即失败。静态核对 reqwest 0.13.5
+与 rustls-platform-verifier 0.7.1：Android 不支持合并额外 CA；默认验证器还需要 JVM 初始化及
+Android AAR，而固定 updater fork 未集成该路径。生产 Android 更新传输改用维护的 Mozilla DER
+根证书集合与严格 WebPKI 校验；桌面生产验证器不改变。专用验证夹具则只信任临时 CA，仍校验
+完整链与主机名。Android 云端额外读取已发布的公开校验文件并核对已知摘要以验证生产 TLS 配置。
+macOS Intel 运行 https://github.com/noctisynth/Yakumo/actions/runs/38917139779 的原生证书预检
+明确返回缺少 CT SCT；不以关闭证书校验规避，仅将私有夹具与生产系统 CA 策略分开。
+Vite 直连与 /@fs 访问备份目录的 canary 测试均返回 403，前端/脚本测试现为 36 项。

@@ -20,7 +20,7 @@ fn fixture_client(builder: reqwest_updater::ClientBuilder) -> reqwest_updater::C
         .timeout(Duration::from_secs(30))
         .redirect(reqwest_updater::redirect::Policy::limited(8));
     let mut builder = if let Ok(certificate) = reqwest_updater::Certificate::from_pem(CA) {
-        builder.add_root_certificate(certificate)
+        builder.tls_certs_only([certificate])
     } else {
         builder
     };
@@ -82,6 +82,52 @@ fn report_check_failure(
     );
 }
 
+#[cfg(target_os = "android")]
+async fn public_https_probe(app: &tauri::AppHandle, version: &str) -> bool {
+    use sha2::{Digest, Sha256};
+    let Ok(directory) = app.path().app_local_data_dir() else {
+        return false;
+    };
+    let marker = directory.join("public-https-verified");
+    if marker.exists() {
+        return true;
+    }
+    let Ok(builder) = crate::updater_transport::validation_public_client() else {
+        return false;
+    };
+    let Ok(client) = builder.timeout(Duration::from_secs(15)).build() else {
+        return false;
+    };
+    // Public immutable checksum only, no authentication, headers or user data.
+    let source = "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.1.2/Yakumo-0.1.2-windows-x64.sha256";
+    for prefix in ["https://ghfast.top/", "https://gh-proxy.com/", ""] {
+        let Ok(response) = client.get(format!("{prefix}{source}")).send().await else {
+            continue;
+        };
+        if !response.status().is_success() {
+            continue;
+        }
+        let Ok(bytes) = response.bytes().await else {
+            continue;
+        };
+        if format!("{:x}", Sha256::digest(&bytes))
+            == "632ace1a67d498734b204a001b2e3d0e03dd8a03c3e577f1c887baec00f5e0ff"
+        {
+            if std::fs::write(
+                marker,
+                b"verified public HTTPS without platform-verifier JNI",
+            )
+            .is_err()
+            {
+                return false;
+            }
+            report(app, version, "public_https_verified");
+            return true;
+        }
+    }
+    false
+}
+
 pub(crate) fn start(app: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
         let version = app.package_info().version.to_string();
@@ -94,11 +140,23 @@ pub(crate) fn start(app: tauri::AppHandle) {
             app.exit(0);
             return;
         }
-        let Ok(updater) = configure(app.updater_builder()).build() else {
+        let Ok(production_builder) = crate::updater_transport::configure(app.updater_builder())
+        else {
             report(&app, &version, "builder_failed");
             return;
         };
-        let update = match updater.check().await {
+        // Building/checking the fork initializes its process-wide TLS provider.
+        let Ok(updater) = configure(production_builder).build() else {
+            report(&app, &version, "builder_failed");
+            return;
+        };
+        let checked = updater.check().await;
+        #[cfg(target_os = "android")]
+        if !public_https_probe(&app, &version).await {
+            report(&app, &version, "public_https_failed");
+            return;
+        }
+        let update = match checked {
             Ok(Some(update)) => update,
             Ok(None) => {
                 report(&app, &version, "no_update");
