@@ -7,7 +7,7 @@
 
 通过指定公开远端分支核对提交 eed469a618e169af19a2aa28759841bc73e469ed，
 Rust Cargo.lock 固定该 revision。JS 从同提交 plugins/updater/guest-js/index.ts 原样复制，
-SHA-256 为 f5590cb3fa68a1830c9c26fa457b6e1a5bdeec458afe79de2b86502902b1cf03，
+SHA-256 为 ba9c640e3e755237178e2ec7898f7bfa87d03883e872b21210560eb25547d3ad，
 许可证与来源元数据保留；自动测试校验摘要及两端 revision 一致。
 指定 fork 精确提交的 Android 构建与 APK 策略测试成功记录：
 https://github.com/fu050409/plugins-workspace/actions/runs/38901909326 。
@@ -45,6 +45,9 @@ AppImage 三路完整 SHA-256 均为 c5d7b3a03e4bd3e81e42f368a43b946da66c62103ca
 - 固定 fork 的 35 个单元/loopback 测试通过，覆盖 A 失败 B 成功、无更新权威语义、超时、
   中断、取消、签名与版本失败、旧配置兼容。使用与应用相同的非 zip 功能组合。
 - Rust fmt 与 Clippy（所有目标、警告视为错误）通过。
+- 合成发布链路验证通过：明确生成一次性测试密钥，为全部平台的不可安装夹具签名，生成正式格式
+  清单，原生逐个验签成功；错误公钥和篡改文件均被拒绝。测试私钥在签名后删除，不用于真实构建或发布。
+  此验证已加入 Windows 云端质量工作流；不替代长期密钥配置或真实安装。
 - 一次普通沙箱执行的 loopback 测试被网络边界阻断；允许本地模拟服务后完整重跑通过。
   不将该环境限制当作协议回归。Windows 并发测试占用可执行文件后改为串行运行。
 

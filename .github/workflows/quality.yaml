@@ -80,6 +80,9 @@ jobs:
           bun run test:rust
       - name: Build desktop application
         run: bun run tauri build --debug --no-bundle
+      - name: Verify synthetic updater signing and release manifest pipeline
+        if: runner.os == 'Windows'
+        run: bun scripts/verify-updater-release.ts
       - name: Test exact updater fork fallback, cancellation and signature semantics
         if: runner.os == 'Windows'
         run: |
