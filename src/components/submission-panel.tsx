@@ -286,7 +286,7 @@ export function SubmissionPanel({ preview }: { preview: RunPreview | null }) {
               {preparation.blockers.length > 0 && (
                 <div className='space-y-3'>
                   <p className='text-xs text-muted-foreground'>
-                    本次尚未发送，请调整以下项目后重新生成。
+                    本次数据尚未发送。请查看以下原因及处理方式。
                   </p>
                   <ul className='space-y-2' aria-label='提交拦截原因'>
                     {preparation.blockers.map((line) => (

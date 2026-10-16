@@ -54,9 +54,6 @@ fn failed(message: &'static str) -> AccountError {
 fn number(settings: &Value, key: &str) -> Option<f64> {
     scalar_number(&settings[key])
 }
-fn empty_array(settings: &Value, key: &str) -> bool {
-    settings[key].as_array().is_some_and(Vec::is_empty)
-}
 fn rule(settings: &Value, key: &str) -> Option<bool> {
     match settings[key].as_str() {
         Some("0") => Some(false),
@@ -97,6 +94,13 @@ fn prepare_settings(
     session: &Session,
     now: u64,
 ) -> AccountResult<(Preparation, Option<Ticket>)> {
+    let mut normalized = settings.clone();
+    for key in ["list", "geofence", "middleFaces"] {
+        if let Some(array) = super::school_rules::array(&settings[key]) {
+            normalized[key] = Value::Array(array);
+        }
+    }
+    let settings = &normalized;
     let input = &preview.input;
     let mut blockers = Vec::new();
     if preview.end_time > now || now.saturating_sub(preview.end_time) > 7 * 86400000 {
@@ -108,10 +112,12 @@ fn prepare_settings(
         ("isMidwayFace", "中途人脸"),
         ("needRegisterFace", "人脸注册"),
     ] {
-        if rule(settings, key) != Some(false) {
-            blockers.push(format!(
-                "学校要求{label}，或未明确返回关闭状态；首版未实现该流程。"
-            ));
+        match rule(settings, key) {
+            Some(false) => {}
+            Some(true) => blockers.push(format!(
+                "学校要求{label}核验，当前提交流程无法完成该核验。请通过学校客户端完成运动。"
+            )),
+            None => blockers.push(format!("未能读取学校的{label}要求，请重新检查学校配置。")),
         }
     }
     for (key, label) in [
@@ -119,18 +125,35 @@ fn prepare_settings(
         ("geofence", "围栏"),
         ("middleFaces", "中途人脸"),
     ] {
-        if !empty_array(settings, key) {
-            blockers.push(format!("{label}非空或结构未知，首版暂不支持。"));
+        match settings[key].as_array() {
+            Some(values) if values.is_empty() => {}
+            Some(_) if key == "geofence" => blockers
+                .push("学校设置了允许运动区域，客户端尚不能核验该区域。本次数据未发送。".into()),
+            Some(_) => blockers.push(format!(
+                "学校设置了{label}要求，当前提交流程无法完成核验。请通过学校客户端完成运动。"
+            )),
+            None => blockers.push(format!(
+                "学校返回的{label}配置无法读取，请重新检查学校配置。"
+            )),
         }
     }
     if rule(settings, "isStepRecursion") != Some(false) {
         blockers.push("递增步数规则已启用或未知，尚不能完整验证。".into());
     }
-    if number(settings, "runType") != Some(1.0)
-        || rule(settings, "isSequencePoint") != Some(false)
-        || rule(settings, "isSpeedRangeCheck") != Some(false)
-    {
-        blockers.push("运动类型、顺序检查或速度范围规则未处于首版支持范围。".into());
+    if number(settings, "runType") != Some(1.0) {
+        blockers.push("学校返回的运动类型与本次运动不一致，请重新检查学校配置。".into());
+    }
+    for (key, label) in [
+        ("isSequencePoint", "必经点顺序"),
+        ("isSpeedRangeCheck", "速度范围"),
+    ] {
+        match rule(settings, key) {
+            Some(false) => {}
+            Some(true) => blockers.push(format!(
+                "学校启用了{label}校验，当前提交流程无法完成该核验。"
+            )),
+            None => blockers.push(format!("未能读取学校的{label}要求，请重新检查学校配置。")),
+        }
     }
     for key in ["limitSpeed", "endStride", "endLimitStepFrequency"] {
         if number(settings, key).is_none() {
@@ -358,6 +381,49 @@ mod tests {
     }
     fn sample_settings() -> Value {
         json!({"runType":"1","totalRange":1,"step":"1000","startQualifiedTime":4,"endQualifiedTime":20,"isStartFace":"0","isEndFace":"0","isMidwayFace":"0","needRegisterFace":"0","isStepRecursion":"0","isSequencePoint":"0","isSpeedRangeCheck":"0","list":[],"geofence":[],"middleFaces":[],"limitSpeed":"3.33","endStride":"2.3","endLimitStepFrequency":"300"})
+    }
+    #[test]
+    fn encoded_empty_rules_are_accepted_without_double_encoding() {
+        let mut settings = sample_settings();
+        for key in ["list", "geofence", "middleFaces"] {
+            settings[key] = json!(" \n [] ");
+        }
+        let (result, ticket) = prepare_settings(
+            "synthetic-account".into(),
+            sample_preview(),
+            &settings,
+            &sample_session(),
+            1700000900000,
+        )
+        .expect("prepare text arrays");
+        assert!(result.blockers.is_empty());
+        let ticket = ticket.expect("valid ticket");
+        assert_eq!(ticket.payload["geofence"], "[]");
+        assert_eq!(ticket.payload["pointList"], "[]");
+    }
+
+    #[test]
+    fn real_fences_and_unreadable_configuration_have_different_feedback() {
+        for (value, expected) in [
+            (json!("[[{\"lat\":0,\"lng\":0}]]"), "学校设置了允许运动区域"),
+            (json!([[{"lat":0,"lng":0}]]), "学校设置了允许运动区域"),
+            (Value::Null, "学校返回的围栏配置无法读取"),
+            (json!("not json"), "学校返回的围栏配置无法读取"),
+        ] {
+            let mut settings = sample_settings();
+            settings["geofence"] = value;
+            let (result, ticket) = prepare_settings(
+                "synthetic-account".into(),
+                sample_preview(),
+                &settings,
+                &sample_session(),
+                1700000900000,
+            )
+            .expect("blocked result");
+            assert!(ticket.is_none());
+            assert_eq!(result.blockers.len(), 1);
+            assert!(result.blockers[0].starts_with(expected));
+        }
     }
     #[test]
     fn requirement_blockers_name_each_failed_metric_with_actual_and_required_values() {
@@ -589,7 +655,12 @@ mod tests {
                 assert!(ticket.is_none());
             }
         }
-        for value in [Value::Null, json!([{"distance":1000}]), json!("[]")] {
+        for value in [
+            Value::Null,
+            json!([{"distance":1000}]),
+            json!("{}"),
+            json!("[{\"distance\":1000}]"),
+        ] {
             let mut settings = sample_settings();
             settings["middleFaces"] = value;
             let (_, ticket) = prepare_settings(
