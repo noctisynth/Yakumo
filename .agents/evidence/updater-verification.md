@@ -131,3 +131,9 @@ https://github.com/noctisynth/Yakumo/actions/runs/38918924710 证书诊断确认
 配置与 -addext 的扩展叠加，CA 出现重复 Basic Constraints 和 Subject Key Identifier，链校验失败。
 改用独立最小 OpenSSL 配置防止重复扩展，生成后立即核对链与主机名；不关闭证书验证。
 Vite 直连与 /@fs 访问备份目录的 canary 测试均返回 403，前端/脚本测试现为 36 项。
+
+Android HTTPS 修复后的运行 https://github.com/noctisynth/Yakumo/actions/runs/38918512514 已完成
+两版双 ABI APK 构建、相同发布证书与版本递增检查，并在设备执行至验签成功及来源权限拒绝后的
+重试。失败点为驱动未识别 API 35 设置页的 Compose 可勾选 View；设备 XML 显示唯一未勾选、
+可点击的来源授权行。驱动增加该语义兼容，不绕过系统安装确认；完成案例在失败时也保留本地证据。
+此时尚不能标记 Android 升级成功。

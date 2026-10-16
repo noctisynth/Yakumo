@@ -67,7 +67,7 @@ def click(predicate, timeout=60):
     while time.monotonic() < deadline:
         for node in snapshot().iter('node'):
             bounds = list(map(int, re.findall(r'\d+', node.get('bounds', ''))))
-            if len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1] and predicate(node):
+            if len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1] and node.get('enabled') == 'true' and predicate(node):
                 adb('shell', 'input', 'tap', str((bounds[0]+bounds[2])//2), str((bounds[1]+bounds[3])//2)); time.sleep(1); return
         time.sleep(1)
     raise RuntimeError('System updater confirmation not found')
@@ -104,7 +104,7 @@ try:
         # First deny the system source permission by returning without granting it.
         time.sleep(3); adb('shell', 'input', 'keyevent', '4'); wait_event('INSTALL_PERMISSION_DENIED')
         stop(); clear_events(); launch(); wait_event('install_started')
-        click(lambda node: node.get('class') in ['android.widget.Switch', 'android.widget.SwitchCompat'] or node.get('resource-id', '').endswith('switch_widget'))
+        click(lambda node: node.get('class') in ['android.widget.Switch', 'android.widget.SwitchCompat'] or node.get('resource-id', '').endswith('switch_widget') or (node.get('package') == 'com.android.settings' and node.get('checkable') == 'true' and node.get('clickable') == 'true' and node.get('checked') == 'false'))
         adb('shell', 'input', 'keyevent', '4')
         click(lambda node: node.get('text', '').lower() == 'cancel')
         wait_event('INSTALL_CANCELLED')
@@ -124,6 +124,7 @@ try:
     (diagnostics / 'results.json').write_text(json.dumps({'platform': platform, 'baseline': '99.0.1', 'installed': '99.0.2', 'cases': history, 'requests': requests}, indent=2))
     print('Real installed-app 99.0.1 -> 99.0.2 upgrade, mirror fallback and rejection cases passed: ' + platform)
 finally:
+    (diagnostics / 'case-history.json').write_text(json.dumps(history, indent=2))
     if platform == 'android':
         try: (diagnostics / 'crash.txt').write_bytes(adb('logcat', '-b', 'crash', '-d'))
         except subprocess.CalledProcessError: pass
