@@ -32,7 +32,6 @@ changeset-template = """
 path = "src-tauri"
 resolver = "rust"
 publish = false
-channel-bump = "preserve"
 github-release = true
 assets = ["artifacts/*"]
 
