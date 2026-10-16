@@ -4,6 +4,8 @@ mod avatars;
 pub mod exercise;
 mod storage;
 mod studio;
+#[cfg(all(feature = "updater-validation", not(target_os = "ios")))]
+mod updater_validation;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

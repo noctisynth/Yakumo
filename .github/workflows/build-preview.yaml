@@ -1,10 +1,21 @@
 name: Cross-platform build preview
 on:
   workflow_dispatch:
+    inputs:
+      installed-updater:
+        description: Run isolated real cross-version installer validation
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
   desktop:
+    if: ${{ !inputs.installed-updater && github.ref != 'refs/heads/feat/auto-update-mirrors' }}
     uses: ./.github/workflows/desktop-build.yaml
   android:
+    if: ${{ !inputs.installed-updater && github.ref != 'refs/heads/feat/auto-update-mirrors' }}
     uses: ./.github/workflows/android-build.yaml
+  installed-updater:
+    if: ${{ inputs.installed-updater || github.ref == 'refs/heads/feat/auto-update-mirrors' }}
+    uses: ./.github/workflows/updater-validation.yaml
+    secrets: inherit

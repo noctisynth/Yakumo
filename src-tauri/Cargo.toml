@@ -15,6 +15,9 @@ edition = "2024"
 name = "yakumo_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+updater-validation = []
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

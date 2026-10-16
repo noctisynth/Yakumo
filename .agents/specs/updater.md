@@ -27,10 +27,20 @@ eed469a618e169af19a2aa28759841bc73e469ed。JS 绑定以同提交原文件纳入 
 才原子更新清单分支。不覆盖任何既有 Release；失败只报告，禁止自动重发。不可变 tag 和版本文件名防止缓存混用。
 更新清单内平台签名必须来自同版本同字节，客户端安装前再次验签。
 
-长期更新私钥不能自动生成或提交。使用 TAURI_SIGNING_PRIVATE_KEY、TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+长期更新私钥不得未经授权生成或提交。2026-10-16 用户明确授权生成、加密备份及配置 GitHub，
+并指定在当前工程目录保存本机备份。备份目录整体忽略且限制 Windows ACL，密码由当前用户 DPAPI
+保护；恢复签名验证后才上传 Secrets。该备份不能覆盖整机或 Windows 用户配置丢失，异机灾备待用户提供位置。
+使用 TAURI_SIGNING_PRIVATE_KEY、TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 Secrets 和公开 Repository Variable UPDATER_PUBLIC_KEY。编译通过 YAKUMO_UPDATER_PUBLIC_KEY 固化公钥。
 缺失时预览仍可构建，客户端明确不可更新；正式发布必须失败。APK 发布密钥与更新签名密钥独立。
 本次授权不包含合并或正式发布，云端构建与模拟器验证保持独立。
+
+真实跨版本验证使用单独 Cargo feature 与编译期测试配置，只在手动云端验证构建中启用。
+隔离版本为 99.0.1 → 99.0.2，不修改版本权威文件或 Semifold 状态，不创建 GitHub Release 或推进通道。
+测试安装包使用长期 updater 签名；Android 沿用既有 APK 发布证书。测试结果仅写应用本地文件，
+由云端脚本读取，不进行网络上报。独立本地 HTTPS 服务模拟检查和
+镜像下载，TLS 仍强制校验；仅验证构建信任该次临时测试 CA，并将指定更新域名解析到 loopback。
+生产构建不能通过运行时环境启用这些入口，也不包含测试 CA。安装、拒绝、取消和版本变化以设备证据记录。
 
 fork 默认 zip 功能依赖的 zip 4 系列在本轮解析时已全部撤回；关闭默认功能，只启用 rustls-tls
 和 system-proxy。发布使用原生 EXE、AppImage、deb 与 macOS app tar，不生成旧版 Windows zip

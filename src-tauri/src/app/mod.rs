@@ -18,6 +18,8 @@ pub fn run() {
         .plugin(tauri_plugin_geolocation::init());
     if let Err(error) = builder
         .setup(|app| {
+            #[cfg(all(feature = "updater-validation", not(target_os = "ios")))]
+            crate::updater_validation::start(app.handle().clone());
             let directory = app.path().app_local_data_dir()?;
             app.manage(Arc::new(Mutex::new(
                 studio::submission::PreparedRuns::default(),

@@ -32,7 +32,7 @@ pub(crate) fn update_status(app: tauri::AppHandle) -> UpdateStatus {
 
 pub(crate) fn public_key() -> &'static str {
     option_env!("YAKUMO_UPDATER_PUBLIC_KEY")
-        .unwrap_or("")
+        .unwrap_or(include_str!("../../../updater-public-key.txt"))
         .trim()
 }
 
@@ -67,7 +67,10 @@ fn plugin_error(value: tauri_plugin_updater::Error) -> UpdateError {
 }
 
 #[cfg(not(target_os = "ios"))]
-fn validate_manifest(value: &serde_json::Value, version: &str) -> Result<(), UpdateError> {
+pub(crate) fn validate_manifest(
+    value: &serde_json::Value,
+    version: &str,
+) -> Result<(), UpdateError> {
     use base64::Engine;
     if version.split('.').count() != 3
         || version.split('.').any(|part| part.parse::<u64>().is_err())
@@ -173,16 +176,17 @@ pub(crate) async fn check_application_update(
     #[cfg(not(target_os = "ios"))]
     {
         use tauri_plugin_updater::UpdaterExt;
-        let updater = webview
+        let builder = webview
             .updater_builder()
             .pubkey(public_key())
             .configure_client(|client| {
                 client
                     .https_only(true)
                     .redirect(reqwest_updater::redirect::Policy::limited(8))
-            })
-            .build()
-            .map_err(plugin_error)?;
+            });
+        #[cfg(feature = "updater-validation")]
+        let builder = crate::updater_validation::configure(builder);
+        let updater = builder.build().map_err(plugin_error)?;
         let Some(update) = updater.check().await.map_err(plugin_error)? else {
             return Ok(None);
         };
