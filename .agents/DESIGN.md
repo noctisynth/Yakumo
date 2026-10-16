@@ -24,7 +24,8 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 
 | 编号 | 文件名 | 类型 | 责任 |
 |---|---|---|---|
-| README-001 | README.md | 项目介绍 | 名称、目标、当前进度与工程入口 |
+| README-001 | README.md | 用户指南 | 产品介绍、下载安装、使用及隐私说明 |
+| CONTRIB-001 | CONTRIBUTING.md | 贡献指南 | 开发环境、工程命令、验证与发布协作 |
 | GOV-001 | AGENTS.md | Active 约定 | 协作、事实、隐私与验证纪律 |
 | DESIGN-001 | DESIGN.md | Active 索引 | 方向、边界、阅读顺序 |
 | SPEC-001 | product-baseline.md | Active Spec | 用户已确定范围及工程约束 |
@@ -102,3 +103,7 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 
 用户界面不以研发阶段解释失败。学校配置解析在原生规则适配层处理，区分空配置、实际要求和
 无法识别的数据；地图渲染库与底图服务分别选择，国内底图接入由项目配置访问凭据。
+
+
+公开文档按读者组织：README-001 面向使用者，集中展示功能、下载、操作及使用边界；开发环境、
+技术约束、工程命令、发布和证据入口统一进入 CONTRIB-001，不在产品介绍中陈列研发进度。
