@@ -9,6 +9,13 @@ openssl_run('req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', str(root
 openssl_run('req', '-new', '-newkey', 'rsa:2048', '-nodes', '-keyout', str(root / 'https.key'), '-out', str(root / 'https.csr'), '-subj', '/CN=Yakumo local validation server')
 (root / 'extensions.cnf').write_text('basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\nsubjectAltName=DNS:ghfast.top,DNS:gh-proxy.com,DNS:github.com,DNS:raw.githubusercontent.com\n')
 openssl_run('x509', '-req', '-in', str(root / 'https.csr'), '-CA', str(root / 'ca.pem'), '-CAkey', str(root / 'ca.key'), '-CAcreateserial', '-out', str(root / 'https.pem'), '-days', '2', '-extfile', str(root / 'extensions.cnf'))
+subprocess.run([openssl, 'version'], check=True)
+verified = subprocess.run([openssl, 'verify', '-CAfile', str(root / 'ca.pem'), '-verify_hostname', 'gh-proxy.com', str(root / 'https.pem')])
+if verified.returncode:
+    # Disposable public certificates only; never emit private key material.
+    for name in ['ca.pem', 'https.pem']:
+        subprocess.run([openssl, 'x509', '-in', str(root / name), '-noout', '-text'], check=True)
+    verified.check_returncode()
 (root / 'build.json').write_text(json.dumps({'version': '99.0.1', 'identifier': 'app.yakumo.client.updatervalidation', 'productName': 'YakumoUpdaterValidation'}))
 with open(os.environ['GITHUB_ENV'], 'a') as env: env.write('YAKUMO_UPDATER_TEST_CA=' + str(root / 'ca.pem') + '\n')
 print('Disposable HTTPS fixture CA prepared; production signing identity unchanged')
