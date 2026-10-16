@@ -12,6 +12,6 @@
     "branch": "feat/updater-mirrors-android",
     "revision": "eed469a618e169af19a2aa28759841bc73e469ed",
     "path": "plugins/updater/guest-js/index.ts",
-    "sha256": "f5590cb3fa68a1830c9c26fa457b6e1a5bdeec458afe79de2b86502902b1cf03"
+    "sha256": "ba9c640e3e755237178e2ec7898f7bfa87d03883e872b21210560eb25547d3ad"
   }
 }
