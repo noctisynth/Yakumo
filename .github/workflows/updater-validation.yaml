@@ -37,9 +37,13 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: ./.github/actions/setup-desktop
         with:
+          cache-on-failure: 'true'
           target: ${{ matrix.name == 'windows-x64' && 'x86_64-pc-windows-msvc' || matrix.name == 'linux-x64' && 'x86_64-unknown-linux-gnu' || matrix.name == 'macos-x64' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }}
       - name: Prepare disposable loopback TLS certificate
         run: python scripts/prepare-updater-validation.py
+      - name: Verify fixture certificate with native macOS trust evaluation
+        if: runner.os == 'macOS'
+        run: security verify-cert -c .verification/updater-validation/https.pem -r .verification/updater-validation/ca.pem -p ssl -s gh-proxy.com
       - name: Configure macOS ad-hoc signing
         if: runner.os == 'macOS'
         run: echo 'APPLE_SIGNING_IDENTITY=-' >> "$GITHUB_ENV"

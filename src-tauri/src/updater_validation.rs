@@ -38,6 +38,13 @@ fn fixture_client(builder: reqwest_updater::ClientBuilder) -> reqwest_updater::C
 }
 
 fn report(app: &tauri::AppHandle, version: &str, event: &str) {
+    report_record(
+        app,
+        serde_json::json!({ "version": version, "event": event }),
+    );
+}
+
+fn report_record(app: &tauri::AppHandle, record: serde_json::Value) {
     let Ok(directory) = app.path().app_local_data_dir() else {
         return;
     };
@@ -49,12 +56,30 @@ fn report(app: &tauri::AppHandle, version: &str, event: &str) {
         .append(true)
         .open(directory.join("validation-events.jsonl"))
     {
-        let _ = writeln!(
-            file,
-            "{}",
-            serde_json::json!({ "version": version, "event": event })
-        );
+        let _ = writeln!(file, "{record}");
     }
+}
+
+fn report_check_failure(
+    app: &tauri::AppHandle,
+    version: &str,
+    error: &tauri_plugin_updater::Error,
+) {
+    // This module only sends requests to the loopback fixture, without headers
+    // or account state. Keep a bounded cause chain to diagnose TLS/route errors.
+    let mut source = std::error::Error::source(error);
+    let mut causes = Vec::new();
+    while let Some(cause) = source {
+        causes.push(cause.to_string().chars().take(512).collect::<String>());
+        if causes.len() == 5 {
+            break;
+        }
+        source = cause.source();
+    }
+    report_record(
+        app,
+        serde_json::json!({ "version": version, "event": "check_failed", "causes": causes }),
+    );
 }
 
 pub(crate) fn start(app: tauri::AppHandle) {
@@ -79,8 +104,8 @@ pub(crate) fn start(app: tauri::AppHandle) {
                 report(&app, &version, "no_update");
                 return;
             }
-            Err(_) => {
-                report(&app, &version, "check_failed");
+            Err(error) => {
+                report_check_failure(&app, &version, &error);
                 return;
             }
         };
