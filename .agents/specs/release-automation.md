@@ -3,6 +3,9 @@
 文档编号：SPEC-003。状态：Active。更新：2026-10-14。
 依据：用户授权配置 Semifold、changeset、GitHub CI/CD，创建并推送组织内的公开仓库 Yakumo。
 
+自动更新签名、清单生成与发布后推进 update-channel 的新增门槛见 SPEC-010。正式发布缺少
+长期 updater 密钥或公钥即失败，不继承过去未签名产物的验证结论；既有 Release 不补传或覆盖。
+
 ## 版本与发布单元
 
 八云爱作为一个应用发布单元，由 Semifold 的 rust 适配器管理 yakumo。

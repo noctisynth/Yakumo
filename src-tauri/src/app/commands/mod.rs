@@ -9,6 +9,7 @@ pub(crate) mod exercise;
 pub(crate) mod platform;
 pub(crate) mod studio;
 pub(crate) mod submission;
+pub(crate) mod updater;
 
 pub(crate) type Accounts = Arc<Mutex<AccountManager>>;
 pub(crate) type Prepared = Arc<Mutex<crate::studio::submission::PreparedRuns>>;

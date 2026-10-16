@@ -6,6 +6,10 @@ on:
         type: boolean
         default: false
     secrets:
+      TAURI_SIGNING_PRIVATE_KEY:
+        required: false
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD:
+        required: false
       ANDROID_KEY_BASE64:
         required: false
       ANDROID_KEY_PASSWORD:
@@ -28,6 +32,7 @@ jobs:
     env:
       BUILD_MODE: ${{ inputs.release && 'release' || 'debug' }}
       VITE_TIANDITU_KEY: ${{ vars.TIANDITU_WEB_KEY }}
+      YAKUMO_UPDATER_PUBLIC_KEY: ${{ vars.UPDATER_PUBLIC_KEY }}
       CARGO_TERM_COLOR: always
       CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS: '-C link-arg=-Wl,-z,max-page-size=16384'
       CARGO_TARGET_X86_64_LINUX_ANDROID_RUSTFLAGS: '-C link-arg=-Wl,-z,max-page-size=16384'
@@ -81,8 +86,30 @@ jobs:
       - name: Verify release signature and modern Android alignment
         if: inputs.release
         run: python3 scripts/verify-android.py
+      - name: Test pinned updater APK identity policy (cloud only)
+        working-directory: src-tauri/gen/android
+        run: ./gradlew :tauri-plugin-updater:testDebugUnitTest
+      - name: Verify updater policy tests actually executed
+        shell: python
+        run: |
+          import json, subprocess
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          metadata = json.loads(subprocess.check_output(['cargo', 'metadata', '--format-version=1', '--locked']))
+          plugin = next(p for p in metadata['packages'] if p['name'] == 'tauri-plugin-updater')
+          report = Path(plugin['manifest_path']).parent / 'android/build/test-results/testDebugUnitTest/TEST-app.tauri.updater.ApkPolicyTest.xml'
+          suite = ET.parse(report).getroot()
+          if int(suite.get('tests', '0')) < 2 or any(int(suite.get(k, '0')) for k in ['skipped', 'errors', 'failures']):
+              raise SystemExit('Updater APK identity policy tests did not pass')
+          print('Pinned updater APK identity policy tests passed')
       - name: Collect Android artifacts
         run: bun scripts/collect-mobile-artifacts.ts "$BUILD_MODE"
+      - name: Sign final verified APK for the updater
+        if: inputs.release
+        run: bun scripts/sign-updates.ts artifacts/android-release
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       - name: Verify packaged brand icons
         run: |
           python3 -m pip install --user --break-system-packages --disable-pip-version-check --only-binary=:all: -r scripts/requirements-android-icons.txt

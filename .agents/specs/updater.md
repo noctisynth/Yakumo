@@ -1,0 +1,37 @@
+# 镜像自动更新
+
+文档编号：SPEC-010。状态：Active。更新：2026-10-16。
+来源：用户指定 fork 分支与本次集成授权；发布基线 SPEC-003，Android 身份 SPEC-009。
+
+支持 Windows x64 NSIS、macOS arm64/x64 app tar、Linux x64 AppImage/deb，以及 Android
+arm64/x64 通用 APK。iOS 不支持。旧客户端必须手动安装一次带更新能力的版本。
+启动后自动检查一次，设置页可手动检查；下载、安装分别确认，Android 仍需系统来源权限和安装确认。
+界面展示当前版本、候选版本、纯文本说明、累计下载量与取消，不把跨镜像累计字节误当百分比。
+取消后重新检查获取新资源；下载完成仅代表验签通过，安装失败保留可操作提示。
+安装成功后桌面提供重启，Android 可能直接结束旧进程，下一次启动显示实际运行版本。
+
+Rust 固定使用 fu050409/plugins-workspace 的 feat/updater-mirrors-android 分支提交
+eed469a618e169af19a2aa28759841bc73e469ed。JS 绑定以同提交原文件纳入 vendor 包，保留许可证、
+来源与 SHA-256；更换 revision 时同步更新两端并验证。不得修改相邻插件工作区。
+原生检查使用 fork 的端点列表和下载模板；额外强制 HTTPS（包括重定向）、不携带学校会话，
+只接受本仓库相同 release tag 下的公开安装包 URL。签名错误终止，不启用 verification retry。
+签名必须绑定版本，不允许降级；Android 额外检查包名、versionName、递增 versionCode 和证书连续性。
+
+候选服务为 ghfast.top 与 gh-proxy.com，其公开首页/服务文档说明 URL 前缀和 Release 代理支持；
+官方 GitHub 为最后备用。服务可变，不保证大陆或校园网可用。仅对公开资源发送无认证请求。
+配置统一在 Tauri updater 配置中维护，检查限时每端点 15 秒，下载每候选 10 分钟，失败由插件回退。
+有效旧清单或 204 为权威无更新，不越过它继续寻找版本；缓存可能延迟发现但不允许错误安装。
+
+检查指向公开 update-channel 分支的 latest.json。发布先完成全部签名安装包和云端检查，再生成、
+验证清单并交给 Semifold 创建新 Release。后置发布核验确认正式 Release 及全部资产可读，
+才原子更新清单分支。不覆盖任何既有 Release；失败只报告，禁止自动重发。不可变 tag 和版本文件名防止缓存混用。
+更新清单内平台签名必须来自同版本同字节，客户端安装前再次验签。
+
+长期更新私钥不能自动生成或提交。使用 TAURI_SIGNING_PRIVATE_KEY、TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+Secrets 和公开 Repository Variable UPDATER_PUBLIC_KEY。编译通过 YAKUMO_UPDATER_PUBLIC_KEY 固化公钥。
+缺失时预览仍可构建，客户端明确不可更新；正式发布必须失败。APK 发布密钥与更新签名密钥独立。
+本次授权不包含合并或正式发布，云端构建与模拟器验证保持独立。
+
+fork 默认 zip 功能依赖的 zip 4 系列在本轮解析时已全部撤回；关闭默认功能，只启用 rustls-tls
+和 system-proxy。发布使用原生 EXE、AppImage、deb 与 macOS app tar，不生成旧版 Windows zip
+或压缩 AppImage。macOS 的 tar/flate2 不受该可选功能影响。

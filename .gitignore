@@ -23,3 +23,5 @@ keystore.properties
 
 __pycache__/
 *.pyc
+
+.updater-source/

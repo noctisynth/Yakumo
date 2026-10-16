@@ -4,6 +4,12 @@ use tauri::Manager;
 pub(crate) mod commands;
 pub fn run() {
     let builder = tauri::Builder::default();
+    #[cfg(not(target_os = "ios"))]
+    let builder = builder.plugin(
+        tauri_plugin_updater::Builder::new()
+            .pubkey(commands::updater::public_key())
+            .build(),
+    );
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|_, _, _| {}));
     #[cfg(target_os = "android")]
@@ -29,6 +35,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_application_info,
+            commands::updater::update_status,
+            commands::updater::check_application_update,
+            commands::updater::restart_after_update,
             commands::accounts::list_accounts,
             commands::accounts::login_account,
             commands::accounts::switch_account,

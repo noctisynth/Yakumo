@@ -1,6 +1,7 @@
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   checkVersions,
@@ -48,3 +49,21 @@ writeFileSync(
   join(output, `Yakumo-${version}-${name}.sha256`),
   `${checksums.join('\n')}\n`,
 );
+
+if (name.startsWith('macos-')) {
+  const applications = sources.filter(
+    (source) =>
+      source.endsWith('/Contents/MacOS/yakumo') ||
+      source.endsWith('\\Contents\\MacOS\\yakumo'),
+  );
+  if (applications.length !== 1)
+    throw new Error('Expected exactly one macOS app bundle');
+  const application = dirname(dirname(dirname(applications[0])));
+  execFileSync('tar', [
+    '-czf',
+    join(output, `Yakumo-${version}-${name}.app.tar.gz`),
+    '-C',
+    dirname(application),
+    basename(application),
+  ]);
+}

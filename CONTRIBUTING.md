@@ -67,6 +67,7 @@ Rust 按应用装配、账号、头像、运动接口、工作室和存储组织
 | `bun run test:android-config` | Android 构建覆层与签名配置测试 |
 | `bun run check:versions` | Rust、前端和锁文件版本一致性检查 |
 | `bun run test:release` | 发布元数据与版本同步测试 |
+| `bun run test:updater` | 更新状态、镜像路由、依赖 revision 和清单测试 |
 | `bun run verify` | 完整前端及 Rust 质量检查 |
 | `bun run tauri build --debug --no-bundle` | 构建当前平台应用，不制作安装包 |
 
@@ -98,6 +99,25 @@ semifold status
 合并后构建 Windows x64、Linux x64、macOS arm64／x64 及签名 Android 附件，全部成功才创建 GitHub Release。Windows 附件无商业代码签名，macOS 使用 ad-hoc 签名；Android 使用长期证书，检查签名身份、v2/v3、16 KB 对齐，并执行云端安装验收。
 
 Android 签名凭据仅供可信 main 使用，不能替换既有发布身份或向外部 PR 暴露。手动预览流程只上传 Actions 附件，不创建正式 Release；已存在的 Release 不自动覆盖或补传。详细发布约定见 SPEC-003、SPEC-009。
+
+自动更新使用指定 fork 的固定 Rust revision 与同提交原版 JS 源码包。来源及文件摘要登记在 vendor
+包元数据中，`test:updater` 校验两端一致；更换依赖须同时复核原生与 JS API。镜像路由统一维护在
+Tauri updater 配置，服务一手说明为 https://ghfast.top/ 和 https://gh-proxy.com/docs/github-accelerator/ 。
+手动网络探测命令为 `bun scripts/probe-updater-mirrors.ts`，不属于自动测试，也不能替代大陆实测。
+
+正式更新发布需要维护者准备长期保管的 Minisign/Tauri 更新密钥：私钥与密码分别配置为
+`TAURI_SIGNING_PRIVATE_KEY`、`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` GitHub Secrets，公钥配置为
+Repository Variable `UPDATER_PUBLIC_KEY`。不要在聊天、提交、日志或命令参数中暴露私钥和密码。
+本地编译使用公开环境变量 `YAKUMO_UPDATER_PUBLIC_KEY`；更换公钥会破坏旧客户端更新信任链，
+不能随意轮换。Android APK 签名证书继续沿用 SPEC-009，不能用它替代 updater 签名。
+
+发布工作流对最终安装包使用 `--app-version` 签名，合并全部平台后生成 latest.json，由原生
+`verify-update` 验证实际字节、签名和版本。Semifold 完成正式 Release 后，公开下载并核对每个
+安装包的 SHA-256，最后原子更新公开 update-channel 分支的 latest.json；客户端只读取该分支。
+镜像缓存可以延迟提示，不允许混用版本或在验签失败后切换签名。若发布后核验失败，保持旧通道，
+维护者检查实际资产状态；不要盲目重发或覆盖 Release。本轮不执行正式发布或推进通道。
+若仅后置通道推进失败，维护者可在 main 显式运行“Verify and recover updater channel”，重新下载
+当前版本既有 Release、验签并核对远端字节，再推进通道；该流程不写入 Release 或重新上传资产。
 
 ## 工程文档入口
 

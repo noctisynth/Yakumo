@@ -1,0 +1,17 @@
+{
+  "name": "@tauri-apps/plugin-updater",
+  "version": "2.14.0",
+  "type": "module",
+  "exports": "./index.ts",
+  "license": "MIT OR Apache-2.0",
+  "dependencies": {
+    "@tauri-apps/api": "2.12.3"
+  },
+  "yakumoSource": {
+    "repository": "https://github.com/fu050409/plugins-workspace",
+    "branch": "feat/updater-mirrors-android",
+    "revision": "eed469a618e169af19a2aa28759841bc73e469ed",
+    "path": "plugins/updater/guest-js/index.ts",
+    "sha256": "f5590cb3fa68a1830c9c26fa457b6e1a5bdeec458afe79de2b86502902b1cf03"
+  }
+}

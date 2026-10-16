@@ -20,10 +20,15 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 
 ## 文档注册表
 
+自动更新的设计及信任边界见 SPEC-010；交付与待验证项见 TASK-004、CHECK-011。
+
 文档以编号定位，文件名仅为检索辅助，不使用本地路径或文件链接。
 
 | 编号 | 文件名 | 类型 | 责任 |
 |---|---|---|---|
+| SPEC-010 | updater.md | Active Spec | 镜像更新、原生安全边界与签名发布 |
+| TASK-004 | updater.md | Active 清单 | 自动更新实现与验收 |
+| CHECK-011 | updater-verification.md | 验证记录 | 更新依赖、镜像探测与验证范围 |
 | README-001 | README.md | 用户指南 | 产品介绍、下载安装、使用及隐私说明 |
 | CONTRIB-001 | CONTRIBUTING.md | 贡献指南 | 开发环境、工程命令、验证与发布协作 |
 | GOV-001 | AGENTS.md | Active 约定 | 协作、事实、隐私与验证纪律 |

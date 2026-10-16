@@ -52,6 +52,9 @@ jobs:
     needs: plan
     if: needs.plan.outputs.mode == 'publish'
     uses: ./.github/workflows/desktop-build.yaml
+    with:
+      release: true
+    secrets: inherit
 
   android:
     name: Signed Android bundles
@@ -86,8 +89,8 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: '1.4.2'
-      - name: Setup stable Rust
-        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - name: Setup native signature verifier dependencies
+        uses: ./.github/actions/setup-desktop
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Download desktop bundles
@@ -107,9 +110,21 @@ jobs:
         uses: noctisynth/setup-semifold@9dc3b2e2f25d5db332322b29c3d3436c857ca1d9
         with:
           version: '0.3.4'
+      - name: Generate and cryptographically verify complete updater manifest
+        if: needs.plan.outputs.mode == 'publish'
+        run: |
+          bun scripts/generate-update-manifest.ts artifacts
+          cargo run --locked --bin verify-update -- artifacts
+        env:
+          YAKUMO_UPDATER_PUBLIC_KEY: ${{ vars.UPDATER_PUBLIC_KEY }}
       - name: Semifold CI
         id: semifold
         run: semifold ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Advance update channel after published assets are available
+        if: needs.plan.outputs.mode == 'publish'
+        run: bun scripts/promote-update-channel.ts artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Run checks on the generated release branch
