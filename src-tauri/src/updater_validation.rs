@@ -1,4 +1,4 @@
-//! Local-only installed-app validation. Never enabled in production builds.
+//! Installed-app fixtures and an Android public TLS probe. Excluded from production.
 use std::{
     io::Write,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -65,7 +65,7 @@ fn report_check_failure(
     version: &str,
     error: &tauri_plugin_updater::Error,
 ) {
-    // This module only sends requests to the loopback fixture, without headers
+    // These check errors come from the loopback fixture, without headers
     // or account state. Keep a bounded cause chain to diagnose TLS/route errors.
     let mut source = std::error::Error::source(error);
     let mut causes = Vec::new();

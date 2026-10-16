@@ -2,4 +2,4 @@
 yakumo: "patch:fix"
 ---
 
-Verify local updater test certificates with native macOS trust and retain bounded TLS failure evidence.
+Verify disposable updater certificate chains and retain bounded TLS failure evidence across platforms.

@@ -89,7 +89,7 @@ Minisign 校验不等于系统代码签名或 Apple 公证；Android 不支持�
 CurrentUser DPAPI 保护。通过实际解密恢复签名、全部平台夹具验签和错误密码拒绝验证；没有打印
 私钥或密码，也没有把秘密放入命令行参数。仅公开公钥进入源码。
 
-公开公钥文本 SHA-256：a2bbe162bd755059fe0d00246243e6ca56790fb4b5ee18dd7e02e92793827d24。
+公开公钥（去首尾空白后 UTF-8）SHA-256：a2bbe162bd755059fe0d00246243e6ca56790fb4b5ee18dd7e02e92793827d24。
 GitHub 已配置 TAURI_SIGNING_PRIVATE_KEY、TAURI_SIGNING_PRIVATE_KEY_PASSWORD 及公开变量
 UPDATER_PUBLIC_KEY；已核验变量与源码和备份公钥相同。Android 原有发布密钥未改变。
 前述“缺少 updater 密钥”是初次集成阶段的历史状态，在本次授权后已解决。
@@ -109,8 +109,8 @@ UPDATER_PUBLIC_KEY；已核验变量与源码和备份公钥相同。Android 原
 | macOS arm64 | 真实安装与重启到 99.0.2；无更新、版本拒绝、篡改拒绝、下载取消和镜像回退通过 |
 | Linux x64 AppImage | 真实安装与重启到 99.0.2；相同拒绝、取消、无更新和回退场景通过 |
 | Windows x64 NSIS | 真实安装与重启到 99.0.2；相同拒绝、取消、无更新和回退场景通过 |
-| macOS x64 | 临时 CA 生成受 OpenSSL 1.1 系统配置影响出现重复扩展；隔离配置修复后重跑 |
-| Android API 35 x86_64 | 两版签名 APK 已构建；独立运行补充设备验证 |
+| macOS x64 | 修复夹具后真实安装与重启到 99.0.2；相同拒绝、取消、无更新和回退场景通过，见后续运行 |
+| Android API 35 x86_64 | 真实系统升级及启动到 99.0.2；来源权限拒绝、授权、安装取消、再次升级及同样的拒绝/回退场景通过 |
 
 Android 首轮驱动曾假设 Tauri 数据目录为 files 子目录；核对 PathPlugin.getDataDir 后修正为应用
 dataDir，只调整测试证据读取和取消标记位置，不修改生产存储。补充运行：
@@ -137,3 +137,22 @@ Android HTTPS 修复后的运行 https://github.com/noctisynth/Yakumo/actions/ru
 重试。失败点为驱动未识别 API 35 设置页的 Compose 可勾选 View；设备 XML 显示唯一未勾选、
 可点击的来源授权行。驱动增加该语义兼容，不绕过系统安装确认；完成案例在失败时也保留本地证据。
 此时尚不能标记 Android 升级成功。
+
+macOS Intel 修复夹具后的运行 https://github.com/noctisynth/Yakumo/actions/runs/38919331187
+在 d8f63c5 全部成功。诊断产物明确记录 baseline 99.0.1、installed 99.0.2，五个场景和 18 次
+本地镜像请求，完成实际 app tar 安装及重启。四个桌面架构的真实升级验证至此均已完成。
+生产代码 1511add 的质量运行 https://github.com/noctisynth/Yakumo/actions/runs/38918525136
+全部成功；之后修改仅涉及私有证书夹具、设备测试驱动与证据。完整本地 verify 同样通过。
+
+Android 最终运行 https://github.com/noctisynth/Yakumo/actions/runs/38920648304 在 4f0fc59 全部成功。
+设备结果记录 baseline 99.0.1、installed 99.0.2；明确包含 INSTALL_PERMISSION_DENIED、
+INSTALL_CANCELLED 和最终 99.0.2 launched。无更新、版本拒绝、篡改拒绝、下载取消及镜像
+503 → 200 回退均实际执行，保留 30 次本地请求和完整案例历史。首次检查还使用生产 Android
+根证书配置成功读取既有公开 Release 校验文件，摘要匹配，记录 public_https_verified。
+模拟器安装未绕过来源权限或系统安装确认；没有使用 adb 安装目标版本来冒充原生升级。
+
+本轮最终范围：Windows x64 NSIS、macOS arm64/x64 app tar、Linux x64 AppImage 和 Android
+API 35 x86_64 真实跨版本安装已通过。Android arm64 为双 ABI APK 构建/签名覆盖，尚无 arm64 真机
+执行；Linux deb 仅覆盖构建和合成签名链路，不声称实际 deb 安装已验证。大陆/校园网用户设备、
+Apple 公证及异机灾备不在本轮已完成证据中。版本保持 0.1.2，14 个 changeset 保留，计划仍为
+0.2.0；未消费变更集、未合并、未创建 Release 或推进 update-channel。
