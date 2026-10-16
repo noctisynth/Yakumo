@@ -92,6 +92,7 @@ pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
             .ok_or_else(|| invalid("上报字符串字段类型错误。"))?;
         let limit = match *key {
             "gitudeLatitude" => 2_500_000,
+            "geofence" => super::geofence::MAX_TEXT_BYTES,
             "stepNumbers" => 4096,
             _ => 4096,
         };
@@ -124,7 +125,7 @@ pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
     {
         return Err(invalid("运动类型或运行状态不属于当前支持范围。"));
     }
-    for key in ["pointList", "okPointList", "geofence"] {
+    for key in ["pointList", "okPointList"] {
         let array: Vec<Value> = serde_json::from_str(
             object[key]
                 .as_str()
@@ -132,7 +133,7 @@ pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
         )
         .map_err(|_| invalid("内嵌数组不是有效的 JSON 文本。"))?;
         if !array.is_empty() {
-            return Err(invalid("当前不支持非空检查点或围栏。"));
+            return Err(invalid("当前不支持非空检查点。"));
         }
     }
     for key in ["limitSpeed", "limitStride", "limitStepFrequency"] {
@@ -191,6 +192,8 @@ pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
             return Err(invalid("起始累计步数必须为零。"));
         }
     }
+    super::geofence::check(&object["geofence"], points.iter().map(|p| (p.a, p.o)))
+        .map_err(|error| invalid(error.message()))?;
     let steps = points
         .last()
         .map(|p| p.e)

@@ -95,3 +95,15 @@ pointList、okPointList、geofence 均为字符串空数组，environment 三键
 上传轨迹为字符串，详情返回 900 项数组。线上数据与领域模型应明确转换，不靠自动强转掩盖差别。
 DATA-002 描述样本字段集合，不设置 required；嵌套 contentSchema 只是描述，不能假定所有
 JSON Schema 校验器会解析字符串内 JSON。
+
+
+## 5. 非空围栏静态消费路径复核
+
+2026-10-16 静态复核 V3GeoFenceObserver.onCreate/d：读取 geofence 文本并解析为多边形列表，
+每个顶点 lat/lng 转为 double 后直接构建高德 DPoint 和 LatLng，分别交给 GeoFenceClient
+和地图 PolygonOptions，没有观察到该路径中的坐标转换。j 方法根据进入/离开状态暂停和恢复。
+结合高德公开的 GCJ-02 坐标参照说明，当前契约按高德坐标消费；此结论来自静态消费路径与 SDK
+文档，不是新增服务端坐标声明，也不证明服务端最终校验策略或账号间配置一致。
+用户报告校内数据被本客户端拦截，同时报告外省曾正常上报，未提供对应配置对照；两项均仅记为
+用户确认，不能替代响应证据。原版 SDK 生命周期与离线上报前的完整轨迹检查是不同执行机制。
+参考：https://developer.amap.com/api/javascript-api/guide/abc/basetype 。

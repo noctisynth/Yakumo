@@ -120,15 +120,9 @@ fn prepare_settings(
             None => blockers.push(format!("未能读取学校的{label}要求，请重新检查学校配置。")),
         }
     }
-    for (key, label) in [
-        ("list", "必经点"),
-        ("geofence", "围栏"),
-        ("middleFaces", "中途人脸"),
-    ] {
+    for (key, label) in [("list", "必经点"), ("middleFaces", "中途人脸")] {
         match settings[key].as_array() {
             Some(values) if values.is_empty() => {}
-            Some(_) if key == "geofence" => blockers
-                .push("学校设置了允许运动区域，客户端尚不能核验该区域。本次数据未发送。".into()),
             Some(_) => blockers.push(format!(
                 "学校设置了{label}要求，当前提交流程无法完成核验。请通过学校客户端完成运动。"
             )),
@@ -137,6 +131,16 @@ fn prepare_settings(
             )),
         }
     }
+    let region_checked = match super::geofence::check(
+        &settings["geofence"],
+        preview.points.iter().map(|p| (p.a, p.o)),
+    ) {
+        Ok(checked) => checked,
+        Err(error) => {
+            blockers.push(error.message().into());
+            false
+        }
+    };
     if rule(settings, "isStepRecursion") != Some(false) {
         blockers.push("递增步数规则已启用或未知，尚不能完整验证。".into());
     }
@@ -200,7 +204,7 @@ fn prepare_settings(
         .filter(|v| !v.is_empty() && v.len() <= 128 && !v.chars().any(char::is_control))
         .map(str::to_owned)
         .unwrap_or_else(|| Uuid::new_v4().to_string());
-    let preparation = Preparation {
+    let mut preparation = Preparation {
         ticket: None,
         blockers,
         notes: vec![
@@ -214,6 +218,11 @@ fn prepare_settings(
         ],
         expires_at: now + 300000,
     };
+    if region_checked {
+        preparation
+            .notes
+            .push("轨迹已通过客户端运动区域检查，最终判定以学校结果为准。".into());
+    }
     if !preparation.blockers.is_empty() {
         return Ok((preparation, None));
     }
@@ -405,10 +414,20 @@ mod tests {
     #[test]
     fn real_fences_and_unreadable_configuration_have_different_feedback() {
         for (value, expected) in [
-            (json!("[[{\"lat\":0,\"lng\":0}]]"), "学校设置了允许运动区域"),
-            (json!([[{"lat":0,"lng":0}]]), "学校设置了允许运动区域"),
-            (Value::Null, "学校返回的围栏配置无法读取"),
-            (json!("not json"), "学校返回的围栏配置无法读取"),
+            (
+                json!([[{"lat":10,"lng":10},{"lat":10,"lng":11},{"lat":11,"lng":11},{"lat":11,"lng":10}]]),
+                "轨迹包含学校允许运动区域以外",
+            ),
+            (
+                json!("[[{\"lat\":0,\"lng\":0}]]"),
+                "学校返回的运动区域配置无法读取",
+            ),
+            (
+                json!([[{"lat":0,"lng":0}]]),
+                "学校返回的运动区域配置无法读取",
+            ),
+            (Value::Null, "学校返回的运动区域配置无法读取"),
+            (json!("not json"), "学校返回的运动区域配置无法读取"),
         ] {
             let mut settings = sample_settings();
             settings["geofence"] = value;
@@ -424,6 +443,69 @@ mod tests {
             assert_eq!(result.blockers.len(), 1);
             assert!(result.blockers[0].starts_with(expected));
         }
+    }
+    #[test]
+    fn valid_nonempty_regions_preserve_payload_and_are_rechecked_before_network() {
+        let region = json!([[{"lat":"-0.01","lng":-0.01,"custom":"kept","description":"x".repeat(5000)},
+            {"lat":-0.01,"lng":"0.01"},{"lat":"0.01","lng":0.01},{"lat":0.01,"lng":-0.01}]]);
+        let mut settings = sample_settings();
+        settings["geofence"] = region.clone();
+        let original = settings.clone();
+        let preview = sample_preview();
+        let first = preview.points[0].clone();
+        let (result, ticket) = prepare_settings(
+            "synthetic-account".into(),
+            preview,
+            &settings,
+            &sample_session(),
+            1700000900000,
+        )
+        .expect("region checked");
+        assert!(result.blockers.is_empty(), "{:?}", result.blockers);
+        assert!(
+            result
+                .notes
+                .iter()
+                .any(|note| note.contains("运动区域检查"))
+        );
+        let mut ticket = ticket.expect("valid inside ticket");
+        assert!(ticket.payload["geofence"].as_str().expect("text").len() > 4096);
+        let retained: Value =
+            serde_json::from_str(ticket.payload["geofence"].as_str().expect("region text"))
+                .expect("region");
+        assert_eq!(retained, region);
+        assert_eq!(settings, original);
+        let points: Value = serde_json::from_str(
+            ticket.payload["gitudeLatitude"]
+                .as_str()
+                .expect("track text"),
+        )
+        .expect("track");
+        assert_eq!(points[0]["a"], first.a);
+        assert_eq!(points[0]["o"], first.o);
+        ticket.payload["geofence"] = json!(
+            "[[{\"lat\":10,\"lng\":10},{\"lat\":10,\"lng\":11},{\"lat\":11,\"lng\":11},{\"lat\":11,\"lng\":10}]]"
+        );
+        let receipt = Receipt {
+            id: "synthetic".into(),
+            digest: ticket.digest.clone(),
+            identify: ticket.identify.clone(),
+            state: "unknown".into(),
+            message: "pending".into(),
+            record_id: None,
+            created_at: 1700000900000,
+            algorithm: ticket.algorithm.clone(),
+            source: "synthetic".into(),
+        };
+        let outcome = send(
+            &sample_session(),
+            &ticket,
+            &receipt,
+            1700000900000,
+            "not-a-network-origin",
+        );
+        assert_eq!(outcome.state, "rejected");
+        assert!(outcome.message.contains("轨迹包含学校允许运动区域以外"));
     }
     #[test]
     fn requirement_blockers_name_each_failed_metric_with_actual_and_required_values() {
@@ -737,10 +819,14 @@ mod tests {
     fn post_transport_uses_same_snapshot_and_double_form() {
         use std::{io::Write, net::TcpListener, thread};
         let session = sample_session();
+        let mut settings = sample_settings();
+        let region = json!([[{"lat":"-0.01","lng":-0.01,"custom":"kept"},
+            {"lat":-0.01,"lng":"0.01"},{"lat":"0.01","lng":0.01},{"lat":0.01,"lng":-0.01}]]);
+        settings["geofence"] = region.clone();
         let (_, ticket) = prepare_settings(
             "synthetic-account".into(),
             sample_preview(),
-            &sample_settings(),
+            &settings,
             &session,
             1700000900000,
         )
@@ -796,6 +882,10 @@ mod tests {
             let payload = protocol.decrypt(&decoded).expect("decrypt");
             assert_eq!(payload["sportTime"], 899);
             assert_eq!(payload["sportRange"], "2.02");
+            let actual_region: Value =
+                serde_json::from_str(payload["geofence"].as_str().expect("region text"))
+                    .expect("region array");
+            assert_eq!(actual_region, region);
             let body = r#"{"code":0,"data":true,"exerciseRecordId":"synthetic-record"}"#;
             write!(
                 stream,
