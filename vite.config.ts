@@ -27,6 +27,19 @@ export default defineConfig(({ mode }) => {
       port: 1420,
       strictPort: true,
       host: host || false,
+      fs: {
+        // Preserve Vite's pinned default deny rules and protect every backup file,
+        // including the DPAPI blob and recovery metadata, from dev-server access.
+        deny: [
+          '.env',
+          '.env.*',
+          '*.{crt,pem,key,p12,pfx,cer,der}',
+          '.npmrc',
+          '.yarnrc.yml',
+          '**/.git/**',
+          '**/.signing-backup/**',
+        ],
+      },
       hmr: host
         ? {
             protocol: 'ws',
@@ -36,7 +49,7 @@ export default defineConfig(({ mode }) => {
         : undefined,
       watch: {
         // 3. tell Vite to ignore watching `src-tauri`
-        ignored: ['**/src-tauri/**'],
+        ignored: ['**/src-tauri/**', '**/.signing-backup/**'],
       },
     },
   };
