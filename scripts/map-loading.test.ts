@@ -3,6 +3,25 @@ import {
   createMapLoadMonitor,
   type MapLoadState,
 } from '../src/lib/map-loading';
+import { mapProviders } from '../src/lib/map-providers';
+
+test('map providers require a project key and use fixed HTTPS tile hosts', () => {
+  expect(mapProviders().map((provider) => provider.id)).toEqual(['osm']);
+  const providers = mapProviders('0'.repeat(32));
+  expect(providers.map((provider) => provider.id)).toEqual(['tianditu', 'osm']);
+  expect(providers[0].tiles).toHaveLength(2);
+  for (const template of providers[0].tiles) {
+    const url = new URL(
+      template.replace('{z}', '12').replace('{x}', '1').replace('{y}', '2'),
+    );
+    expect(url.origin).toBe('https://t0.tianditu.gov.cn');
+    expect(url.searchParams.get('TILEMATRIXSET')).toBe('w');
+    expect(url.searchParams.get('TILEMATRIX')).toBe('12');
+    expect(url.searchParams.get('TILEROW')).toBe('2');
+    expect(url.searchParams.get('TILECOL')).toBe('1');
+  }
+  expect(() => mapProviders('invalid&tk=other')).toThrow();
+});
 
 function fixture() {
   let now = 0;

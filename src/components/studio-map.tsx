@@ -4,7 +4,10 @@ import { LoaderCircle, Minus, Plus, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { createMapLoadMonitor, type MapLoadState } from '@/lib/map-loading';
+import { type MapProvider, mapProviders } from '@/lib/map-providers';
 import type { RoutePoint, RunPoint } from '@/models/run';
+
+const providers = mapProviders(import.meta.env.VITE_TIANDITU_KEY);
 export function StudioMap({
   latitude,
   longitude,
@@ -31,6 +34,9 @@ export function StudioMap({
   });
   const [offline, setOffline] = useState(!navigator.onLine);
   const failed = error !== null;
+  const [provider, setProvider] = useState(providers[0]);
+  const switchProvider = useRef<() => void>(() => {});
+  const nextProvider = providers.find((item) => item.id !== provider.id);
   const reload = useRef<() => void>(() => {});
   const [zoom, setZoom] = useState({ level: 0, min: 0, max: 19 });
   const container = useRef<HTMLElement>(null),
@@ -62,31 +68,58 @@ export function StudioMap({
       latitude === null ? 11 : 17,
     );
     map.current = m;
-    let tileLayer: L.TileLayer;
-    let monitor: ReturnType<typeof createMapLoadMonitor>;
-    const loadTiles = () => {
-      monitor?.dispose();
-      tileLayer?.off();
-      tileLayer?.remove();
-      monitor = createMapLoadMonitor(setLoadState);
-      monitor.start();
-      tileLayer = L.tileLayer(
-        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-        {
-          maxNativeZoom: 19,
-          maxZoom: 22,
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
-        },
-      )
-        .on('loading', monitor.start)
-        .on('tileload', monitor.tileLoaded)
-        .on('tileerror', monitor.tileFailed)
-        .on('load', monitor.complete)
-        .addTo(m);
+    let tileLayers: L.TileLayer[] = [];
+    let monitors: ReturnType<typeof createMapLoadMonitor>[] = [];
+    const disposeTiles = () => {
+      for (const monitor of monitors) monitor.dispose();
+      for (const tiles of tileLayers) {
+        tiles.off();
+        tiles.remove();
+      }
+      monitors = [];
+      tileLayers = [];
     };
-    loadTiles();
-    reload.current = loadTiles;
+    const loadTiles = (source: MapProvider) => {
+      disposeTiles();
+      setProvider(source);
+      const states: MapLoadState[] = source.tiles.map(() => ({
+        loading: true,
+        hasTiles: false,
+        error: null,
+      }));
+      for (const [index, url] of source.tiles.entries()) {
+        const monitor = createMapLoadMonitor((state) => {
+          states[index] = state;
+          setLoadState({
+            loading: states.some((item) => item.loading),
+            // Labels alone do not count as a loaded basemap.
+            hasTiles: states[0].hasTiles,
+            error: states.find((item) => item.error)?.error ?? null,
+          });
+        });
+        monitors.push(monitor);
+        monitor.start();
+        const tiles = L.tileLayer(url, {
+          minZoom: source.minZoom,
+          maxNativeZoom: source.maxNativeZoom,
+          maxZoom: 22,
+          zIndex: index,
+          attribution: source.attribution,
+        })
+          .on('loading', monitor.start)
+          .on('tileload', monitor.tileLoaded)
+          .on('tileerror', monitor.tileFailed)
+          .on('load', monitor.complete)
+          .addTo(m);
+        tileLayers.push(tiles);
+      }
+      reload.current = () => loadTiles(source);
+      switchProvider.current = () => {
+        const next = providers.find((item) => item.id !== source.id);
+        if (next) loadTiles(next);
+      };
+    };
+    loadTiles(providers[0]);
     const updateZoom = () =>
       setZoom({ level: m.getZoom(), min: m.getMinZoom(), max: m.getMaxZoom() });
     m.on('zoomend zoomlevelschange', updateZoom);
@@ -102,10 +135,10 @@ export function StudioMap({
     const observer = new ResizeObserver(() => m.invalidateSize());
     observer.observe(container.current);
     return () => {
-      monitor.dispose();
-      tileLayer.off();
+      disposeTiles();
       observer.disconnect();
       reload.current = () => {};
+      switchProvider.current = () => {};
       m.remove();
       map.current = null;
       layer.current = null;
@@ -206,6 +239,15 @@ export function StudioMap({
                   <RefreshCw className='size-4' />
                   重新加载地图
                 </Button>
+                {nextProvider && (
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    onClick={() => switchProvider.current()}
+                  >
+                    切换到{nextProvider.name}
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -252,16 +294,16 @@ export function StudioMap({
           </output>
         </section>
         <a
-          href='https://www.openstreetmap.org/copyright'
+          href={provider.attributionUrl}
           target='_blank'
           rel='noreferrer'
           className='absolute right-0 bottom-0 z-10 rounded-tl-md border border-border bg-card/95 px-2 py-1 text-[11px] leading-4 text-foreground shadow-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring'
         >
-          © OpenStreetMap contributors
+          {provider.attribution}
         </a>
       </div>
       {(failed || offline) && hasTiles && (
-        <div className='flex items-center justify-between gap-3 border-t border-border p-3'>
+        <div className='flex flex-wrap items-center justify-between gap-3 border-t border-border p-3'>
           <p role='status' className='text-xs text-muted-foreground'>
             {offline
               ? '设备未联网，已保留当前地图。'
@@ -276,6 +318,16 @@ export function StudioMap({
             <RefreshCw className='size-3.5' />
             重新加载地图
           </Button>
+          {nextProvider && (
+            <Button
+              type='button'
+              size='sm'
+              variant='ghost'
+              onClick={() => switchProvider.current()}
+            >
+              切换底图
+            </Button>
+          )}
         </div>
       )}
     </div>

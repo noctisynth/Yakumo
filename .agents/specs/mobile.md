@@ -50,3 +50,14 @@ Yakumo 应用名和公开项目联系地址，以满足地图服务的应用识�
 区分离线、连接超时和底图加载失败；晚到的图片可以恢复显示，重试后忽略旧轮次事件。
 不引入任意网络代理、不关闭证书校验、不自动切换未经确认的地图服务。
 依据： https://operations.osmfoundation.org/policies/tiles/ 。
+
+## 国内底图配置（跨平台）
+
+保留 Leaflet，不引入 Mars2D。项目构建配置 VITE_TIANDITU_KEY 后，地图默认使用天地图
+矢量底图及注记，可在加载失败时切换 OpenStreetMap；未配置时保留原有服务，不调用演示 Key。
+Key 是客户端地图服务访问标识，由项目维护者申请和设置，不要求终端用户填写开发凭据。
+各平台构建读取同一 GitHub Repository Variable TIANDITU_WEB_KEY；本地使用 .env.local。
+使用固定 HTTPS t0.tianditu.gov.cn 服务及墨卡托瓦片，仅请求当前视野；署名随提供方切换。
+底图切换保持视角及已有选点，不转换或更改路线坐标。仅扩展图片域名白名单，不允许任意连接。
+Key 缺失时不得将国内地图标为已启用；真实加载与额度/来源限制需在取得项目 Key 后验证。
+服务参考： https://lbs.tianditu.gov.cn/server/MapService.html 。

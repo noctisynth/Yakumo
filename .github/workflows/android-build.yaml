@@ -27,6 +27,7 @@ jobs:
     timeout-minutes: 60
     env:
       BUILD_MODE: ${{ inputs.release && 'release' || 'debug' }}
+      VITE_TIANDITU_KEY: ${{ vars.TIANDITU_WEB_KEY }}
       CARGO_TERM_COLOR: always
       CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS: '-C link-arg=-Wl,-z,max-page-size=16384'
       CARGO_TARGET_X86_64_LINUX_ANDROID_RUSTFLAGS: '-C link-arg=-Wl,-z,max-page-size=16384'
