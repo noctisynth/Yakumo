@@ -38,6 +38,7 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 | SPEC-008 | run-workflow.md | Active Spec | 账号资料、合成生成与显式提交 |
 | SPEC-009 | mobile.md | Active Spec | 移动导航、Android 原生交付及签名 |
 | CHECK-009 | mobile-verification.md | 验证记录 | 移动布局、跨平台构建及 Android 签名安装 |
+| CHECK-010 | user-acceptance.md | 用户验收 | Android 与 PC 整体实测确认及已知 bug 边界 |
 | SPEC-007 | visual-identity.md | Active Spec | 角色品牌、视觉与独立记录和配置页面 |
 | CHECK-007 | visual-verification.md | 验证记录 | 角色图标、导航和响应式视觉验证 |
 | CHECK-006 | dashboard-verification.md | 验证记录 | 学校接口模拟、大盘交互和平台构建 |
@@ -111,3 +112,7 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 
 学校运动区域按实际多边形核验，不以配置非空直接拒绝。围栏解析、坐标参照适配和几何校验独立于
 提交编排；准备和发送使用同一校验。保持学校原始配置及轨迹数据不变，本地检查不冒充学校判定。
+
+
+Android 启动器图标以已登记品牌资源为唯一来源。每次初始化移动工程后显式同步到实际资源目录，
+覆盖普通、圆形与自适应入口；构建验证同时核对资源引用及打包后的像素，不以仓库中有图片替代验收。
