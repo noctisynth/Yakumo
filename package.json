@@ -22,14 +22,16 @@
     "test:dashboard": "bun test scripts/dashboard-store.test.ts",
     "check:versions": "bun scripts/check-versions.ts",
     "test:release": "bun test scripts/release-tools.test.ts",
+    "test:updater": "bun test scripts/updater-tools.test.ts scripts/update-store.test.ts scripts/signing-backup.test.ts",
     "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
-    "verify": "bun run check && bun run check:versions && bun run typecheck:scripts && bun run test:release && bun run test:android-config && bun run test:accounts && bun run test:dashboard && bun run test:studio && bun run test:map && bun run build && bun run check:rust && bun run test:rust",
+    "verify": "bun run check && bun run check:versions && bun run typecheck:scripts && bun run test:release && bun run test:android-config && bun run test:accounts && bun run test:dashboard && bun run test:studio && bun run test:map && bun run test:updater && bun run build && bun run check:rust && bun run test:rust",
     "preview": "vite preview",
     "tauri": "tauri",
     "test:studio": "bun test scripts/studio-sampling.test.ts",
     "test:map": "bun test scripts/map-loading.test.ts"
   },
   "dependencies": {
+    "@tauri-apps/plugin-updater": "file:vendor/updater",
     "@fontsource-variable/geist": "^5.3.0",
     "@stepperize/react": "^8.0.0",
     "@tauri-apps/api": "2.12.3",

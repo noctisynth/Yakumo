@@ -42,6 +42,7 @@ jobs:
           bun run test:dashboard
           bun run test:studio
           bun run test:map
+          bun run test:updater
       - name: Frontend production build
         run: bun run build
       - name: Setup Semifold
@@ -79,3 +80,12 @@ jobs:
           bun run test:rust
       - name: Build desktop application
         run: bun run tauri build --debug --no-bundle
+      - name: Verify synthetic updater signing and release manifest pipeline
+        if: runner.os == 'Windows'
+        run: bun scripts/verify-updater-release.ts
+      - name: Test exact updater fork fallback, cancellation and signature semantics
+        if: runner.os == 'Windows'
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/fu050409/plugins-workspace.git .updater-source
+          git -C .updater-source checkout --detach eed469a618e169af19a2aa28759841bc73e469ed
+          cargo test --manifest-path .updater-source/plugins/updater/Cargo.toml --no-default-features --features rustls-tls,system-proxy --lib --locked

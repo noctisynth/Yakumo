@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { UpdateCard } from '@/components/update-card';
 import type { ThemePreference } from '@/models/preferences';
 import { usePreferencesStore } from '@/stores/preferences-store';
 
@@ -74,6 +75,7 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+      <UpdateCard />
       <Button variant='outline' onClick={reset} className='rounded-xl'>
         <RotateCcw className='size-4' aria-hidden='true' />
         恢复默认设置

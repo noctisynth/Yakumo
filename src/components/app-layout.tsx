@@ -15,6 +15,7 @@ import { useDashboardAccount } from '@/hooks/use-dashboard-account';
 import { cn } from '@/lib/utils';
 import { useAccountsStore } from '@/stores/accounts-store';
 import { usePreferencesStore } from '@/stores/preferences-store';
+import { useUpdateStore } from '@/stores/update-store';
 
 const navigation = [
   { to: '/', label: '数据大盘', detail: 'Overview', icon: LayoutDashboard },
@@ -39,6 +40,9 @@ export function AppLayout() {
   const compact = usePreferencesStore((state) => state.compact);
   const accountError = useAccountsStore((state) => state.error);
   const location = useLocation();
+  const updateVersion = useUpdateStore((state) =>
+    state.phase === 'available' ? state.candidate?.version : null,
+  );
   const parentPage =
     location.pathname === '/studio/presets'
       ? { to: '/studio', label: '生成工作室', title: '预设列表' }
@@ -245,6 +249,14 @@ export function AppLayout() {
               compact ? 'py-6' : 'py-8 lg:py-10',
             )}
           >
+            {updateVersion && (
+              <Link
+                to='/settings'
+                className='mb-5 block rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-primary'
+              >
+                发现新版本 {updateVersion}，查看更新说明与下载
+              </Link>
+            )}
             <Outlet />
           </main>
         </div>

@@ -1,0 +1,26 @@
+"""Create disposable TLS fixture material, not an updater signing identity."""
+import json, os, pathlib, shutil, subprocess
+root = pathlib.Path('.verification/updater-validation').resolve()
+root.mkdir(parents=True, exist_ok=True)
+openssl = shutil.which('openssl') or str(pathlib.Path(os.environ.get('ProgramFiles', '')) / 'Git/usr/bin/openssl.exe')
+def openssl_run(*arguments):
+    subprocess.run([openssl, *arguments], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+# OpenSSL 1.1 appends -addext to system-config extensions instead of replacing
+# them. An explicit minimal config avoids duplicate CA/SKI extensions on Intel
+# macOS runners, without changing trust or disabling certificate validation.
+config = root / 'request.cnf'
+config.write_text('[req]\ndistinguished_name=dn\n[dn]\n')
+openssl_run('req', '-config', str(config), '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', str(root / 'ca.key'), '-out', str(root / 'ca.pem'), '-days', '2', '-subj', '/CN=Yakumo local validation CA', '-addext', 'basicConstraints=critical,CA:TRUE,pathlen:0', '-addext', 'keyUsage=critical,keyCertSign,cRLSign', '-addext', 'subjectKeyIdentifier=hash')
+openssl_run('req', '-config', str(config), '-new', '-newkey', 'rsa:2048', '-nodes', '-keyout', str(root / 'https.key'), '-out', str(root / 'https.csr'), '-subj', '/CN=Yakumo local validation server')
+(root / 'extensions.cnf').write_text('basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\nsubjectAltName=DNS:ghfast.top,DNS:gh-proxy.com,DNS:github.com,DNS:raw.githubusercontent.com\n')
+openssl_run('x509', '-req', '-in', str(root / 'https.csr'), '-CA', str(root / 'ca.pem'), '-CAkey', str(root / 'ca.key'), '-CAcreateserial', '-out', str(root / 'https.pem'), '-days', '2', '-extfile', str(root / 'extensions.cnf'))
+subprocess.run([openssl, 'version'], check=True)
+verified = subprocess.run([openssl, 'verify', '-CAfile', str(root / 'ca.pem'), '-verify_hostname', 'gh-proxy.com', str(root / 'https.pem')])
+if verified.returncode:
+    # Disposable public certificates only; never emit private key material.
+    for name in ['ca.pem', 'https.pem']:
+        subprocess.run([openssl, 'x509', '-in', str(root / name), '-noout', '-text'], check=True)
+    verified.check_returncode()
+(root / 'build.json').write_text(json.dumps({'version': '99.0.1', 'identifier': 'app.yakumo.client.updatervalidation', 'productName': 'YakumoUpdaterValidation'}))
+with open(os.environ['GITHUB_ENV'], 'a') as env: env.write('YAKUMO_UPDATER_TEST_CA=' + str(root / 'ca.pem') + '\n')
+print('Disposable HTTPS fixture CA prepared; production signing identity unchanged')

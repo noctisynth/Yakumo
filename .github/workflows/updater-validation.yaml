@@ -1,0 +1,149 @@
+name: Installed updater cross-version validation
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        type: choice
+        default: all
+        options: [all, windows-x64, linux-x64, macos-arm64, macos-x64, android]
+  workflow_call:
+    inputs:
+      platform:
+        type: string
+        default: all
+permissions:
+  contents: read
+concurrency:
+  group: updater-installed-validation-${{ inputs.platform }}
+  cancel-in-progress: false
+env:
+  YAKUMO_UPDATER_PUBLIC_KEY: ${{ vars.UPDATER_PUBLIC_KEY }}
+  VITE_TIANDITU_KEY: ${{ vars.TIANDITU_WEB_KEY }}
+  APPIMAGE_EXTRACT_AND_RUN: '1'
+  WEBKIT_DISABLE_COMPOSITING_MODE: '1'
+jobs:
+  desktop:
+    if: contains(fromJSON('["all","windows-x64","linux-x64","macos-arm64","macos-x64"]'), inputs.platform) && github.repository == 'noctisynth/Yakumo' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/auto-update-mirrors')
+    strategy:
+      fail-fast: false
+      matrix:
+        name: ${{ fromJSON(inputs.platform == 'all' && '["windows-x64","linux-x64","macos-arm64","macos-x64"]' || format('["{0}"]', inputs.platform)) }}
+    runs-on: ${{ matrix.name == 'windows-x64' && 'windows-latest' || matrix.name == 'linux-x64' && 'ubuntu-24.04' || matrix.name == 'macos-x64' && 'macos-15-intel' || 'macos-latest' }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: ./.github/actions/setup-desktop
+        with:
+          cache-on-failure: 'true'
+          target: ${{ matrix.name == 'windows-x64' && 'x86_64-pc-windows-msvc' || matrix.name == 'linux-x64' && 'x86_64-unknown-linux-gnu' || matrix.name == 'macos-x64' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }}
+      - name: Prepare disposable loopback TLS certificate
+        run: python scripts/prepare-updater-validation.py
+      - name: Verify private fixture certificate chain and hostname
+        if: runner.os == 'macOS'
+        run: openssl verify -CAfile .verification/updater-validation/ca.pem -verify_hostname gh-proxy.com .verification/updater-validation/https.pem
+      - name: Configure macOS ad-hoc signing
+        if: runner.os == 'macOS'
+        run: echo 'APPLE_SIGNING_IDENTITY=-' >> "$GITHUB_ENV"
+      - name: Build isolated baseline and signed target
+        run: bun scripts/build-updater-validation.ts '${{ matrix.name }}'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - name: Install Xvfb for real Linux WebView
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y xvfb dbus-x11
+      - name: Execute native updater and installed-version assertions
+        run: |
+          if [ '${{ runner.os }}' = Linux ]; then
+            dbus-run-session -- xvfb-run -a python3 scripts/run-updater-validation.py '${{ matrix.name }}'
+          else
+            python scripts/run-updater-validation.py '${{ matrix.name }}'
+          fi
+      - name: Upload non-sensitive updater diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: installed-updater-${{ matrix.name }}
+          path: artifacts/updater-validation-*/*
+          if-no-files-found: ignore
+          retention-days: 7
+
+  android:
+    if: (inputs.platform == 'all' || inputs.platform == 'android') && github.repository == 'noctisynth/Yakumo' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/auto-update-mirrors')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS: '-C link-arg=-Wl,-z,max-page-size=16384'
+      CARGO_TARGET_X86_64_LINUX_ANDROID_RUSTFLAGS: '-C link-arg=-Wl,-z,max-page-size=16384'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22.22.3'
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.4.2'
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Install Android tools on cloud runner only
+        run: |
+          sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+          echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: android-ndk28
+          cache-on-failure: true
+      - name: Initialize isolated validation app
+        run: |
+          bun install --frozen-lockfile
+          python3 scripts/prepare-updater-validation.py
+          bun run tauri android init --ci --config .verification/updater-validation/build.json
+          bun scripts/prepare-android.ts
+          bun scripts/configure-android-signing.ts
+        env:
+          ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      - name: Build signed baseline and target; verify publisher continuity
+        run: |
+          bun scripts/build-updater-validation.ts android
+          python3 scripts/check-validation-apks.py
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - name: Enable cloud emulator KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 2048
+          script: python3 scripts/run-updater-validation.py android
+      - name: Upload system-install evidence only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: installed-updater-android
+          path: artifacts/updater-validation-android/*
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Remove cloud signing material
+        if: always()
+        run: rm -f src-tauri/gen/android/keystore.properties "$RUNNER_TEMP/yakumo-release.p12"

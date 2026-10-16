@@ -15,6 +15,7 @@
       "!!**/icons",
       "!!.bootstrap",
       "!!.verification",
+      "!!vendor/updater/index.ts",
       "!!.agents/evidence"
     ]
   },

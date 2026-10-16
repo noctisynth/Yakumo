@@ -23,3 +23,6 @@ keystore.properties
 
 __pycache__/
 *.pyc
+
+.updater-source/
+.signing-backup/

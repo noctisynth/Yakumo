@@ -5,6 +5,10 @@ inputs:
     description: Optional Rust compilation target
     required: false
     default: ''
+  cache-on-failure:
+    description: Keep dependency build cache when isolated validation fails
+    required: false
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -33,6 +37,7 @@ runs:
       uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       with:
         key: ${{ inputs.target }}
+        cache-on-failure: ${{ inputs.cache-on-failure }}
     - name: Install frontend dependencies
       shell: bash
       run: bun install --frozen-lockfile
