@@ -6,6 +6,7 @@ import android.content.Intent
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import android.webkit.WebView
 import androidx.activity.result.ActivityResult
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -30,6 +31,14 @@ import javax.crypto.spec.GCMParameterSpec
 
 @TauriPlugin
 class VaultPlugin(private val host: Activity): Plugin(host) {
+    override fun load(webView: WebView) {
+        super.load(webView)
+        // Keep Android/WebView detection intact while identifying our map requests.
+        val identity = "Yakumo (+https://github.com/noctisynth/Yakumo)"
+        if (!webView.settings.userAgentString.contains(identity)) {
+            webView.settings.userAgentString += " $identity"
+        }
+    }
     private val alias = "app.yakumo.vault.wrap.v1"
     private var exportContent: String? = null
     @Command

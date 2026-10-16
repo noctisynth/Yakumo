@@ -3,6 +3,7 @@ import 'leaflet/dist/leaflet.css';
 import { LoaderCircle, Minus, Plus, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { createMapLoadMonitor, type MapLoadState } from '@/lib/map-loading';
 import type { RoutePoint, RunPoint } from '@/models/run';
 export function StudioMap({
   latitude,
@@ -23,9 +24,13 @@ export function StudioMap({
   points?: RunPoint[];
   detail?: boolean;
 }) {
-  const [loading, setLoading] = useState(true);
-  const [hasTiles, setHasTiles] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [{ loading, hasTiles, error }, setLoadState] = useState<MapLoadState>({
+    loading: true,
+    hasTiles: false,
+    error: null,
+  });
+  const [offline, setOffline] = useState(!navigator.onLine);
+  const failed = error !== null;
   const reload = useRef<() => void>(() => {});
   const [zoom, setZoom] = useState({ level: 0, min: 0, max: 19 });
   const container = useRef<HTMLElement>(null),
@@ -35,6 +40,15 @@ export function StudioMap({
   pick.current = onPick;
   const center = useRef({ latitude, longitude });
   center.current = { latitude, longitude };
+  useEffect(() => {
+    const update = () => setOffline(!navigator.onLine);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+    };
+  }, []);
   useEffect(() => {
     const { latitude, longitude } = center.current;
     if (!container.current) return;
@@ -48,45 +62,31 @@ export function StudioMap({
       latitude === null ? 11 : 17,
     );
     map.current = m;
-    let timeout: ReturnType<typeof setTimeout>;
-    const current = () => map.current === m;
-    const beginLoading = () => {
-      if (!current()) return;
-      setLoading(true);
-      setFailed(false);
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        if (!current()) return;
-        setLoading(false);
-        setFailed(true);
-      }, 15000);
+    let tileLayer: L.TileLayer;
+    let monitor: ReturnType<typeof createMapLoadMonitor>;
+    const loadTiles = () => {
+      monitor?.dispose();
+      tileLayer?.off();
+      tileLayer?.remove();
+      monitor = createMapLoadMonitor(setLoadState);
+      monitor.start();
+      tileLayer = L.tileLayer(
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+          maxNativeZoom: 19,
+          maxZoom: 22,
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
+        },
+      )
+        .on('loading', monitor.start)
+        .on('tileload', monitor.tileLoaded)
+        .on('tileerror', monitor.tileFailed)
+        .on('load', monitor.complete)
+        .addTo(m);
     };
-    const tileLayer = L.tileLayer(
-      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {
-        maxNativeZoom: 19,
-        maxZoom: 22,
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
-      },
-    )
-      .on('loading', beginLoading)
-      .on('tileload', () => {
-        if (current()) setHasTiles(true);
-      })
-      .on('tileerror', () => {
-        if (current()) setFailed(true);
-      })
-      .on('load', () => {
-        if (!current()) return;
-        clearTimeout(timeout);
-        setLoading(false);
-      })
-      .addTo(m);
-    reload.current = () => {
-      beginLoading();
-      tileLayer.redraw();
-    };
+    loadTiles();
+    reload.current = loadTiles;
     const updateZoom = () =>
       setZoom({ level: m.getZoom(), min: m.getMinZoom(), max: m.getMaxZoom() });
     m.on('zoomend zoomlevelschange', updateZoom);
@@ -102,7 +102,8 @@ export function StudioMap({
     const observer = new ResizeObserver(() => m.invalidateSize());
     observer.observe(container.current);
     return () => {
-      clearTimeout(timeout);
+      monitor.dispose();
+      tileLayer.off();
       observer.disconnect();
       reload.current = () => {};
       m.remove();
@@ -178,9 +179,9 @@ export function StudioMap({
           aria-label={onPick ? '地图选点' : '轨迹地图'}
           className='relative z-0 h-[25rem] w-full touch-none sm:h-[32rem]'
         />
-        {!hasTiles && (loading || failed) && (
+        {!hasTiles && (loading || failed || offline) && (
           <div className='absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-card/95 p-6 text-center'>
-            {loading ? (
+            {loading && !offline ? (
               <div
                 role='status'
                 className='flex items-center gap-3 text-sm text-muted-foreground'
@@ -191,7 +192,11 @@ export function StudioMap({
             ) : (
               <>
                 <p role='status' className='text-sm text-muted-foreground'>
-                  地图暂时无法加载，请检查网络后重试。
+                  {offline
+                    ? '设备未联网，请连接网络后重试。'
+                    : error === 'timeout'
+                      ? '地图服务连接超时，请切换网络后重试。'
+                      : '底图加载失败，请稍后重试或切换网络。'}
                 </p>
                 <Button
                   type='button'
@@ -205,7 +210,7 @@ export function StudioMap({
             )}
           </div>
         )}
-        {hasTiles && loading && (
+        {hasTiles && loading && !offline && (
           <div
             role='status'
             className='pointer-events-none absolute top-3 right-3 z-10 flex items-center gap-2 rounded-lg bg-card/95 px-3 py-2 text-xs text-muted-foreground shadow-sm'
@@ -255,10 +260,12 @@ export function StudioMap({
           © OpenStreetMap contributors
         </a>
       </div>
-      {failed && hasTiles && (
+      {(failed || offline) && hasTiles && (
         <div className='flex items-center justify-between gap-3 border-t border-border p-3'>
           <p role='status' className='text-xs text-muted-foreground'>
-            部分底图未能加载，可重试。
+            {offline
+              ? '设备未联网，已保留当前地图。'
+              : '部分底图未能加载，可重试。'}
           </p>
           <Button
             type='button'

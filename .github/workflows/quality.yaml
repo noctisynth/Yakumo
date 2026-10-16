@@ -40,6 +40,7 @@ jobs:
           bun run test:accounts
           bun run test:dashboard
           bun run test:studio
+          bun run test:map
       - name: Frontend production build
         run: bun run build
       - name: Setup Semifold
