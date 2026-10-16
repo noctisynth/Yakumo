@@ -34,8 +34,9 @@ Android 更新 HTTPS 显式使用随应用依赖维护的 Mozilla DER 根证书�
 并指定在当前工程目录保存本机备份。备份目录整体忽略且限制 Windows ACL，密码由当前用户 DPAPI
 保护；恢复签名验证后才上传 Secrets。该备份不能覆盖整机或 Windows 用户配置丢失，异机灾备待用户提供位置。
 使用 TAURI_SIGNING_PRIVATE_KEY、TAURI_SIGNING_PRIVATE_KEY_PASSWORD
-Secrets 和公开 Repository Variable UPDATER_PUBLIC_KEY。编译通过 YAKUMO_UPDATER_PUBLIC_KEY 固化公钥。
-缺失时预览仍可构建，客户端明确不可更新；正式发布必须失败。APK 发布密钥与更新签名密钥独立。
+Secrets 和公开 Repository Variable UPDATER_PUBLIC_KEY。源码登记公开公钥作为默认信任，编译时
+YAKUMO_UPDATER_PUBLIC_KEY 可显式设置；正式发布缺少 Secrets 或公钥变量必须失败。
+APK 发布密钥与更新签名密钥独立。
 本次授权不包含合并或正式发布，云端构建与模拟器验证保持独立。
 
 真实跨版本验证使用单独 Cargo feature 与编译期测试配置，只在手动云端验证构建中启用。

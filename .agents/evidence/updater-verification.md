@@ -109,7 +109,7 @@ UPDATER_PUBLIC_KEY；已核验变量与源码和备份公钥相同。Android 原
 | macOS arm64 | 真实安装与重启到 99.0.2；无更新、版本拒绝、篡改拒绝、下载取消和镜像回退通过 |
 | Linux x64 AppImage | 真实安装与重启到 99.0.2；相同拒绝、取消、无更新和回退场景通过 |
 | Windows x64 NSIS | 真实安装与重启到 99.0.2；相同拒绝、取消、无更新和回退场景通过 |
-| macOS x64 | 系统验证器拒绝临时私有 CA 的 CT 状态；改为测试构建专用 WebPKI CA 集合后重跑 |
+| macOS x64 | 临时 CA 生成受 OpenSSL 1.1 系统配置影响出现重复扩展；隔离配置修复后重跑 |
 | Android API 35 x86_64 | 两版签名 APK 已构建；独立运行补充设备验证 |
 
 Android 首轮驱动曾假设 Tauri 数据目录为 files 子目录；核对 PathPlugin.getDataDir 后修正为应用
@@ -126,5 +126,8 @@ Android AAR，而固定 updater fork 未集成该路径。生产 Android 更新�
 根证书集合与严格 WebPKI 校验；桌面生产验证器不改变。专用验证夹具则只信任临时 CA，仍校验
 完整链与主机名。Android 云端额外读取已发布的公开校验文件并核对已知摘要以验证生产 TLS 配置。
 macOS Intel 运行 https://github.com/noctisynth/Yakumo/actions/runs/38917139779 的原生证书预检
-明确返回缺少 CT SCT；不以关闭证书校验规避，仅将私有夹具与生产系统 CA 策略分开。
+报告缺少 CT SCT，但此信息不能单独解释链失败。后续
+https://github.com/noctisynth/Yakumo/actions/runs/38918924710 证书诊断确认 OpenSSL 1.1.1w 把系统
+配置与 -addext 的扩展叠加，CA 出现重复 Basic Constraints 和 Subject Key Identifier，链校验失败。
+改用独立最小 OpenSSL 配置防止重复扩展，生成后立即核对链与主机名；不关闭证书验证。
 Vite 直连与 /@fs 访问备份目录的 canary 测试均返回 403，前端/脚本测试现为 36 项。
