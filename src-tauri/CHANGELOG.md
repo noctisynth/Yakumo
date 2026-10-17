@@ -1,5 +1,30 @@
 # Changelog
 
+<!-- semifold:release version=0.2.0 -->
+## v0.2.0
+
+### Bug Fixes
+
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Recognize the API 35 Compose source-permission toggle in installed-updater validation and retain completed case evidence on later failures. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Use maintained Mozilla roots for Android updater HTTPS without missing platform-verifier JVM setup, and verify public TLS alongside isolated installed-update tests. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Read Android updater validation evidence from Tauri dataDir and support focused retries. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Prevent the local development server from serving any encrypted signing backup or recovery material. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Verify disposable TLS chains immediately after generation and retain public certificate diagnostics on failure. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Isolate disposable certificate generation from runner OpenSSL configuration to prevent duplicate CA extensions on Intel macOS. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Verify disposable updater certificate chains and retain bounded TLS failure evidence across platforms. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Reject incorrect signing backup passwords and implicit trust rotation; allow focused installed-updater validation. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Remove release automation markers from updater notes and accept CRLF changelogs. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Exercise updater release signing and tamper rejection with disposable synthetic fixtures in CI. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Configure persistent updater trust and verify real cross-version installation using isolated cloud builds. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Verify vendored updater source against canonical Git blob bytes across platforms. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Validate isolated updater HTTPS routing with a dedicated CA and a server certificate. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+- [`afad7c0`](https://github.com/noctisynth/Yakumo/commit/afad7c0b4281fcbee093cc1378476635295ea14c): Prevent mobile overscroll from moving bottom navigation and remove unnecessary page overflow by reserving the navigation's actual height outside the content scroller. ([#7](https://github.com/noctisynth/Yakumo/pull/7) by @fu050409)
+
+### New Features
+
+- [`b75b787`](https://github.com/noctisynth/Yakumo/commit/b75b78700d455fd4cedd73b9fd3196293dfb533f): Add signed desktop and Android updates with public GitHub mirror fallback and verified release channel promotion. ([#5](https://github.com/noctisynth/Yakumo/pull/5) by @fu050409)
+<!-- semifold:release:end -->
+
 <!-- semifold:release version=0.1.2 -->
 ## v0.1.2
 
