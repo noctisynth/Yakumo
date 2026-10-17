@@ -63,7 +63,7 @@ export function AppLayout() {
       : location.pathname.startsWith(item.to),
   );
   return (
-    <div className='min-h-svh bg-background pl-[var(--native-safe-left,env(safe-area-inset-left))] pr-[var(--native-safe-right,env(safe-area-inset-right))] text-foreground'>
+    <div className='flex h-dvh flex-col overflow-hidden bg-background pl-[var(--native-safe-left,env(safe-area-inset-left))] pr-[var(--native-safe-right,env(safe-area-inset-right))] text-foreground'>
       <button
         type='button'
         onClick={() => document.getElementById('main-content')?.focus()}
@@ -71,8 +71,8 @@ export function AppLayout() {
       >
         跳到主要内容
       </button>
-      <div className='mx-auto flex min-h-svh max-w-[1920px] flex-col desktop:flex-row'>
-        <aside className='z-20 hidden shrink-0 flex-col desktop:flex desktop:overflow-y-auto bg-[#191c35] px-5 py-5 text-[#f4f0e7] desktop:sticky desktop:top-0 desktop:h-svh desktop:w-60 desktop:px-5 desktop:py-8 lg:w-64'>
+      <div className='mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col desktop:flex-row'>
+        <aside className='z-20 hidden min-h-0 shrink-0 flex-col overscroll-none desktop:flex desktop:overflow-y-auto bg-[#191c35] px-5 py-5 text-[#f4f0e7] desktop:w-60 desktop:px-5 desktop:py-8 lg:w-64'>
           <NavLink
             to='/'
             aria-label='八云爱首页'
@@ -141,7 +141,7 @@ export function AppLayout() {
             <AccountSwitcher />
           </div>
         </aside>
-        <div className='min-w-0 flex-1 pb-[calc(5rem+var(--native-safe-bottom,env(safe-area-inset-bottom)))] desktop:pb-0'>
+        <div className='min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-none'>
           <header className='flex h-[calc(4rem+var(--native-safe-top,env(safe-area-inset-top)))] items-center pt-[var(--native-safe-top,env(safe-area-inset-top))] desktop:h-16 desktop:pt-0 justify-between gap-3 border-b border-border px-5 desktop:px-9 lg:px-12'>
             {!hasParent && (
               <Link
@@ -263,7 +263,7 @@ export function AppLayout() {
       </div>
       <nav
         aria-label='移动端导航'
-        className='fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-border bg-card pt-1 pl-[calc(0.5rem+var(--native-safe-left,env(safe-area-inset-left)))] pr-[calc(0.5rem+var(--native-safe-right,env(safe-area-inset-right)))] pb-[max(0.5rem,var(--native-safe-bottom,env(safe-area-inset-bottom)))] desktop:hidden keyboard-open:hidden'
+        className='z-40 grid shrink-0 grid-cols-4 border-t border-border bg-card pt-1 px-2 pb-[max(0.5rem,var(--native-safe-bottom,env(safe-area-inset-bottom)))] desktop:hidden keyboard-open:hidden'
       >
         {[
           { to: '/', label: '大盘', icon: LayoutDashboard },
