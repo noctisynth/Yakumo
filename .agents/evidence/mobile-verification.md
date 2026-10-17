@@ -139,3 +139,10 @@ https://v2.tauri.app/distribute/google-play/ 。
 
 Biome、应用和脚本类型检查、前端生产构建及 36 项脚本测试全部通过。15 个 changeset 仍计划
 0.1.2 → 0.2.0，没有手改版本或消费变更集；0.2.0 发布 PR 尚未合并，正式 Release 尚未创建。
+
+实现提交 15d13d8 的质量运行 https://github.com/noctisynth/Yakumo/actions/runs/39005227852
+全部成功，覆盖三桌面系统格式、Clippy、Rust 测试与原生构建，以及 Windows 精确 fork 测试与合成验签。
+Android 运行 https://github.com/noctisynth/Yakumo/actions/runs/39005227434 全部成功：双 ABI debug
+产物构建、品牌图标、插件 APK 身份策略、API 35 安装、冷启动、底部导航、账户页滚动、空登录表单
+软键盘、系统返回与覆盖安装。已目视核对键盘截图中焦点输入可见且底栏收起，返回后的个人空间
+底栏与系统安全区正常。该回归不登录、不提交记录，也不替代所有厂商真机上的手势回弹验收。
