@@ -38,6 +38,7 @@ jobs:
           bun run typecheck:scripts
           bun run test:release
           bun run test:android-config
+          python3 scripts/test_android_emulator_prepare.py
           bun run test:accounts
           bun run test:dashboard
           bun run test:studio

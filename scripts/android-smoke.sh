@@ -1,5 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+mkdir -p artifacts/android-diagnostics
+capture_failure() {
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    adb exec-out screencap -p > artifacts/android-diagnostics/failure.png || true
+    adb shell uiautomator dump /sdcard/yakumo-failure.xml || true
+    adb exec-out cat /sdcard/yakumo-failure.xml > artifacts/android-diagnostics/failure.xml || true
+    adb shell dumpsys window > artifacts/android-diagnostics/window.txt || true
+    adb shell dumpsys activity activities > artifacts/android-diagnostics/activity.txt || true
+    adb logcat -b crash -d > artifacts/android-diagnostics/crash.txt || true
+  fi
+  exit "$status"
+}
+trap capture_failure EXIT
+
+python3 scripts/android-emulator-prepare.py
 apk=$(find "artifacts/android-$BUILD_MODE" -maxdepth 1 -name '*.apk' -print -quit)
 test -n "$apk"
 adb logcat -c

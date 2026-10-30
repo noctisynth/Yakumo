@@ -22,6 +22,8 @@ Zustand、React Router、shadcn/ui、Tailwind CSS、Biome。前端优先使用 T
 
 用户界面文案以当前结果与下一步操作为准，统一约束见 SPEC-001；风险与限制保留，研发推断留在工程文档。
 
+Android 云端验收先清理模拟器的 Google SDK 初始化组件，严格保留应用验收及失败诊断，见 SPEC-009。
+
 ## 文档注册表
 
 自动更新的设计及信任边界见 SPEC-010（含 Android 独立根证书策略）；交付与待验证项见 TASK-004、CHECK-011。

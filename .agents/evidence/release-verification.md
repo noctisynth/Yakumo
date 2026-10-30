@@ -50,3 +50,31 @@ https://github.com/noctisynth/Yakumo/releases/tag/yakumo-v0.1.0
 用户明确授权本次合并发布分支；发布 PR #1 已合并。稳定版本为 0.1.0，
 channel-bump=preserve 保留，45 个 changeset 由版本自动化消费，未手工消费或改写其级别。
 Windows 产物未配置代码签名，macOS 使用临时签名；本次发布不代表通过系统公证。
+
+
+## Android 云端初始化组件阻挡发布（2026-10-30）
+
+运行 41037904171 的 Android job 124005876043 在安装后界面验收失败；APK/AAB 编译、
+签名、对齐、品牌资源和 updater APK 策略测试均通过，四个平台桌面包也已通过。
+运行对应发布提交 14e83c0，版本 0.2.1。
+
+诊断附件的 launch.xml、ui.xml 和截图一致显示 com.google.android.googlesdksetup 的
+无响应系统窗口；应用进程及 MainActivity 正常，底栏“我的”存在但被系统窗口遮挡。
+错误发生在首次导航定位，不是本轮文案修改导致控件改名。公开记录只保存结论，原始云端
+诊断附件不纳入源码。失败任务地址：
+https://github.com/noctisynth/Yakumo/actions/runs/41037904171/job/124005876043
+
+按 SPEC-009 在 smoke 前增加云端模拟器准备：限定 Actions 和 qemu 环境，存在该初始化包
+时仅停止并禁用该包，复核禁用结果；不存在时正常继续，错误时终止。不关闭 ANR 检测，
+不跳过应用检查，不修改应用与发布签名。smoke 的任意失败阶段补存截图、界面树、
+窗口、活动及崩溃日志，诊断失败不覆盖原始退出码。
+
+本地验证：7 项 Python 合成命令/诊断测试、5 项 Android 配置测试、3 项发布元数据测试
+通过；Bash 语法、工作流 YAML 及测试接入、Biome、脚本类型、版本同步和差异检查通过。
+未在本机安装 SDK/NDK 或连接 Android 设备。新的准备脚本尚未在云端模拟器上执行，
+不以合成命令测试代替新脚本云端验证。原失败任务第 2 次尝试的 Android job 124013709364 已成功，覆盖签名、安装、
+导航、键盘、返回及覆盖安装。此重跑仍使用原发布提交，未包含新的准备脚本；
+验证了临时环境故障恢复，不能作为新脚本的云端执行证据。后续签名清单核验、Semifold 发布及更新通道推进均成功。
+运行第 2 次尝试最终为 success；正式 Release yakumo-v0.2.1 为非草稿、非预发布，
+共 22 个附件，update-channel 的 latest.json 版本已为 0.2.1。
+发布地址：https://github.com/noctisynth/Yakumo/releases/tag/yakumo-v0.2.1
