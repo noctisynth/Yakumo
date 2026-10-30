@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { routeLength } from '../src/lib/route-geometry';
+import { hasFastPaceRisk, validDerivedPace } from '../src/lib/run-pace';
 import { paceConfig, sampleRun } from '../src/lib/studio-sampling';
 import { defaultConfig } from '../src/models/studio';
 
@@ -198,4 +199,50 @@ test('new routes default to a loop and default mileage follows the selected geom
   expect(routeLength([...points, points[0]], true)).toBe(444.8);
   expect(routeLength([], true)).toBe(0);
   expect(routeLength(points.slice(0, 1), false)).toBe(0);
+});
+
+test('pace safety covers base values, offset endpoints and legacy inputs', () => {
+  const base = {
+    ...defaultConfig(),
+    closeLoop: false,
+    latitude: 0,
+    longitude: 0,
+  };
+  for (const key of Object.keys(base.offsets) as (keyof typeof base.offsets)[])
+    base.offsets[key] = [0, 0];
+  for (const pace of [180, 900]) {
+    const config = paceConfig({
+      ...base,
+      paceSecondsPerKm: pace,
+      cadence: 120,
+      cadenceOffset: [0, 0],
+    });
+    expect(
+      sampleRun(config, 1700000000000, 'boundary').targetPaceSecondsPerKm,
+    ).toBe(pace);
+    config.offsets.durationS = pace === 180 ? [-1, 0] : [0, 1];
+    expect(() => sampleRun(config, 1700000000000, 'boundary')).toThrow(
+      '3 至 15',
+    );
+  }
+  for (const pace of [120, 179, 901, 1200]) {
+    const config = paceConfig({ ...base, paceSecondsPerKm: pace });
+    expect(() => sampleRun(config, 1700000000000, 'bad')).toThrow('3 至 15');
+    expect(() =>
+      sampleRun({ ...base, durationS: pace * 2 }, 1700000000000, 'legacy'),
+    ).toThrow('3 至 15');
+  }
+  expect(validDerivedPace(1000, 179)).toBe(false);
+  expect(validDerivedPace(1000, 901)).toBe(false);
+  expect(validDerivedPace(100.1, 90)).toBe(true);
+});
+
+test('fast pace is advisory for all distances and equality does not warn', () => {
+  for (const distance of [100, 1000, 3000, 10000]) {
+    const duration = (distance / 1000) * 300;
+    expect(hasFastPaceRisk(distance, duration - 1)).toBe(true);
+    expect(hasFastPaceRisk(distance, duration)).toBe(false);
+    expect(hasFastPaceRisk(distance, duration + 1)).toBe(false);
+    expect(hasFastPaceRisk(distance - 0.000001, duration)).toBe(false);
+  }
 });

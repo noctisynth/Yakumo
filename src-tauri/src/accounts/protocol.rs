@@ -108,7 +108,7 @@ pub(crate) fn response(request: reqwest::blocking::RequestBuilder) -> AccountRes
     if status.as_u16() == 401 || status.as_u16() == 403 {
         return Err(AccountError::new(
             "authentication_rejected",
-            "登录凭据或会话已失效，请重新登录。",
+            "登录已失效，请重新登录。",
         ));
     }
     if !status.is_success() {
@@ -133,7 +133,7 @@ pub(crate) fn response(request: reqwest::blocking::RequestBuilder) -> AccountRes
     {
         return Err(AccountError::new(
             "authentication_rejected",
-            "学校服务拒绝了登录请求，请核对账号、密码或会话。",
+            "登录失败，请核对账号和密码后重试。",
         ));
     }
     Ok(value)
@@ -167,7 +167,7 @@ pub fn encrypt_password(public_key: &str, password: &str) -> AccountResult<Strin
     }
     let encrypted = key
         .encrypt(&mut OsRng, Pkcs1v15Encrypt, password.as_bytes())
-        .map_err(|_| AccountError::new("password_encoding", "密码长度超出学校登录协议限制。"))?;
+        .map_err(|_| AccountError::new("password_encoding", "密码过长，请核对后重新输入。"))?;
     Ok(format!("RSA:{}", STANDARD.encode(encrypted)))
 }
 
@@ -254,29 +254,16 @@ impl LoginProtocol<'_> {
                 .get(format!("{origin}auth/rsa-public-key"))
                 .headers(headers(device_id, false)?),
         )
-        .map_err(|error| {
-            login_stage(
-                error,
-                "login_key_response",
-                "学校登录准备失败：未能读取登录信息，请稍后重试。",
-            )
-        })?;
+        .map_err(|error| login_stage(error, "login_key_response", "暂时无法登录，请稍后重试。"))?;
         let password = Zeroizing::new(
             encrypt_password(
                 key.get("data").and_then(Value::as_str).ok_or_else(|| {
-                    AccountError::new(
-                        "login_key_invalid",
-                        "学校登录准备失败：登录信息不完整，请稍后重试。",
-                    )
+                    AccountError::new("login_key_invalid", "暂时无法登录，请稍后重试。")
                 })?,
                 password,
             )
             .map_err(|error| {
-                login_stage(
-                    error,
-                    "login_key_invalid",
-                    "学校登录准备失败：登录信息不可用，请稍后重试。",
-                )
+                login_stage(error, "login_key_invalid", "暂时无法登录，请稍后重试。")
             })?,
         );
         let params = [
@@ -293,19 +280,9 @@ impl LoginProtocol<'_> {
                 .query(&params)
                 .body(""),
         )
-        .map_err(|error| {
-            login_stage(
-                error,
-                "login_token_response",
-                "学校登录服务未返回正常结果，请稍后重试。",
-            )
-        })?;
+        .map_err(|error| login_stage(error, "login_token_response", "登录未完成，请稍后重试。"))?;
         let mut session = parse_session(&token, username, device_id, now).map_err(|error| {
-            login_stage(
-                error,
-                "login_session_invalid",
-                "学校登录响应缺少有效会话信息，暂时无法完成登录。",
-            )
+            login_stage(error, "login_session_invalid", "登录未完成，请稍后重试。")
         })?;
         let app_id = response(
             client
@@ -316,15 +293,11 @@ impl LoginProtocol<'_> {
             login_stage(
                 error,
                 "login_app_response",
-                "学校账号连接配置读取失败，请稍后重试。",
+                "暂时无法连接学校，请稍后重试。",
             )
         })?;
         session.raw_app_id = text(&app_id, "data").map_err(|error| {
-            login_stage(
-                error,
-                "login_app_invalid",
-                "学校账号连接配置不完整，暂时无法完成登录。",
-            )
+            login_stage(error, "login_app_invalid", "暂时无法连接学校，请稍后重试。")
         })?;
         Ok(session)
     }

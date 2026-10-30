@@ -64,7 +64,7 @@ impl ExerciseQuery {
             Self::Detail { id }
                 if id.is_empty() || id.len() > 128 || id.chars().any(char::is_control) =>
             {
-                Err(error("invalid_input", "记录标识无效。"))
+                Err(error("invalid_input", "记录编号无效，请重新选择运动记录。"))
             }
             Self::Settings {
                 latitude,
@@ -76,7 +76,10 @@ impl ExerciseQuery {
                 || longitude.abs() > 180.0
                 || *run_type != 1 =>
             {
-                Err(error("invalid_input", "请检查坐标，当前仅支持运动类型 1。"))
+                Err(error(
+                    "invalid_input",
+                    "无法查询此位置或运动类型的配置，请重新选择。",
+                ))
             }
             _ => Ok(()),
         }
@@ -94,14 +97,13 @@ pub struct ExerciseResponse {
 pub(crate) fn signature_metadata() -> ExerciseResult<String> {
     let material: Value =
         serde_json::from_str(include_str!("../../resources/protocol-materials.json"))
-            .map_err(|_| error("protocol_encoding", "兼容材料不可用。"))?;
-    let cert = STANDARD
-        .decode(
-            material["certificate_der_base64"]
-                .as_str()
-                .ok_or_else(|| error("protocol_encoding", "兼容材料不可用。"))?,
-        )
-        .map_err(|_| error("protocol_encoding", "兼容材料不可用。"))?;
+            .map_err(|_| error("protocol_encoding", "暂时无法连接学校服务，请联系维护者。"))?;
+    let cert =
+        STANDARD
+            .decode(material["certificate_der_base64"].as_str().ok_or_else(|| {
+                error("protocol_encoding", "暂时无法连接学校服务，请联系维护者。")
+            })?)
+            .map_err(|_| error("protocol_encoding", "暂时无法连接学校服务，请联系维护者。"))?;
     Ok(Md5::digest(cert)
         .iter()
         .map(|value| format!("{value:02X}"))
@@ -146,7 +148,7 @@ impl ExerciseClient<'_> {
                 let payload = json!({"appType":"Android", "versionCode":20220, "versionName":"2.0.22", "signatureMD5":signature_metadata()?, "brand":"Yakumo", "model":"Desktop", "system":std::env::consts::OS, "version":"unknown", "uniqueCode":session.device_id, "latitude":latitude, "longitude":longitude, "runType":run_type});
                 let envelope = protocol
                     .pack(&payload)
-                    .map_err(|_| error("protocol_encoding", "学校配置请求封包失败。"))?;
+                    .map_err(|_| error("protocol_encoding", "学校配置读取失败，请重试。"))?;
                 params.extend([
                     ("key".into(), Some(envelope.key)),
                     ("param".into(), Some(envelope.param)),
@@ -156,7 +158,7 @@ impl ExerciseClient<'_> {
         };
         let sign = protocol
             .sign_get(&params)
-            .map_err(|_| error("protocol_encoding", "请求签名失败。"))?;
+            .map_err(|_| error("protocol_encoding", "学校数据读取失败，请重试。"))?;
         let client = Client::builder()
             .redirect(Policy::none())
             .retry(reqwest::retry::never())
@@ -164,13 +166,13 @@ impl ExerciseClient<'_> {
             .connect_timeout(Duration::from_secs(5))
             .timeout(Duration::from_secs(15))
             .build()
-            .map_err(|_| error("network_error", "无法创建学校连接。"))?;
+            .map_err(|_| error("network_error", "无法连接学校服务，请稍后重试。"))?;
         let response = client
             .get(format!("{}{path}", self.origin))
             .query(&params)
             .headers(
                 headers(&session.device_id, false)
-                    .map_err(|_| error("invalid_input", "账号会话格式异常。"))?,
+                    .map_err(|_| error("invalid_input", "登录信息异常，请重新登录。"))?,
             )
             .bearer_auth(&session.access_token)
             .header("timestamp", protocol.timestamp())
@@ -194,12 +196,12 @@ impl ExerciseClient<'_> {
             data = protocol
                 .decrypt(
                     data.as_str()
-                        .ok_or_else(|| error("invalid_response", "学校配置未返回预期加密数据。"))?,
+                        .ok_or_else(|| error("invalid_response", "学校配置读取失败，请重试。"))?,
                 )
-                .map_err(|_| error("decrypt_error", "学校配置解密失败，请重新读取。"))?;
+                .map_err(|_| error("decrypt_error", "学校配置读取失败，请重试。"))?;
         }
         if !data.is_object() && !data.is_null() {
-            return Err(error("invalid_response", "学校返回了不支持的数据结构。"));
+            return Err(error("invalid_response", "学校数据读取失败，请稍后重试。"));
         }
         Ok(redact(data))
     }
@@ -219,21 +221,24 @@ fn parse_response(status: u16, bytes: &[u8]) -> ExerciseResult<Value> {
     } else if !(200..300).contains(&status) {
         error("http_error", "学校服务暂时不可用。")
     } else if parsed.is_none() {
-        error("invalid_response", "学校返回了非 JSON 或超限数据。")
+        error("invalid_response", "学校数据无法读取，请稍后重试。")
     } else if business_code.is_none() || parsed.as_ref().is_some_and(|value| !value.is_object()) {
-        error("invalid_response", "学校响应结构或业务码无法识别。")
+        error("invalid_response", "学校数据读取失败，请稍后重试。")
     } else if business_code != Some(0) {
         error("business_rejected", "学校拒绝了本次读取。")
     } else {
         return parsed
             .and_then(|mut value| value.as_object_mut().and_then(|map| map.remove("data")))
-            .ok_or_else(|| error("invalid_response", "学校响应缺少数据字段。"));
+            .ok_or_else(|| error("invalid_response", "学校数据读取失败，请稍后重试。"));
     };
     if !matches!(status, 401 | 403)
         && let Some(message) = parsed.as_ref().and_then(|value| value["msg"].as_str())
     {
         if message.contains("60004") {
-            failure = error("client_outdated", "学校要求更新客户端兼容参数（60004）。");
+            failure = error(
+                "client_outdated",
+                "当前版本无法读取学校数据，请更新应用后重试。",
+            );
         } else if message.contains("今日跑步里程已达标") {
             failure = error("daily_limit", "学校提示今日跑步里程已达标，暂不提供配置。");
         }

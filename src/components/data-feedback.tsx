@@ -25,15 +25,11 @@ export function DataFeedback({ resource }: { resource: DataResource }) {
           />
           <div className='min-w-0 flex-1 space-y-1'>
             <p>{resource.error.message}</p>
-            <p className='text-[11px]'>
-              {resource.error.httpStatus != null
-                ? `HTTP ${resource.error.httpStatus}`
-                : ''}
-              {resource.error.businessCode != null
-                ? ` · 业务码 ${resource.error.businessCode}`
-                : ''}
-              {resource.data !== null ? ' · 下方保留上次读取的数据' : ''}
-            </p>
+            {resource.data !== null && (
+              <p className='text-[11px]'>
+                下方显示上次获取的数据，请刷新后查看最新结果。
+              </p>
+            )}
             {resource.error.code === 'session_expired' && (
               <Link to='/accounts' className='underline'>
                 前往重新登录

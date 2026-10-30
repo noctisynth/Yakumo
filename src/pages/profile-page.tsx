@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AccountRequired } from '@/components/account-required';
 import { AvatarEditor } from '@/components/avatar-editor';
 import { DataFeedback } from '@/components/data-feedback';
+import { ProfileDetails } from '@/components/profile-details';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useDashboardAccount } from '@/hooks/use-dashboard-account';
@@ -49,7 +50,7 @@ export function ProfilePage() {
           </p>
           <h1 className='mt-3 text-3xl font-semibold'>当前账号资料</h1>
           <p className='mt-3 text-sm text-muted-foreground'>
-            学校返回的个人资料，集中查看，清晰归属。
+            查看你的个人信息和学籍资料。
           </p>
         </div>
         <Button
@@ -105,18 +106,18 @@ export function ProfilePage() {
               </span>
             </h2>
             <p className='mt-1 text-xs text-muted-foreground'>
-              按资料类别整理；状态含义未确认时保留学校原值。
+              按类别查看资料，也可搜索具体内容。
             </p>
           </div>
           <label className='relative' htmlFor='profile-search'>
             <Search className='absolute top-3 left-3 size-4 text-muted-foreground' />
             <Input
               id='profile-search'
-              aria-label='搜索资料字段'
+              aria-label='搜索资料'
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className='pl-9'
-              placeholder='搜索字段或内容'
+              placeholder='搜索资料名称或内容'
             />
           </label>
         </div>
@@ -137,9 +138,6 @@ export function ProfilePage() {
                   >
                     <dt className='text-xs text-muted-foreground'>
                       {field.label}
-                      <span className='ml-2 break-all text-[10px] text-muted-foreground/65'>
-                        {key}
-                      </span>
                     </dt>
                     <dd className='mt-2 break-words text-sm'>
                       {value === null ? (
@@ -151,9 +149,7 @@ export function ProfilePage() {
                           <summary className='cursor-pointer text-primary'>
                             查看详细内容
                           </summary>
-                          <pre className='mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs'>
-                            {JSON.stringify(value, null, 2)}
-                          </pre>
+                          <ProfileDetails value={value} />
                         </details>
                       ) : (
                         (translated ??
@@ -162,24 +158,19 @@ export function ProfilePage() {
                         )))
                       )}
                     </dd>
-                    {field.hint && translated === undefined && (
-                      <p className='mt-2 text-[11px] leading-5 text-muted-foreground'>
-                        {field.hint}
-                      </p>
-                    )}
                   </div>
                 );
               })}
             </dl>
           );
-          return group === '系统标识' ? (
+          return group === '其他编号' ? (
             <details
               key={group}
               open={query ? true : undefined}
               className='border-t border-border'
             >
               <summary className='cursor-pointer px-5 py-4 text-sm font-medium'>
-                系统标识{' '}
+                其他编号{' '}
                 <span className='ml-2 text-xs font-normal text-muted-foreground'>
                   {groupFields.length} 项 · 按需查看
                 </span>
@@ -207,7 +198,7 @@ export function ProfilePage() {
             {profile.loading
               ? '正在读取资料…'
               : search
-                ? '没有匹配字段。'
+                ? '没有找到匹配的资料。'
                 : '暂无资料，请刷新重试。'}
           </p>
         )}

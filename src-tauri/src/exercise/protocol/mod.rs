@@ -15,7 +15,7 @@ pub type ProtocolResult<T> = AccountResult<T>;
 fn invalid() -> AccountError {
     AccountError::new(
         "protocol_encoding",
-        "协议数据编码或解码失败，未发送运动数据。",
+        "运动数据处理失败，请重新生成后再提交。",
     )
 }
 

@@ -78,18 +78,18 @@ const INTEGERS: &[&str] = &[
 pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
     let object = payload
         .as_object()
-        .ok_or_else(|| invalid("载荷必须是对象。"))?;
+        .ok_or_else(|| invalid("运动数据异常，请重新生成。"))?;
     if object.len() != TEXT.len() + INTEGERS.len()
         || object
             .keys()
             .any(|k| !TEXT.contains(&k.as_str()) && !INTEGERS.contains(&k.as_str()))
     {
-        return Err(invalid("字段缺失或包含当前不支持的字段。"));
+        return Err(invalid("运动数据不完整，请重新生成。"));
     }
     for key in TEXT {
         let text = object[*key]
             .as_str()
-            .ok_or_else(|| invalid("上报字符串字段类型错误。"))?;
+            .ok_or_else(|| invalid("运动数据异常，请重新生成。"))?;
         let limit = match *key {
             "gitudeLatitude" => 2_500_000,
             "geofence" => super::geofence::MAX_TEXT_BYTES,
@@ -97,25 +97,25 @@ pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
             _ => 4096,
         };
         if text.is_empty() || text.len() > limit {
-            return Err(invalid("上报字符串字段为空或超长。"));
+            return Err(invalid("运动数据异常，请重新生成。"));
         }
     }
     for key in INTEGERS {
         if object[*key].as_u64().is_none() {
-            return Err(invalid("上报整数字段类型错误。"));
+            return Err(invalid("运动数据异常，请重新生成。"));
         }
     }
     let integer = |key: &str| {
         object[key]
             .as_u64()
-            .ok_or_else(|| invalid("整数类型错误。"))
+            .ok_or_else(|| invalid("运动数据异常，请重新生成。"))
     };
     let decimal = |key: &str| -> AccountResult<f64> {
         let n = object[key]
             .as_str()
             .and_then(|s| s.parse::<f64>().ok())
             .filter(|n| n.is_finite());
-        n.ok_or_else(|| invalid("上报数值字段必须是有限数。"))
+        n.ok_or_else(|| invalid("运动数据异常，请重新生成。"))
     };
     if integer("sportType")? != 1
         || integer("uploadType")? != 0
@@ -123,22 +123,24 @@ pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
         || object["isFaceStatus"] != "1"
         || object["isSequencePoint"] != "0"
     {
-        return Err(invalid("运动类型或运行状态不属于当前支持范围。"));
+        return Err(invalid("暂不支持提交此类型的运动，请重新选择。"));
     }
     for key in ["pointList", "okPointList"] {
         let array: Vec<Value> = serde_json::from_str(
             object[key]
                 .as_str()
-                .ok_or_else(|| invalid("数组文本类型错误。"))?,
+                .ok_or_else(|| invalid("运动数据异常，请重新生成。"))?,
         )
-        .map_err(|_| invalid("内嵌数组不是有效的 JSON 文本。"))?;
+        .map_err(|_| invalid("运动数据异常，请重新生成。"))?;
         if !array.is_empty() {
-            return Err(invalid("当前不支持非空检查点。"));
+            return Err(invalid(
+                "本次运动需要完成检查点要求，请通过学校客户端完成。",
+            ));
         }
     }
     for key in ["limitSpeed", "limitStride", "limitStepFrequency"] {
         if decimal(key)? <= 0.0 {
-            return Err(invalid("学校阈值必须是正有限数。"));
+            return Err(invalid("学校运动要求读取失败，请刷新学校配置后重试。"));
         }
     }
     let start = integer("startTime")?;
@@ -150,16 +152,16 @@ pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
         || end > now
         || now.saturating_sub(end) > 7 * 86400000
     {
-        return Err(invalid("开始、结束和有效时长不一致或超出支持范围。"));
+        return Err(invalid("运动时间异常，请调整起止时间后重新生成。"));
     }
     let points: Vec<UploadPoint> = serde_json::from_str(
         object["gitudeLatitude"]
             .as_str()
-            .ok_or_else(|| invalid("轨迹文本缺失。"))?,
+            .ok_or_else(|| invalid("路线数据缺失，请重新生成。"))?,
     )
-    .map_err(|_| invalid("轨迹点字段缺失、类型错误或含未知字段。"))?;
+    .map_err(|_| invalid("路线数据异常，请重新生成。"))?;
     if points.len() != duration as usize + 1 {
-        return Err(invalid("轨迹点数量与逐秒时长不一致。"));
+        return Err(invalid("路线与运动时长不匹配，请重新生成。"));
     }
     let mut total = 0.0;
     for (index, p) in points.iter().enumerate() {
@@ -174,22 +176,20 @@ pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
             || p.c != index as u32
             || !p.f
         {
-            return Err(invalid(
-                "轨迹含无效坐标、异常速度、时间或当前不支持的状态。",
-            ));
+            return Err(invalid("路线、配速或时间异常，请检查参数后重新生成。"));
         }
         if index > 0 {
             let previous = &points[index - 1];
             let segment = distance(&previous.point(), &p.point());
             if (segment - p.s).abs() > 0.000001 || p.e < previous.e || p.e - previous.e > 5 {
-                return Err(invalid("逐段速度或累计步数与轨迹不一致。"));
+                return Err(invalid("路线与速度或步数不匹配，请重新生成。"));
             }
             if (p.s - previous.s).abs() > 4.0 {
-                return Err(invalid("相邻秒速度跳变过大。"));
+                return Err(invalid("速度变化过大，请调整路线或配速后重新生成。"));
             }
             total += segment;
         } else if p.e != 0 {
-            return Err(invalid("起始累计步数必须为零。"));
+            return Err(invalid("起始步数异常，请重新生成。"));
         }
     }
     super::geofence::check(&object["geofence"], points.iter().map(|p| (p.a, p.o)))
@@ -197,22 +197,21 @@ pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
     let steps = points
         .last()
         .map(|p| p.e)
-        .ok_or_else(|| invalid("轨迹为空。"))?;
+        .ok_or_else(|| invalid("路线为空，请先规划路线并重新生成。"))?;
     let cadence = steps as f64 * 60.0 / duration as f64;
     let pace = duration as f64 * 1000.0 / total;
     if !(100.0 - 0.001..=30000.0 + 0.001).contains(&total) {
-        return Err(invalid("里程超出 100 米至 30 公里（客户端安全门禁）。"));
+        return Err(invalid("里程超出 100 米至 30 公里。"));
     }
-    let pace_rounding = 501.0 / total;
-    if pace + pace_rounding < 180.0 || pace - pace_rounding > 900.0 {
-        return Err(invalid("配速须在每公里 3 至 15 分钟内（客户端安全门禁）。"));
+    if !super::pace::valid_derived(total, duration) {
+        return Err(invalid("配速须在每公里 3 至 15 分钟内。"));
     }
     let cadence_rounding = 30.0 / duration as f64;
     if cadence + cadence_rounding < 80.0 || cadence - cadence_rounding > 220.0 {
-        return Err(invalid("步频须在每分钟 80 至 220 步内（客户端安全门禁）。"));
+        return Err(invalid("步频须在每分钟 80 至 220 步内。"));
     }
     if steps == 0 || !(0.3..=2.0).contains(&(total / steps as f64)) {
-        return Err(invalid("估算单步距离超出 0.3 至 2 米（客户端安全门禁）。"));
+        return Err(invalid("估算单步距离超出 0.3 至 2 米。"));
     }
     let reported = decimal("sportRange")? * 1000.0;
     if reported > total + 0.001
@@ -220,7 +219,7 @@ pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
         || (decimal("gpsDistance")? * 1000.0 - reported).abs() > 0.001
         || (decimal("avgSpeed")? - total / duration as f64 * 3.6).abs() > 0.011
     {
-        return Err(invalid("上报里程或平均速度与实际轨迹不一致。"));
+        return Err(invalid("路线与里程或平均速度不匹配，请重新生成。"));
     }
     let pace_text = object["speed"]
         .as_str()
@@ -229,22 +228,22 @@ pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
         .and_then(|(m, s)| Some((m.parse::<u32>().ok()?, s.parse::<u32>().ok()?)));
     if !pace_text.is_some_and(|(m, s)| s < 60 && (m as f64 * 60.0 + s as f64 - pace).abs() <= 1.01)
     {
-        return Err(invalid("上报配速与时长、轨迹里程不一致。"));
+        return Err(invalid("配速与时长或里程不匹配，请重新生成。"));
     }
     let buckets: Vec<u32> = serde_json::from_str(
         object["stepNumbers"]
             .as_str()
-            .ok_or_else(|| invalid("步数桶缺失。"))?,
+            .ok_or_else(|| invalid("步数数据缺失，请重新生成。"))?,
     )
-    .map_err(|_| invalid("分钟步数必须是整数数组 JSON 文本。"))?;
+    .map_err(|_| invalid("每分钟步数异常，请重新生成。"))?;
     if buckets.len() != duration.div_ceil(60) as usize {
-        return Err(invalid("分钟步数桶数量与时长不一致。"));
+        return Err(invalid("步数与运动时长不匹配，请重新生成。"));
     }
     let mut previous = 0;
     for (index, bucket) in buckets.iter().enumerate() {
         let second = ((index + 1) * 60).min(duration as usize);
         if *bucket != points[second].e - previous {
-            return Err(invalid("分钟步数桶与点级累计步数不一致。"));
+            return Err(invalid("步数数据不一致，请重新生成。"));
         }
         let seconds = if index == buckets.len() - 1 {
             duration - index as u64 * 60
@@ -254,12 +253,12 @@ pub fn validate(payload: &Value, now: u64) -> AccountResult<()> {
         if *bucket as f64 + 1.0 < 70.0 * seconds as f64 / 60.0
             || *bucket as f64 > 240.0 * seconds as f64 / 60.0 + 1.0
         {
-            return Err(invalid("局部分钟步频异常（客户端安全门禁）。"));
+            return Err(invalid("部分时段步频异常，请调整步频后重新生成。"));
         }
         previous = points[second].e;
     }
     if integer("f")? != points.len() as u64 || integer("m")? != 0 || integer("h")? != 0 {
-        return Err(invalid("点级标记与汇总计数不一致。"));
+        return Err(invalid("运动数据不一致，请重新生成。"));
     }
     Ok(())
 }

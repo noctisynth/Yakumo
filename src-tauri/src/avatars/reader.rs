@@ -262,7 +262,7 @@ impl<'a> AvatarReader<'a> {
                     "学校返回的头像不存在，请刷新资料或重新选择头像。",
                 ),
                 300..=399 => {
-                    AccountError::new("avatar_redirected", "头像地址发生跳转，暂时无法读取。")
+                    AccountError::new("avatar_redirected", "头像暂时无法读取，请刷新资料重试。")
                 }
                 _ => AccountError::new(
                     "avatar_http_error",
@@ -318,17 +318,14 @@ impl<'a> AvatarReader<'a> {
             } else {
                 return Err(AccountError::new(
                     "avatar_invalid_image",
-                    "头像响应不是支持的图片格式，请刷新资料重试。",
+                    "头像图片无法打开，请刷新资料重试。",
                 ));
             }
         } else {
             &mime
         };
         encode_image(&bytes, mime).map(Some).map_err(|_| {
-            AccountError::new(
-                "avatar_invalid_image",
-                "头像响应不是支持的图片格式，请刷新资料重试。",
-            )
+            AccountError::new("avatar_invalid_image", "头像图片无法打开，请刷新资料重试。")
         })
     }
 }

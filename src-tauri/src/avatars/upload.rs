@@ -73,7 +73,7 @@ pub fn upload(origin: &str, session: &Session, now: u64, data_uri: &str) -> Acco
     if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
         return Err(AccountError::new(
             "session_expired",
-            "会话已失效，请重新登录。",
+            "登录已失效，请重新登录。",
         ));
     }
     if !response.status().is_success() {

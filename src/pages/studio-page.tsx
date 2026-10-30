@@ -266,7 +266,7 @@ function StudioContent({ accountId }: { accountId: string }) {
         'validation',
       );
       await editPresets(accountId, { kind: 'save', name, config });
-      setNotice('预设已加密保存，可在预设列表中使用。');
+      setNotice('预设已保存，可在预设列表中使用。');
       setSaveOpen(false);
       setName('');
     } catch (e) {
@@ -615,8 +615,8 @@ function StudioContent({ accountId }: { accountId: string }) {
                     <Input
                       id='run-pace-minutes'
                       type='number'
-                      min={0}
-                      max={20}
+                      min={3}
+                      max={15}
                       step={1}
                       required
                       disabled={studio.busy || saving}
@@ -637,7 +637,7 @@ function StudioContent({ accountId }: { accountId: string }) {
                       id='run-pace-seconds'
                       type='number'
                       min={0}
-                      max={59}
+                      max={(config.paceSecondsPerKm ?? 450) >= 900 ? 0 : 59}
                       step={1}
                       required
                       disabled={studio.busy || saving}
@@ -663,6 +663,10 @@ function StudioContent({ accountId }: { accountId: string }) {
                   update={update}
                   disabled={studio.busy || saving}
                 />
+                <p className='text-xs leading-5 text-muted-foreground'>
+                  配速及偏移范围须在 3′00″–15′00″/公里内；快于
+                  5′00″/公里时，提交前会提示合理性风险。
+                </p>
               </div>
             </div>
             <section
@@ -695,8 +699,8 @@ function StudioContent({ accountId }: { accountId: string }) {
                 ))}
               </dl>
               <p className='mt-4 text-xs leading-6 text-muted-foreground'>
-                以上为基准估算；生成时抽取距离、配速与步频，再统一计算时长、速度与步数。步数使用假设步频{' '}
-                {config.cadence ?? 160} 步/分钟，并非设备实测。
+                当前按 {config.cadence ?? 160}{' '}
+                步/分钟估算步数，可在下方调整步频。
               </p>
             </section>
             <details className='rounded-xl border border-border p-4'>
@@ -716,7 +720,7 @@ function StudioContent({ accountId }: { accountId: string }) {
                   }
                 />
                 <p className='text-xs leading-6 text-muted-foreground'>
-                  距离和配速不能唯一确定步数；有个人实测步频时可在这里替换假设值。
+                  填写你的步频，调整预计步数。
                 </p>
                 <div className='space-y-3 pt-3'>
                   <p className='text-xs text-muted-foreground'>
@@ -781,7 +785,7 @@ function StudioContent({ accountId }: { accountId: string }) {
               />
             </div>
             <p className='text-xs leading-6 text-muted-foreground'>
-              每次生成使用新的随机种子，最终值完整保留在预览中。整数计数仍为整数；本地检查不代表学校判定。
+              生成后请查看最终路线、距离、配速和起止时间。
             </p>
             {feedback('generate')}
             <div className='flex flex-wrap justify-between gap-3'>
@@ -821,7 +825,11 @@ function StudioContent({ accountId }: { accountId: string }) {
         )}
         {stepper.current.id === 'confirm' && preview && (
           <section className='space-y-5'>
-            <SubmissionPanel key={preview.digest} preview={preview} />
+            <SubmissionPanel
+              key={preview.digest}
+              preview={preview}
+              onEdit={() => void stepper.goTo('parameters')}
+            />
             <Button variant='outline' onClick={() => void stepper.prev()}>
               返回预览
             </Button>
@@ -832,7 +840,7 @@ function StudioContent({ accountId }: { accountId: string }) {
         <DialogHeader>
           <DialogTitle>保存为预设</DialogTitle>
           <DialogDescription>
-            保存当前路线与参数，下次可直接使用。不会保存本次时间或提交授权。
+            保存当前路线与参数，下次使用时重新设置运动时间并确认提交。
           </DialogDescription>
         </DialogHeader>
         <form

@@ -57,7 +57,7 @@ fn plugin_error(value: tauri_plugin_updater::Error) -> UpdateError {
         | Error::SignedVersionMismatch { .. }
         | Error::MissingSignedVersion => error(
             "verification",
-            "更新签名或版本校验失败。已停止更新，请联系维护者。",
+            "更新安全检查失败，已停止更新。请联系维护者。",
         ),
         Error::TargetNotFound(_) | Error::TargetsNotFound(_) => {
             error("platform", "此版本尚未提供当前平台的更新包，请稍后重试。")
@@ -75,20 +75,26 @@ pub(crate) fn validate_manifest(
     if version.split('.').count() != 3
         || version.split('.').any(|part| part.parse::<u64>().is_err())
     {
-        return Err(error("manifest", "此更新通道仅接受正式版本。"));
+        return Err(error(
+            "manifest",
+            "暂不支持安装此版本，请从官方发布页获取正式版。",
+        ));
     }
     let platforms = value
         .get("platforms")
         .and_then(serde_json::Value::as_object)
-        .ok_or_else(|| error("manifest", "更新清单格式不正确，请联系维护者。"))?;
+        .ok_or_else(|| error("manifest", "更新信息异常，请联系维护者。"))?;
     if platforms.is_empty() {
-        return Err(error("manifest", "更新清单缺少平台。"));
+        return Err(error(
+            "manifest",
+            "没有适用于当前设备的更新，请从官方发布页查看。",
+        ));
     }
     for (platform, entry) in platforms {
         let url = entry
             .get("url")
             .and_then(serde_json::Value::as_str)
-            .ok_or_else(|| error("manifest", "更新清单缺少下载地址。"))?;
+            .ok_or_else(|| error("manifest", "更新下载地址不可用，请稍后重试。"))?;
         validate_artifact_url(url, version)?;
         let suffix = match platform.as_str() {
             "windows-x86_64" => "windows-x64.exe",
@@ -97,21 +103,29 @@ pub(crate) fn validate_manifest(
             "darwin-aarch64" => "macos-arm64.app.tar.gz",
             "darwin-x86_64" => "macos-x64.app.tar.gz",
             "android-aarch64" | "android-x86_64" => "android-universal.apk",
-            _ => return Err(error("platform", "更新清单包含不支持的平台。")),
+            _ => {
+                return Err(error(
+                    "platform",
+                    "此更新不适用于当前设备，请从官方发布页查看。",
+                ));
+            }
         };
         if !url.ends_with(&format!("/Yakumo-{version}-{suffix}")) {
-            return Err(error("platform", "安装包与目标平台不匹配。"));
+            return Err(error(
+                "platform",
+                "此安装包不适用于当前设备，请从官方发布页下载对应版本。",
+            ));
         }
         let encoded = entry
             .get("signature")
             .and_then(serde_json::Value::as_str)
-            .ok_or_else(|| error("verification", "更新签名缺失。"))?;
+            .ok_or_else(|| error("verification", "更新安全检查失败，请从官方发布页重新下载。"))?;
         let signature = base64::engine::general_purpose::STANDARD
             .decode(encoded)
             .ok()
             .and_then(|bytes| String::from_utf8(bytes).ok())
             .and_then(|text| minisign_verify::Signature::decode(&text).ok())
-            .ok_or_else(|| error("verification", "更新签名格式错误。"))?;
+            .ok_or_else(|| error("verification", "更新安全检查失败，请从官方发布页重新下载。"))?;
         // This is a rejection filter only. The fork must subsequently verify the
         // artifact AND the global signature that authenticates this trusted comment.
         let filename = format!("Yakumo-{version}-{suffix}");
@@ -121,16 +135,22 @@ pub(crate) fn validate_manifest(
             .find_map(|part| part.strip_prefix("file:"))
             != Some(filename.as_str())
         {
-            return Err(error("verification", "更新签名与平台文件名不匹配。"));
+            return Err(error(
+                "verification",
+                "更新安全检查失败，请从官方发布页重新下载。",
+            ));
         }
         if let Some(mirrors) = entry.get("mirrors") {
             let mirrors = mirrors
                 .as_array()
-                .ok_or_else(|| error("manifest", "镜像列表格式错误。"))?;
+                .ok_or_else(|| error("manifest", "更新下载地址不可用，请稍后重试。"))?;
             for mirror in mirrors {
                 validate_artifact_url(mirror.as_str().unwrap_or(""), version)?;
                 if mirror.as_str() != Some(url) {
-                    return Err(error("manifest", "安装包镜像必须指向相同平台产物。"));
+                    return Err(error(
+                        "manifest",
+                        "更新下载地址不可用，请从官方发布页重新下载。",
+                    ));
                 }
             }
         }
@@ -153,7 +173,10 @@ fn validate_artifact_url(value: &str, version: &str) -> Result<(), UpdateError> 
         || !parsed.path()[prefix.len()..].starts_with(&format!("Yakumo-{version}-"))
         || parsed.path()[prefix.len()..].contains('/')
     {
-        return Err(error("manifest", "更新地址与版本不匹配，已停止更新。"));
+        return Err(error(
+            "manifest",
+            "更新信息异常，已停止更新。请从官方发布页下载。",
+        ));
     }
     Ok(())
 }
@@ -165,7 +188,7 @@ pub(crate) async fn check_application_update(
     if public_key().is_empty() {
         return Err(error(
             "not_configured",
-            "此客户端尚未配置更新签名，请从官方发布页安装新版。",
+            "当前版本无法使用应用内更新，请从官方发布页安装新版。",
         ));
     }
     #[cfg(target_os = "ios")]
@@ -181,7 +204,7 @@ pub(crate) async fn check_application_update(
                 .map_err(|_| {
                     error(
                         "tls_configuration",
-                        "无法初始化更新证书校验，请联系维护者。",
+                        "暂时无法安全连接更新服务，请联系维护者。",
                     )
                 })?;
         #[cfg(feature = "updater-validation")]

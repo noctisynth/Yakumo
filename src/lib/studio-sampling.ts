@@ -1,3 +1,4 @@
+import { validDerivedPace, validPace } from '@/lib/run-pace';
 import type { RunInput } from '@/models/run';
 import type { StudioConfig } from '@/models/studio';
 export function sampleRun(
@@ -14,6 +15,17 @@ export function sampleRun(
     throw new Error('轨迹坐标浮动范围应为 0 至 3 米。');
   if (config.closeLoop && (config.route?.length ?? 0) < 3)
     throw new Error('首尾相连至少需要三个选点。');
+  const basePace =
+    config.paceSecondsPerKm ?? (config.durationS * 1000) / config.distanceM;
+  const [paceLo, paceHi] = config.offsets.durationS;
+  const scale =
+    config.paceSecondsPerKm === undefined ? 1000 / config.distanceM : 1;
+  if (
+    !validPace(basePace) ||
+    !validPace(basePace + paceLo * scale) ||
+    !validPace(basePace + paceHi * scale)
+  )
+    throw new Error('配速基准及偏移范围须在每公里 3 至 15 分钟内。');
   let state = 2166136261;
   for (const char of seed)
     state = Math.imul(state ^ char.charCodeAt(0), 16777619);
@@ -89,8 +101,7 @@ export function sampleRun(
   if (
     (pace !== undefined &&
       (!Number.isFinite(pace) ||
-        pace < 120 ||
-        pace > 1200 ||
+        !validPace(pace) ||
         !Number.isFinite(actualCadence) ||
         actualCadence < 30 ||
         actualCadence > 300)) ||
@@ -113,6 +124,7 @@ export function sampleRun(
     steps > 50000 ||
     laps < 1 ||
     laps > 10 ||
+    !validDerivedPace(distanceM, durationS) ||
     distanceM / durationS < 0.5 ||
     distanceM / durationS > 12 ||
     (steps * 60) / durationS < 30 ||

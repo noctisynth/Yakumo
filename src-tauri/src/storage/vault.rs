@@ -31,7 +31,7 @@ pub struct EncryptedVault {
 fn damaged() -> AccountError {
     AccountError::new(
         "storage_damaged",
-        "账号存储无法解密或格式不受支持。请保留原数据并检查系统密钥库。",
+        "无法打开已保存的账号。请保留应用数据，解锁设备后重试；仍无法读取时请联系维护者。",
     )
 }
 

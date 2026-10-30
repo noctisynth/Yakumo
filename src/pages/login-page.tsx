@@ -93,7 +93,7 @@ export function LoginPage() {
           ACCOUNT / CONNECT
         </p>
         <h1 className='mt-3 text-3xl font-semibold tracking-tight lg:text-4xl'>
-          {reloginAccount ? '更新账号会话' : '连接你的学校账号'}
+          {reloginAccount ? '重新登录学校账号' : '连接你的学校账号'}
         </h1>
         <p className='mt-3 text-sm leading-6 text-muted-foreground'>
           登录后，查看属于你的运动进度与记录。
@@ -101,7 +101,7 @@ export function LoginPage() {
       </section>
       {unavailable && (
         <p role='status' className='rounded-xl border bg-muted/50 p-4 text-sm'>
-          请在应用中登录。浏览器预览不读取或保存账号会话。
+          请打开八云爱应用登录。
         </p>
       )}
       {error && !initialized && (
@@ -178,7 +178,7 @@ export function LoginPage() {
               {reloginAccount ? '重新登录' : '添加学校账号'}
             </CardTitle>
             <CardDescription className='leading-6'>
-              同一学校的同一账号会更新会话，不会重复添加。
+              已添加的账号可在这里重新登录。
             </CardDescription>
           </CardHeader>
           <CardContent className='px-6 sm:px-8 xl:px-10'>
@@ -201,7 +201,7 @@ export function LoginPage() {
                   id={`${formId}-school-help`}
                   className='text-xs leading-5 text-muted-foreground'
                 >
-                  目前仅此学校的协议有验证依据。
+                  目前支持西南石油大学。
                 </p>
               </div>
               <div className='space-y-2'>
@@ -306,7 +306,7 @@ export function LoginPage() {
                   className='mt-1 size-4 shrink-0'
                   aria-hidden='true'
                 />
-                不保存密码。会话在本机加密保存，密钥由系统密钥库管理。切换账号不会开始或提交运动。
+                密码仅用于本次登录。登录信息在本机加密保存。
               </p>
             </form>
           </CardContent>

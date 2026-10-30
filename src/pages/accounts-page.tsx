@@ -55,7 +55,7 @@ export function AccountsPage() {
           role='status'
           className='rounded-xl border border-border bg-muted/50 p-4 text-sm'
         >
-          请在桌面应用中登录。浏览器预览不读取或保存账号会话。
+          请打开八云爱应用登录。
         </p>
       )}
       {error && (
@@ -117,7 +117,7 @@ export function AccountsPage() {
                     : '还没有添加账号'}
               </p>
               <p className='mt-2 text-xs leading-6 text-muted-foreground'>
-                登录后可保留多个会话，随时选择当前账号。
+                添加账号后，可随时切换使用。
               </p>
               <Button asChild className='mt-5'>
                 <Link to='/accounts/login'>登录第一个账号</Link>
@@ -166,7 +166,7 @@ export function AccountsPage() {
                   <p className='text-xs text-muted-foreground'>
                     {account.expired
                       ? '请重新登录以继续使用此账号。'
-                      : `会话有效至 ${new Date(account.expiresAt * 1000).toLocaleString('zh-CN')}`}
+                      : `登录有效期至 ${new Date(account.expiresAt * 1000).toLocaleString('zh-CN')}`}
                   </p>
                   <div className='flex flex-wrap gap-2'>
                     <Button
@@ -208,7 +208,7 @@ export function AccountsPage() {
                   {confirmId === account.id && (
                     <div className='space-y-3 rounded-lg bg-muted p-3'>
                       <p className='text-xs leading-6'>
-                        移除此账号的本地会话及本机预设？学校服务端的登录状态不会因此撤销。为避免重复提交，加密回执与防重记录会保留，重新添加同一账号后仍可查看。
+                        将移除此设备上保存的登录信息和预设，不会退出学校服务。提交记录将保留，重新添加账号后可查看。
                       </p>
                       <div className='flex gap-2'>
                         <Button
@@ -218,7 +218,7 @@ export function AccountsPage() {
                             setNotice(null);
                             if (await remove(account.id)) {
                               setConfirmId(null);
-                              setNotice('已移除本地账号会话。');
+                              setNotice('已移除此设备上保存的账号。');
                             }
                           }}
                         >

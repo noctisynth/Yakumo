@@ -33,7 +33,7 @@ export function SchoolPage() {
             <ShieldCheck className='mb-3 size-5 text-primary' />
             <h2 className='text-sm font-medium'>仅查询学校要求</h2>
             <p className='mt-2 text-xs leading-6 text-muted-foreground'>
-              读取配置不会开始运动。阈值和开关以学校返回为准，未知项不会被视为没有要求。
+              查看学校的距离、时长和步数要求。
             </p>
           </div>
         </aside>

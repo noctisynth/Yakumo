@@ -6,6 +6,9 @@ export async function readExercise(
   query: ExerciseQuery,
 ): Promise<ExerciseResponse> {
   if (!isTauri())
-    throw { code: 'native_required', message: '请在桌面应用中读取学校数据。' };
+    throw {
+      code: 'native_required',
+      message: '请打开八云爱应用查看学校数据。',
+    };
   return invoke<ExerciseResponse>('read_exercise', { accountId, query });
 }

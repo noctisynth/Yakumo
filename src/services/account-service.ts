@@ -10,7 +10,7 @@ async function accountCommand(
   if (!nativeAccountsAvailable) {
     throw {
       code: 'native_required',
-      message: '请在桌面应用中管理账号，浏览器预览无法登录。',
+      message: '请打开八云爱应用管理账号。',
     };
   }
   return invoke<AccountSnapshot>(command, args);

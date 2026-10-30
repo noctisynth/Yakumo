@@ -63,7 +63,7 @@ impl PresetConfig {
             let cadence = self.cadence.unwrap_or(160.0);
             let duration = (self.distance_m / 1000.0 * pace).round();
             if !pace.is_finite()
-                || !(120.0..=1200.0).contains(&pace)
+                || !super::pace::valid(pace)
                 || !cadence.is_finite()
                 || !(30.0..=300.0).contains(&cadence)
                 || (duration - self.duration_s as f64).abs() > 0.5
@@ -71,6 +71,26 @@ impl PresetConfig {
             {
                 return Err(invalid());
             }
+        }
+        if !super::pace::valid_derived(self.distance_m, u64::from(self.duration_s)) {
+            return Err(AccountError::new(
+                "invalid_preset",
+                "配速须在每公里 3 至 15 分钟内。",
+            ));
+        }
+        let base_pace = self
+            .pace_seconds_per_km
+            .unwrap_or(self.duration_s as f64 * 1000.0 / self.distance_m);
+        let range = self.offsets.get("durationS").ok_or_else(invalid)?;
+        let scale = if self.pace_seconds_per_km.is_some() {
+            1.0
+        } else {
+            1000.0 / self.distance_m
+        };
+        if !super::pace::valid(base_pace + range[0] * scale)
+            || !super::pace::valid(base_pace + range[1] * scale)
+        {
+            return Err(invalid());
         }
         let speed = self.distance_m / self.duration_s as f64;
         let cadence = self.steps as f64 * 60.0 / self.duration_s as f64;
@@ -128,4 +148,64 @@ pub enum PresetAction {
     Remove {
         id: String,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config() -> PresetConfig {
+        PresetConfig {
+            close_loop: false,
+            route: vec![],
+            pace_seconds_per_km: None,
+            cadence: None,
+            cadence_offset: None,
+            coordinate_noise_m: None,
+            latitude: 0.0,
+            longitude: 0.0,
+            distance_m: 2000.0,
+            duration_s: 900,
+            steps: 2400,
+            laps: 1,
+            offsets: [
+                "distanceM",
+                "durationS",
+                "steps",
+                "laps",
+                "positionM",
+                "startMinutes",
+            ]
+            .into_iter()
+            .map(|key| (key.into(), [0.0, 0.0]))
+            .collect(),
+        }
+    }
+
+    #[test]
+    fn legacy_and_explicit_pace_presets_share_safety_limits() {
+        for explicit in [false, true] {
+            for pace in [180.0, 900.0, 120.0, 179.0, 901.0, 1200.0] {
+                let mut value = config();
+                value.duration_s = (pace * 2.0) as u32;
+                value.steps = value.duration_s * 3;
+                if explicit {
+                    value.pace_seconds_per_km = Some(pace);
+                    value.cadence = Some(180.0);
+                }
+                assert_eq!(value.validate().is_ok(), (180.0..=900.0).contains(&pace));
+                if pace == 180.0 || pace == 900.0 {
+                    value.offsets.insert(
+                        "durationS".into(),
+                        if pace == 180.0 {
+                            [-1.0, 0.0]
+                        } else {
+                            [0.0, 1.0]
+                        },
+                    );
+                    assert!(value.validate().is_err());
+                }
+            }
+        }
+    }
 }

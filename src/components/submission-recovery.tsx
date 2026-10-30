@@ -11,6 +11,7 @@ import {
   recordStatus,
   text,
 } from '@/lib/exercise-data';
+import { submissionMessage } from '@/lib/submission-message';
 import { readExercise } from '@/services/exercise-service';
 import { useDashboardStore } from '@/stores/dashboard-store';
 export interface Receipt {
@@ -67,20 +68,20 @@ function ReceiptCard({
       readExercise(accountId, { kind: 'summary' }),
     ]);
     if (!mounted.current) return;
-    const labels = ['详情', '有效列表当前日期页', '统计快照', '运动汇总'];
+    const labels = ['详情', '当前页合格记录', '累计统计', '运动汇总'];
     const lines = results.map((r, i) => {
       if (r.status === 'rejected') return `${labels[i]}：${failure(r.reason)}`;
-      if (!r.value) return '详情：回执没有记录标识，请查看列表后尝试关联核对。';
+      if (!r.value) return '尚未找到本次运动记录，请到运动记录页查找并关联。';
       const data = object(r.value.data);
       if (i === 0)
         return `详情：${recordStatus(data.status)} · ${text(data.remark)}`;
       if (i === 1)
         return receipt.recordId
-          ? `有效列表当前日期页：${items(data.records).some((v) => text(object(v).id, '') === receipt.recordId) ? '已收录' : '本页未见，可能存在延迟或其他日期分组'}`
-          : '有效列表已读取，请到运动记录页查看候选记录。';
+          ? `当前页合格记录：${items(data.records).some((v) => text(object(v).id, '') === receipt.recordId) ? '已收录' : '当前页未找到，请到运动记录页查找'}`
+          : '合格记录已获取，请到运动记录页查看。';
       if (i === 2)
-        return `最新累计里程 ${quantity(data.allTotalMileage)} km，累计次数 ${quantity(data.allNum, 0)}；不据此推断本次增量。`;
-      return '运动汇总已读取；接收、详情判定及统计口径分别核对。';
+        return `最新累计里程 ${quantity(data.allTotalMileage)} km，累计次数 ${quantity(data.allNum, 0)}。`;
+      return '运动汇总已更新，可在数据大盘查看。';
     });
     setReport(lines);
     setBusy(false);
@@ -95,7 +96,7 @@ function ReceiptCard({
         recordId: recordId.trim(),
       });
       if (mounted.current) {
-        setReport(['已用学校详情的运动关联标识确认入库。']);
+        setReport(['已找到本次提交的运动记录。']);
         onLinked();
       }
     } catch (e) {
@@ -111,7 +112,7 @@ function ReceiptCard({
         {new Date(receipt.createdAt).toLocaleString()}
       </p>
       <p className='text-xs leading-6 text-muted-foreground'>
-        {receipt.message}
+        {submissionMessage(receipt.message)}
       </p>
       <div className='flex flex-wrap gap-2'>
         <Button
@@ -135,14 +136,14 @@ function ReceiptCard({
       {!receipt.recordId && (
         <details className='text-xs'>
           <summary className='cursor-pointer text-muted-foreground'>
-            用学校记录标识关联核对
+            关联运动记录
           </summary>
           <p className='my-3 leading-6 text-muted-foreground'>
-            只有详情中的运动关联标识匹配，才会更新本地回执；无法匹配时保留结果不确定。
+            找到对应的运动记录后，填写记录编号并点击“关联核对”。
           </p>
           <div className='flex flex-wrap gap-2'>
             <Input
-              aria-label='学校记录标识'
+              aria-label='运动记录编号'
               maxLength={128}
               value={recordId}
               onChange={(e) => setRecordId(e.target.value)}

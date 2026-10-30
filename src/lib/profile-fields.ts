@@ -2,11 +2,11 @@ export const profileGroups = [
   '个人信息',
   '学籍信息',
   '状态信息',
-  '系统标识',
+  '其他编号',
   '补充信息',
 ] as const;
 type Group = (typeof profileGroups)[number];
-type Field = { label: string; group: Group; hint?: string };
+type Field = { label: string; group: Group };
 const entries: [Group, Record<string, string>][] = [
   [
     '个人信息',
@@ -22,10 +22,10 @@ const entries: [Group, Record<string, string>][] = [
       email: '电子邮箱',
       address: '地址',
       birthday: '出生日期',
-      height: '身高（原值）',
-      weight: '体重（原值）',
+      height: '身高',
+      weight: '体重',
       sysNationId: '民族信息',
-      nationId: '民族标识',
+      nationId: '民族编号',
       nationName: '民族',
       cardNum: '卡号',
       imageRouteUrl: '头像地址',
@@ -34,7 +34,7 @@ const entries: [Group, Record<string, string>][] = [
   [
     '学籍信息',
     {
-      schoolName: '学校名称（接口返回）',
+      schoolName: '学校名称',
       schoolCode: '学校代码',
       campusName: '校区',
       collegeName: '学院',
@@ -55,24 +55,24 @@ const entries: [Group, Record<string, string>][] = [
     '状态信息',
     {
       isGraduation: '毕业状态',
-      feature: '特征标记（原值）',
-      type: '资料类型（原值）',
+      feature: '资料标记',
+      type: '资料类型',
       userType: '用户类型',
     },
   ],
   [
-    '系统标识',
+    '其他编号',
     {
-      id: '资料标识',
-      userId: '用户标识',
-      basUserId: '基础用户标识',
-      studentId: '学生标识',
-      basStudentTypeId: '学生类别标识',
-      campusId: '校区标识',
-      deptId: '院系标识',
-      majorId: '专业标识',
-      clazzId: '班级标识',
-      yearId: '年级标识',
+      id: '资料编号',
+      userId: '用户编号',
+      basUserId: '基础用户编号',
+      studentId: '学生编号',
+      basStudentTypeId: '学生类别编号',
+      campusId: '校区编号',
+      deptId: '院系编号',
+      majorId: '专业编号',
+      clazzId: '班级编号',
+      yearId: '年级编号',
       createTime: '创建时间',
       updateTime: '更新时间',
     },
@@ -85,9 +85,6 @@ const fields = Object.fromEntries(
       {
         label,
         group,
-        ...(group === '状态信息'
-          ? { hint: '学校返回的状态值，具体取值含义尚未确认。' }
-          : {}),
       },
     ]),
   ),
@@ -95,9 +92,8 @@ const fields = Object.fromEntries(
 export function profileField(key: string): Field {
   return (
     fields[key] ?? {
-      label: '其他资料（待识别）',
+      label: '其他资料',
       group: '补充信息',
-      hint: '此字段的具体含义尚未确认，来源字段名显示在名称旁。',
     }
   );
 }

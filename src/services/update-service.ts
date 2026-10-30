@@ -50,12 +50,11 @@ export function updateError(value: unknown, installing = false): string {
     /signature|signed|Minisign|base64|verify|verification/i.test(text) ||
     code === 'verification'
   )
-    return '安装包签名、身份或版本校验失败，已停止更新。请联系维护者。';
+    return '安装包安全检查失败，已停止更新。请联系维护者。';
   if (code === 'platform') return '尚未提供当前平台的更新包，请稍后重试。';
   if (code === 'not_configured')
-    return '此客户端尚未配置更新签名，请从官方发布页安装新版。';
-  if (code === 'manifest')
-    return '更新清单与安装包信息不一致，已停止更新。请联系维护者。';
+    return '当前版本无法使用应用内更新，请从官方发布页安装新版。';
+  if (code === 'manifest') return '更新信息异常，已停止更新。请联系维护者。';
   return installing
     ? '安装未完成。请检查系统提示、可用空间与安装权限后重试。'
     : '更新连接失败或超时。请检查网络后重新检查更新。';

@@ -133,7 +133,7 @@ export function HomePage() {
               <p className='text-[11px] leading-5 text-muted-foreground'>
                 累计次数与有效次数
                 <br />
-                分别统计，缺失值为 —
+                暂无数据时显示 —
               </p>
             </div>
           </div>
@@ -206,20 +206,20 @@ export function HomePage() {
             </span>
           </div>
           <p className='mt-2 text-xs text-muted-foreground'>
-            来自当前记录筛选的日期分组
+            当前筛选日期内的里程
           </p>
           <div className='my-auto py-7'>
             <MileageChart dates={object(dashboard.records.data).dates} />
           </div>
           <DataFeedback resource={dashboard.records} />
           <p className='mt-4 border-t border-border pt-4 text-[10px] leading-5 text-muted-foreground'>
-            统计、汇总与列表可能采用不同口径。暂不推断学期达标结论。
+            选择日期和记录状态，查看对应的运动记录。
           </p>
         </div>
       </section>
       <section className='grid gap-3 border-t border-border pt-6 sm:grid-cols-2'>
         {[
-          ['/records', '运动记录', '筛选历史运动，查看学校判定。', '02'],
+          ['/records', '运动记录', '筛选运动记录，查看每次运动的结果。', '02'],
           ['/school', '学校配置', '查询当前距离、时长及步数要求。', '03'],
         ].map(([to, title, description, number]) => (
           <Link

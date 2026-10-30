@@ -73,28 +73,22 @@ export function RunPreviewCard({
           />
         </div>
         <p className='px-5 pb-5 text-[11px] text-muted-foreground'>
-          地图仅作地理参照，合成轨迹未匹配道路 · {preview.points.length} 个点 ·{' '}
-          {preview.input.steps} 步
+          生成路线 · {preview.points.length} 个点 · {preview.input.steps} 步
         </p>
       </div>
       <div className='rounded-xl border border-border bg-card p-5'>
-        <h2 className='text-sm font-semibold'>一致性检查</h2>
+        <h2 className='text-sm font-semibold'>运动数据检查</h2>
         <ul className='mt-4 space-y-2 text-xs text-muted-foreground'>
           {preview.checks.map((check) => (
             <li key={check}>✓ {check}</li>
           ))}
         </ul>
-        <p className='mt-4 break-all border-t border-border pt-4 text-[10px] leading-5 text-muted-foreground'>
-          来源 {preview.source} · 算法 {preview.algorithm}
-          <br />
-          SHA-256 {preview.digest}
-        </p>
         <p className='mt-3 text-xs text-primary'>
-          本地一致性通过，不代表学校判定合格。
+          检查通过，请继续核对并确认提交。
         </p>
       </div>
       <details className='rounded-xl border border-border bg-card p-5 text-xs'>
-        <summary className='cursor-pointer'>本次实际参数与种子</summary>
+        <summary className='cursor-pointer'>本次运动参数</summary>
         <dl className='mt-4 grid gap-4 sm:grid-cols-2'>
           {[
             ['目标距离', `${preview.input.distanceM} 米`],
@@ -115,16 +109,12 @@ export function RunPreviewCard({
             ...(preview.input.estimatedCadence === undefined
               ? []
               : [
+                  ['估算步频', `${preview.input.estimatedCadence} 步/分钟`],
                   [
-                    '估算步频（非实测）',
-                    `${preview.input.estimatedCadence} 步/分钟`,
-                  ],
-                  [
-                    '抽取配速',
+                    '本次配速',
                     `${preview.input.targetPaceSecondsPerKm?.toFixed(2)} 秒/公里`,
                   ],
                 ]),
-            ['生成种子', preview.input.seed],
           ].map(([label, value]) => (
             <div key={label}>
               <dt className='text-muted-foreground'>{label}</dt>
@@ -135,7 +125,7 @@ export function RunPreviewCard({
       </details>
       <details className='rounded-xl border border-border p-5 text-xs'>
         <summary className='cursor-pointer'>
-          分钟步数增量 · {preview.stepBuckets.length} 桶
+          每分钟步数 · {preview.stepBuckets.length} 分钟
         </summary>
         <p className='mt-3 break-words leading-6 text-muted-foreground'>
           {preview.stepBuckets.join(' / ')}

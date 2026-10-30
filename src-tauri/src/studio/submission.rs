@@ -104,7 +104,7 @@ fn prepare_settings(
     let input = &preview.input;
     let mut blockers = Vec::new();
     if preview.end_time > now || now.saturating_sub(preview.end_time) > 7 * 86400000 {
-        blockers.push("运动须已结束，且结束时间在最近 7 天内（客户端安全门禁）。".into());
+        blockers.push("运动须已结束，且结束时间在最近 7 天内。".into());
     }
     for (key, label) in [
         ("isStartFace", "开始人脸"),
@@ -114,9 +114,7 @@ fn prepare_settings(
     ] {
         match rule(settings, key) {
             Some(false) => {}
-            Some(true) => blockers.push(format!(
-                "学校要求{label}核验，当前提交流程无法完成该核验。请通过学校客户端完成运动。"
-            )),
+            Some(true) => blockers.push(format!("本次运动需要{label}验证，请通过学校客户端完成。")),
             None => blockers.push(format!("未能读取学校的{label}要求，请重新检查学校配置。")),
         }
     }
@@ -124,7 +122,7 @@ fn prepare_settings(
         match settings[key].as_array() {
             Some(values) if values.is_empty() => {}
             Some(_) => blockers.push(format!(
-                "学校设置了{label}要求，当前提交流程无法完成核验。请通过学校客户端完成运动。"
+                "本次运动需要完成{label}要求，请通过学校客户端完成。"
             )),
             None => blockers.push(format!(
                 "学校返回的{label}配置无法读取，请重新检查学校配置。"
@@ -142,7 +140,8 @@ fn prepare_settings(
         }
     };
     if rule(settings, "isStepRecursion") != Some(false) {
-        blockers.push("递增步数规则已启用或未知，尚不能完整验证。".into());
+        blockers
+            .push("暂时无法检查学校的步数要求，本次运动无法提交。请通过学校客户端完成。".into());
     }
     if number(settings, "runType") != Some(1.0) {
         blockers.push("学校返回的运动类型与本次运动不一致，请重新检查学校配置。".into());
@@ -153,15 +152,13 @@ fn prepare_settings(
     ] {
         match rule(settings, key) {
             Some(false) => {}
-            Some(true) => blockers.push(format!(
-                "学校启用了{label}校验，当前提交流程无法完成该核验。"
-            )),
+            Some(true) => blockers.push(format!("本次运动需要检查{label}，请通过学校客户端完成。")),
             None => blockers.push(format!("未能读取学校的{label}要求，请重新检查学校配置。")),
         }
     }
     for key in ["limitSpeed", "endStride", "endLimitStepFrequency"] {
         if number(settings, key).is_none() {
-            blockers.push("学校阈值字段缺失或无法解析，无法构造完整请求。".into());
+            blockers.push("学校运动要求读取失败，请刷新学校配置后重试。".into());
             break;
         }
     }
@@ -208,20 +205,18 @@ fn prepare_settings(
         ticket: None,
         blockers,
         notes: vec![
-            "轨迹为合成数据，是否有效以学校处理结果为准。".into(),
+            "数据来源：合成。".into(),
             format!(
-                "实际上报里程为 {:.2} 公里（向下保留两位小数）。",
+                "本次提交里程：{:.2} 公里。",
                 (input.distance_m / 10.0).floor() / 100.0
             ),
-            "此流程不执行运动开始、定位或人脸验证。".into(),
+            "提交前请核对本次路线和起止时间。".into(),
             "学校连接未加密，请仅在可信网络提交。".into(),
         ],
         expires_at: now + 300000,
     };
     if region_checked {
-        preparation
-            .notes
-            .push("轨迹已通过客户端运动区域检查，最终判定以学校结果为准。".into());
+        preparation.notes.push("运动区域检查通过。".into());
     }
     if !preparation.blockers.is_empty() {
         return Ok((preparation, None));
@@ -236,13 +231,14 @@ fn prepare_settings(
         .iter()
         .map(|p| json!({"a":p.a,"o":p.o,"t":p.t,"s":p.s,"i":p.i,"c":p.c,"e":p.e,"f":true}))
         .collect();
-    let stringify =
-        |value: &Value| serde_json::to_string(value).map_err(|_| failed("生成载荷失败。"));
+    let stringify = |value: &Value| {
+        serde_json::to_string(value).map_err(|_| failed("运动数据处理失败，请重新生成。"))
+    };
     // All face requirements were explicitly disabled above. Preserve the original
     // initialized, non-anomalous state; this is not a successful face verification.
     let face_status = "1";
     let reported_km = (input.distance_m / 10.0).floor() / 100.0;
-    let payload = json!({"sportType":1,"startTime":input.start_time,"endTime":preview.end_time,"sportTime":input.duration_s,"sportRange":format!("{reported_km:.2}"),"gpsDistance":format!("{reported_km:.2}"),"speed":preview.pace,"avgSpeed":format!("{:.2}",preview.average_kmh),"brand":"Yakumo","model":"Synthetic","system":std::env::consts::OS,"version":"unknown","appVersion":"2.0.22","appType":"Android","versionCode":20220,"versionName":"2.0.22","signatureMD5":crate::exercise::service::signature_metadata().map_err(|_|failed("兼容材料不可用。"))?,"uniqueCode":session.device_id,"pointList":stringify(&settings["list"] )?,"geofence":stringify(&settings["geofence"] )?,"isSequencePoint":as_text("isSequencePoint"),"stepNumbers":stringify(&json!(preview.step_buckets))?,"gitudeLatitude":stringify(&json!(points))?,"okPointList":"[]","isFaceStatus":face_status,"uploadType":0,"identify":identify,"limitSpeed":as_text("limitSpeed"),"limitStride":as_text("endStride"),"limitStepFrequency":as_text("endLimitStepFrequency"),"f":preview.points.len(),"m":0,"h":0,"isValid":1});
+    let payload = json!({"sportType":1,"startTime":input.start_time,"endTime":preview.end_time,"sportTime":input.duration_s,"sportRange":format!("{reported_km:.2}"),"gpsDistance":format!("{reported_km:.2}"),"speed":preview.pace,"avgSpeed":format!("{:.2}",preview.average_kmh),"brand":"Yakumo","model":"Synthetic","system":std::env::consts::OS,"version":"unknown","appVersion":"2.0.22","appType":"Android","versionCode":20220,"versionName":"2.0.22","signatureMD5":crate::exercise::service::signature_metadata().map_err(|_|failed("暂时无法提交运动，请联系维护者。"))?,"uniqueCode":session.device_id,"pointList":stringify(&settings["list"] )?,"geofence":stringify(&settings["geofence"] )?,"isSequencePoint":as_text("isSequencePoint"),"stepNumbers":stringify(&json!(preview.step_buckets))?,"gitudeLatitude":stringify(&json!(points))?,"okPointList":"[]","isFaceStatus":face_status,"uploadType":0,"identify":identify,"limitSpeed":as_text("limitSpeed"),"limitStride":as_text("endStride"),"limitStepFrequency":as_text("endLimitStepFrequency"),"f":preview.points.len(),"m":0,"h":0,"isValid":1});
     crate::studio::validation::validate(&payload, now)?;
     Ok((
         preparation,
@@ -314,7 +310,7 @@ pub fn send(
         }
         Err(()) => {
             outcome.state = "unknown".into();
-            outcome.message = "连接或响应失败，结果不确定。请先核对学校记录，勿重传。".into();
+            outcome.message = "提交结果待确认，请先查看运动记录，勿重复提交。".into();
         }
     }
     outcome
@@ -322,7 +318,7 @@ pub fn send(
 fn classify(status: u16, body: &[u8]) -> (&'static str, &'static str, Option<String>) {
     let unknown = (
         "unknown",
-        "未获得可识别回执，结果不确定。请核对学校记录，勿重传。",
+        "提交结果待确认，请先查看运动记录，勿重复提交。",
         None,
     );
     let Ok(value) = serde_json::from_slice::<Value>(body) else {
@@ -341,15 +337,11 @@ fn classify(status: u16, body: &[u8]) -> (&'static str, &'static str, Option<Str
             if id.is_none() && value["data"] != true {
                 return unknown;
             }
-            (
-                "accepted",
-                "学校已确认接收；入库、合格与统计仍需分别核对。",
-                id,
-            )
+            ("accepted", "学校已接收，请到运动记录查看结果。", id)
         }
         Some(n) if n.fract() == 0.0 => (
             "rejected",
-            "学校明确拒绝本次提交；该草稿已锁定，核对后再处理。",
+            "学校未接收本次提交，此草稿已停止提交。请先核对运动记录。",
             None,
         ),
         _ => unknown,
@@ -686,6 +678,11 @@ mod tests {
             input.distance_m = distance;
             input.duration_s = duration;
             input.steps = steps;
+            if label == "配速" {
+                let error = generate(input).err().expect("pace rejected before preview");
+                assert!(error.message.contains(label));
+                continue;
+            }
             let preview = generate(input).expect("technically consistent preview");
             let result = prepare_settings(
                 "synthetic-account".into(),

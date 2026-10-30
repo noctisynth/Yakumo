@@ -54,7 +54,7 @@ pub(crate) async fn submit_run(
     if !consent {
         return Err(AccountError::new(
             "consent_required",
-            "请先确认合成来源与明文提交。",
+            "请先确认提交合成数据，并了解连接未加密的风险。",
         ));
     }
     let state = state.inner().clone();
@@ -96,7 +96,7 @@ pub(crate) async fn submit_run(
     .map_err(|_| {
         AccountError::new(
             "submission_unknown",
-            "提交结果不确定，请先核对记录，勿重传。",
+            "提交结果待确认，请先查看运动记录，勿重复提交。",
         )
     })?
 }
@@ -148,12 +148,12 @@ pub(crate) async fn link_submission(
         if data["identify"].as_str() != Some(&receipt.identify) {
             return Err(AccountError::new(
                 "identity_unconfirmed",
-                "详情未返回匹配的运动关联标识，无法可靠关联；仍保留原状态。",
+                "所选记录与本次提交不匹配，请核对记录编号。",
             ));
         }
         receipt.record_id = Some(record_id);
         receipt.state = "accepted".into();
-        receipt.message = "已通过详情关联标识核对入库，合格与统计仍需分别核对。".into();
+        receipt.message = "已找到本次提交的运动记录，请查看详情。".into();
         state
             .lock()
             .map_err(|_| AccountError::storage())?

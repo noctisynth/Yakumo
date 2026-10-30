@@ -23,15 +23,15 @@ const fields = [
   ['startQualifiedTime', '最短时长（分钟）'],
   ['endQualifiedTime', '最长时长（分钟，-1 无上限）'],
   ['step', '基础步数要求'],
-  ['surplusNum', '服务端剩余次数'],
-  ['limitSpeed', '速度阈值'],
-  ['startStride', '步幅下界'],
-  ['endStride', '步幅上界'],
-  ['startLimitStepFrequency', '步频下界'],
-  ['endLimitStepFrequency', '步频上界'],
+  ['surplusNum', '剩余次数'],
+  ['limitSpeed', '速度限制'],
+  ['startStride', '最小步幅'],
+  ['endStride', '最大步幅'],
+  ['startLimitStepFrequency', '最低步频'],
+  ['endLimitStepFrequency', '最高步频'],
   ['needRegisterFace', '人脸注册要求'],
-  ['isStartFace', '开始人脸开关'],
-  ['isEndFace', '结束人脸开关'],
+  ['isStartFace', '开始时人脸验证'],
+  ['isEndFace', '结束时人脸验证'],
 ] as const;
 
 export function SchoolSettingsPanel() {
@@ -181,7 +181,7 @@ export function SchoolSettingsPanel() {
         </form>
         <p className='flex items-start gap-2 text-xs leading-6 text-muted-foreground'>
           <MapPin className='mt-1 size-3.5 shrink-0' aria-hidden='true' />
-          确认后才向学校发送表单坐标，不保存为历史位置，也不会开始运动。
+          读取配置时将向学校发送所填位置。
         </p>
         <DataFeedback resource={settings} />
         {settings.data !== null && (
@@ -197,7 +197,7 @@ export function SchoolSettingsPanel() {
               ))}
             </dl>
             <p className='text-[11px] leading-6 text-muted-foreground'>
-              未确认单位的阈值及开关按学校原值展示；缺失值不代表没有要求。当前配置不等于本次运动已达标。
+              暂无数据的项目显示 —，可点击“读取学校配置”刷新。
             </p>
           </>
         )}

@@ -82,7 +82,7 @@ export function RecordDetailPage() {
       <Card className='rounded-2xl shadow-none'>
         <CardHeader>
           <div className='flex items-center gap-3'>
-            <CardTitle className='text-lg'>学校判定</CardTitle>
+            <CardTitle className='text-lg'>运动结果</CardTitle>
             <Badge
               variant={
                 String(detail.status) === '0' ? 'destructive' : 'secondary'
@@ -94,7 +94,7 @@ export function RecordDetailPage() {
         </CardHeader>
         <CardContent className='space-y-4'>
           <p className='break-words text-sm leading-7'>
-            {text(detail.remark, '学校未返回判定说明。')}
+            {text(detail.remark, '暂无结果说明。')}
           </p>
           {detail.remarkExp && (
             <p className='break-words text-xs leading-6 text-muted-foreground'>
@@ -102,7 +102,7 @@ export function RecordDetailPage() {
             </p>
           )}
           <p className='text-xs text-muted-foreground'>
-            详情状态、列表收录和统计计入分别核对，读取成功不等于记录合格。
+            查看学校给出的运动结果和说明。
           </p>
         </CardContent>
       </Card>

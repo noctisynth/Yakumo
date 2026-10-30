@@ -14,19 +14,16 @@ impl AccountError {
     pub fn storage() -> Self {
         Self::new(
             "storage_unavailable",
-            "无法访问安全账号存储，请解锁系统密钥库后重试。",
+            "无法读取已保存的账号，请解锁设备后重试。",
         )
     }
 
     pub fn invalid() -> Self {
-        Self::new("invalid_input", "请检查学校、账号、密码和传输确认。")
+        Self::new("invalid_input", "请检查学校、账号和密码，并确认连接风险。")
     }
 
     pub fn protocol() -> Self {
-        Self::new(
-            "invalid_response",
-            "学校服务返回了无法识别的数据，请稍后重试。",
-        )
+        Self::new("invalid_response", "学校数据读取失败，请稍后重试。")
     }
 }
 

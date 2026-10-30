@@ -108,7 +108,7 @@ describe('update lifecycle', () => {
     await run.store.getState().download();
     await run.store.getState().install();
     expect(run.store.getState().phase).toBe('error');
-    expect(run.store.getState().error).toContain('签名');
+    expect(run.store.getState().error).toContain('安全检查失败');
     expect(run.installs()).toBe(0);
     expect(run.closes()).toBe(1);
   });
@@ -122,7 +122,7 @@ describe('update lifecycle', () => {
     await run.store.getState().install();
     expect(run.store.getState().phase).toBe('ready');
     expect(run.store.getState().error).toContain('取消系统安装');
-    expect(updateError('APK_SIGNER_MISMATCH')).toContain('身份');
+    expect(updateError('APK_SIGNER_MISMATCH')).toContain('安全检查失败');
     expect(updateError('INSTALL_PERMISSION_DENIED')).toContain('允许');
     expect(updateError('request timeout')).toContain('超时');
   });

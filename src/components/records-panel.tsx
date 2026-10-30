@@ -41,9 +41,7 @@ export function RecordsPanel() {
             {filter.status === '1' ? '合格记录' : '未合格记录'}
           </Badge>
         </div>
-        <CardDescription>
-          以学校返回的记录状态为准，点击记录查看详情。
-        </CardDescription>
+        <CardDescription>点击记录查看本次运动的结果与详情。</CardDescription>
       </CardHeader>
       <CardContent className='space-y-5'>
         <div className='flex flex-wrap items-center gap-3'>
@@ -87,7 +85,7 @@ export function RecordsPanel() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value='__all_dates__'>当前日期分组全部</SelectItem>
+                <SelectItem value='__all_dates__'>当前页全部日期</SelectItem>
                 {Array.from(
                   new Set([
                     filter.date,
@@ -229,7 +227,7 @@ export function RecordsPanel() {
         )}
         <div className='flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground'>
           <span>
-            日期分组第 {filter.page} 页 · 当前显示 {rows.length} 条
+            第 {filter.page} 组日期 · 当前显示 {rows.length} 条
           </span>
           <div className='flex gap-2'>
             <Button

@@ -139,6 +139,12 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
     {
         return Err(invalid());
     }
+    if !super::pace::valid_derived(input.distance_m, u64::from(input.duration_s)) {
+        return Err(AccountError::new(
+            "invalid_run",
+            "配速须在每公里 3 至 15 分钟内。",
+        ));
+    }
     let speed = input.distance_m / input.duration_s as f64;
     let cadence = input.steps as f64 * 60.0 / input.duration_s as f64;
     let stride = input.distance_m / input.steps.max(1) as f64;
@@ -154,7 +160,7 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
         (Some(pace), Some(cadence))
             if pace.is_finite()
                 && cadence.is_finite()
-                && (120.0..=1200.0).contains(&pace)
+                && super::pace::valid(pace)
                 && (30.0..=300.0).contains(&cadence)
                 && ((input.distance_m / 1000.0 * pace).round() - input.duration_s as f64).abs()
                     < 0.5
@@ -307,10 +313,10 @@ pub fn generate(input: RunInput) -> AccountResult<RunPreview> {
         actual_distance_m: actual,
         coordinate_noise_m,
         checks: vec![
-            "逐段距离与目标误差小于 1 毫米",
-            "逐秒时间、速度与有效时长一致",
-            "累计步数与分钟增量桶总和一致",
-            "来源明确为合成，未执行道路匹配",
+            "路线里程检查通过",
+            "时间与速度检查通过",
+            "步数检查通过",
+            "数据来源：合成",
         ],
     })
 }
@@ -332,6 +338,22 @@ mod tests {
             duration_s: 899,
             steps: 2397,
             laps: 5,
+        }
+    }
+    #[test]
+    fn pace_limits_apply_even_without_explicit_pace_metadata() {
+        for explicit in [false, true] {
+            for pace in [180.0, 900.0, 120.0, 179.0, 901.0, 1200.0] {
+                let mut value = input();
+                value.distance_m = 2000.0;
+                value.duration_s = (pace * 2.0) as u32;
+                value.steps = value.duration_s * 3;
+                if explicit {
+                    value.target_pace_seconds_per_km = Some(pace);
+                    value.estimated_cadence = Some(180.0);
+                }
+                assert_eq!(generate(value).is_ok(), (180.0..=900.0).contains(&pace));
+            }
         }
     }
     #[test]
@@ -543,7 +565,7 @@ mod tests {
     #[test]
     fn noisy_extreme_ratios_keep_time_distance_and_speed_constraints() {
         for (target, duration, noise) in
-            [(100.0, 60, 0.8), (30000.0, 7200, 3.0), (3600.0, 7200, 3.0)]
+            [(100.0, 60, 0.8), (30000.0, 7200, 3.0), (8000.0, 7200, 3.0)]
         {
             let mut value = input();
             value.distance_m = target;

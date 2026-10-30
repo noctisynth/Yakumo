@@ -310,7 +310,7 @@ impl AccountManager {
         }) {
             return Err(AccountError::new(
                 "duplicate_submission",
-                "同一草稿或关联运动已提交，或有结果不确定的提交；请先核对记录，禁止重传。",
+                "当前有已提交或待核对的运动，请先查看运动记录，勿重复提交。",
             ));
         }
         let receipt = crate::studio::submission::Receipt {
@@ -318,7 +318,7 @@ impl AccountManager {
             digest: ticket.digest.clone(),
             identify: ticket.identify.clone(),
             state: "unknown".into(),
-            message: "提交意图已保存；结果尚未确认，请勿重传。".into(),
+            message: "提交结果待确认，请先查看运动记录，勿重复提交。".into(),
             record_id: None,
             created_at: now,
             algorithm: ticket.algorithm.clone(),
@@ -358,7 +358,7 @@ impl AccountManager {
         if current.access_token != session.access_token || current.user_id != session.user_id {
             return Err(AccountError::new(
                 "account_changed",
-                "账号会话已变化，请刷新资料后重试。",
+                "登录信息已更新，请刷新资料后重试。",
             ));
         }
         let avatar = identity.avatar?;

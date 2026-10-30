@@ -19,13 +19,13 @@ import { useUpdateStore } from '@/stores/update-store';
 
 const labels = {
   idle: '每次打开应用时自动检查，也可以手动检查。',
-  checking: '正在检查更新，连接失败时会尝试备用地址…',
-  current: '当前已是最新版本。镜像同步可能稍有延迟。',
+  checking: '正在检查更新…',
+  current: '当前已是最新版本。',
   available: '发现新版本，可以下载更新。',
-  downloading: '正在下载并验证安装包…',
-  ready: '安装包已通过签名校验，可以安装。',
+  downloading: '正在下载更新…',
+  ready: '更新已就绪，可以安装。',
   installing: '正在安装，请留意系统确认窗口…',
-  installed: '安装流程已完成，请重新打开应用确认运行版本。',
+  installed: '安装操作已完成，请重新打开应用查看版本。',
   error: '更新未完成。',
   cancelled: '下载已取消，重新检查后可以重试。',
 };
@@ -49,11 +49,11 @@ export function UpdateCard() {
       <CardContent className='space-y-4'>
         <p role='status' className='text-sm text-muted-foreground'>
           {!state.status
-            ? '正在读取更新配置…'
+            ? '正在准备更新…'
             : !state.status.supported
               ? '此环境不支持应用内更新。'
               : !state.status.configured
-                ? '此客户端尚未配置更新签名，请从官方发布页安装新版。'
+                ? '当前版本无法使用应用内更新，请从官方发布页安装新版。'
                 : labels[state.phase]}
         </p>
         {state.candidate && (
@@ -72,8 +72,7 @@ export function UpdateCard() {
               className='h-1 animate-pulse rounded bg-primary/50'
             />
             <p className='text-xs text-muted-foreground'>
-              累计传输 {(state.transferred / 1_048_576).toFixed(1)}{' '}
-              MiB（包含重试流量）
+              已使用流量 {(state.transferred / 1_048_576).toFixed(1)} MiB
             </p>
           </div>
         )}
@@ -115,7 +114,7 @@ export function UpdateCard() {
           </Button>
         </div>
         <p className='text-xs leading-6 text-muted-foreground'>
-          通过公开镜像与官方地址获取更新。镜像可用性随网络变化；所有安装包必须通过同一签名与版本校验。
+          无法完成更新时，可从官方发布页下载安装。
         </p>
         <Dialog open={confirm} onOpenChange={setConfirm}>
           <DialogContent>
@@ -123,8 +122,8 @@ export function UpdateCard() {
               <DialogTitle>安装 {state.candidate?.version}</DialogTitle>
               <DialogDescription>
                 {android
-                  ? '系统可能要求允许此来源安装应用，并再次确认安装。完成后应用可能关闭，请重新打开确认版本。'
-                  : '安装期间应用可能关闭。请先完成当前操作，安装后重新打开应用。'}
+                  ? '请按系统提示允许安装并确认。安装后重新打开应用查看版本。'
+                  : '安装期间应用可能关闭，请先完成当前操作。安装后重新打开应用。'}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

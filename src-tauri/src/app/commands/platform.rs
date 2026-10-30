@@ -41,7 +41,7 @@ pub(crate) async fn export_mobile_preview(
         let _ = (app, input);
         Err(AccountError::new(
             "unsupported_platform",
-            "此命令仅用于 Android 保存预览。",
+            "请在 Android 应用中保存预览。",
         ))
     }
 }
