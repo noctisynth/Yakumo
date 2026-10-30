@@ -1,5 +1,14 @@
 # Changelog
 
+<!-- semifold:release version=0.2.1 -->
+## v0.2.1
+
+### Bug Fixes
+
+- [`b3aee3d`](https://github.com/noctisynth/Yakumo/commit/b3aee3d848a84ee51cbee70f0fa3d3b1ce0ffd65): 对齐生成、预设与提交的配速安全范围，使用提交确认弹窗并提示偏快配速的合理性风险。
+- [`b3aee3d`](https://github.com/noctisynth/Yakumo/commit/b3aee3d848a84ee51cbee70f0fa3d3b1ce0ffd65): 统一用户文案，清理防御性表达与研发术语，保留操作结果、风险和限制。
+<!-- semifold:release:end -->
+
 <!-- semifold:release version=0.2.0 -->
 ## v0.2.0
 
