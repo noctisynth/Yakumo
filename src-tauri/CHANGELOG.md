@@ -1,5 +1,14 @@
 # Changelog
 
+<!-- semifold:release version=0.2.2 -->
+## v0.2.2
+
+### Bug Fixes
+
+- [`23fd3bf`](https://github.com/noctisynth/Yakumo/commit/23fd3bf1b238d12729d1ef4881e4c6454d049e45): 防止云端 Android 模拟器初始化组件遮挡发布验收，并补全失败诊断。
+- [`75d4511`](https://github.com/noctisynth/Yakumo/commit/75d45118a6d5c4459f27c510f31363be2cf983fa): 自动刷新账号令牌，仅在刷新凭据失效时要求重新登录。 ([#10](https://github.com/noctisynth/Yakumo/pull/10) by @fu050409)
+<!-- semifold:release:end -->
+
 <!-- semifold:release version=0.2.1 -->
 ## v0.2.1
 
