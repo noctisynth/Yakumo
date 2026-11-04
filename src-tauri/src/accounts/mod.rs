@@ -1,7 +1,7 @@
 pub(crate) mod error;
 pub(crate) mod protocol;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
@@ -15,6 +15,8 @@ pub const MAX_ACCOUNTS: usize = 20;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Account {
+    #[serde(default)]
+    refresh_rejected: bool,
     #[serde(default)]
     display_name: Option<String>,
     id: String,
@@ -95,7 +97,7 @@ impl AccountData {
         Ok(())
     }
 
-    fn snapshot(&self, now: u64) -> AccountSnapshot {
+    fn snapshot(&self, _now: u64) -> AccountSnapshot {
         AccountSnapshot {
             active_id: self.active_id.clone(),
             accounts: self
@@ -108,7 +110,7 @@ impl AccountData {
                     username: account.session.username.clone(),
                     display_name: account.display_name.clone(),
                     expires_at: account.session.expires_at,
-                    expired: account.session.expires_at <= now,
+                    expired: account.refresh_rejected,
                     avatar_url: account.session.avatar_url.clone(),
                 })
                 .collect(),
@@ -150,6 +152,7 @@ pub struct AccountManager {
     authentication: Box<dyn Authentication>,
     data: Option<AccountData>,
     avatar_checked: HashSet<String>,
+    pending_sessions: HashMap<String, Session>,
 }
 
 impl AccountManager {
@@ -159,6 +162,7 @@ impl AccountManager {
             authentication,
             data: None,
             avatar_checked: HashSet::new(),
+            pending_sessions: HashMap::new(),
         }
     }
 
@@ -241,6 +245,9 @@ impl AccountManager {
     }
 
     pub fn list(&mut self, now: u64) -> AccountResult<AccountSnapshot> {
+        if let Some(id) = self.data()?.active_id.clone() {
+            let _ = self.ensure_session(&id, now, false);
+        }
         let mut data = self.data()?.clone();
         if let Some(id) = data.active_id.clone()
             && self.enrich_avatar(&mut data, &id, now)
@@ -259,18 +266,53 @@ impl AccountManager {
                 "当前账号已切换，请重新读取。",
             ));
         }
+        self.ensure_session(id, now, false)
+    }
+
+    pub fn ensure_session(&mut self, id: &str, now: u64, force: bool) -> AccountResult<Session> {
+        let mut data = self.data()?.clone();
         let account = data
             .accounts
-            .iter()
-            .find(|account| account.id == id)
+            .iter_mut()
+            .find(|a| a.id == id)
             .ok_or_else(|| AccountError::new("account_not_found", "账号已不存在。"))?;
-        if account.session.expires_at <= now {
+        if account.refresh_rejected {
             return Err(AccountError::new(
                 "session_expired",
-                "登录已过期，请重新登录。",
+                "登录凭据已失效，请重新登录。",
             ));
         }
-        Ok(account.session.clone())
+        // A remote rotation cannot be rolled back. Retry saving it before contacting
+        // the server again, keeping the new credential inside the native boundary.
+        if let Some(session) = self.pending_sessions.get(id).cloned() {
+            account.session = session.clone();
+            self.commit(data, now)?;
+            self.pending_sessions.remove(id);
+            if session.expires_at > now {
+                return Ok(session);
+            }
+            return self.ensure_session(id, now, false);
+        }
+        if !force && account.session.expires_at > now.saturating_add(60) {
+            return Ok(account.session.clone());
+        }
+        match self.authentication.refresh(&account.session, now) {
+            Ok(session) => {
+                account.session = session.clone();
+                self.pending_sessions
+                    .insert(id.to_string(), session.clone());
+                self.commit(data, now)?;
+                self.pending_sessions.remove(id);
+                Ok(session)
+            }
+            Err(error) => {
+                if error.code == "session_expired" {
+                    account.refresh_rejected = true;
+                    self.commit(data, now)?;
+                }
+                Err(error)
+            }
+        }
     }
 
     fn owner(session: &Session) -> String {
@@ -436,6 +478,7 @@ impl AccountManager {
         });
         let id = if let Some(account) = existing {
             account.session = session;
+            account.refresh_rejected = false;
             account.id.clone()
         } else {
             if data.accounts.len() >= MAX_ACCOUNTS {
@@ -446,6 +489,7 @@ impl AccountManager {
             }
             let id = Uuid::new_v4().to_string();
             data.accounts.push(Account {
+                refresh_rejected: false,
                 display_name: None,
                 id: id.clone(),
                 school: input.school,
@@ -455,25 +499,15 @@ impl AccountManager {
         };
         self.avatar_checked.remove(&id);
         self.enrich_avatar(&mut data, &id, now);
-        data.active_id = Some(id);
-        self.commit(data, now)
+        data.active_id = Some(id.clone());
+        let snapshot = self.commit(data, now)?;
+        self.pending_sessions.remove(&id);
+        Ok(snapshot)
     }
 
     pub fn switch(&mut self, id: &str, now: u64) -> AccountResult<AccountSnapshot> {
+        self.ensure_session(id, now, false)?;
         let mut data = self.data()?.clone();
-        let account = data
-            .accounts
-            .iter()
-            .find(|account| account.id == id)
-            .ok_or_else(|| {
-                AccountError::new("account_not_found", "账号已不存在，请刷新账号列表。")
-            })?;
-        if account.session.expires_at <= now {
-            return Err(AccountError::new(
-                "session_expired",
-                "该账号的登录已过期，请重新登录后切换。",
-            ));
-        }
         data.active_id = Some(id.to_string());
         self.enrich_avatar(&mut data, id, now);
         self.commit(data, now)
@@ -492,6 +526,8 @@ impl AccountManager {
         if data.active_id.as_deref() == Some(id) {
             data.active_id = None;
         }
-        self.commit(data, now)
+        let snapshot = self.commit(data, now)?;
+        self.pending_sessions.remove(id);
+        Ok(snapshot)
     }
 }

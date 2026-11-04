@@ -166,7 +166,7 @@ export function AccountsPage() {
                   <p className='text-xs text-muted-foreground'>
                     {account.expired
                       ? '请重新登录以继续使用此账号。'
-                      : `登录有效期至 ${new Date(account.expiresAt * 1000).toLocaleString('zh-CN')}`}
+                      : '自动保持登录'}
                   </p>
                   <div className='flex flex-wrap gap-2'>
                     <Button

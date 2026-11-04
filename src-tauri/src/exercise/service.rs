@@ -217,7 +217,7 @@ fn parse_response(status: u16, bytes: &[u8]) -> ExerciseResult<Value> {
         .filter(|value| value.fract() == 0.0)
         .map(|value| value as i64);
     let mut failure = if matches!(status, 401 | 403) {
-        error("session_expired", "登录状态已失效，请重新登录。")
+        error("access_rejected", "学校暂未允许访问，请稍后重试。")
     } else if !(200..300).contains(&status) {
         error("http_error", "学校服务暂时不可用。")
     } else if parsed.is_none() {
@@ -472,7 +472,7 @@ mod tests {
         );
         assert_eq!(
             parse_response(401, b"private").expect_err("expired").code,
-            "session_expired"
+            "access_rejected"
         );
         assert_eq!(
             redact(

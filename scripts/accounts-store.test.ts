@@ -87,3 +87,29 @@ describe('accounts state', () => {
     expect(state.getState().accounts).toHaveLength(0);
   });
 });
+
+test('background session maintenance preserves an operation error on success and failure', async () => {
+  let offline = false;
+  const state = createAccountsStore({
+    refreshIdentity: async () => first,
+    updateAvatar: async () => first,
+    list: async () => {
+      if (offline) throw { code: 'network_error', message: '合成断网。' };
+      return first;
+    },
+    login: async () => first,
+    switch: async () => first,
+    remove: async () => {
+      throw { code: 'operation_failed', message: '操作失败，请重试。' };
+    },
+  });
+  await state.getState().load();
+  await state.getState().remove('synthetic-a');
+  expect(await state.getState().load(true)).toBe(true);
+  expect(state.getState().error?.code).toBe('operation_failed');
+  offline = true;
+  expect(await state.getState().load(true)).toBe(false);
+  expect(state.getState().error?.code).toBe('operation_failed');
+  expect(state.getState().accounts).toEqual(first.accounts);
+  expect(state.getState().pending).toBe(false);
+});

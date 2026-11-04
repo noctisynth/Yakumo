@@ -29,6 +29,7 @@ pub struct Session {
 }
 
 pub trait Authentication: Send {
+    fn refresh(&self, session: &Session, now: u64) -> AccountResult<Session>;
     fn identity(
         &self,
         session: &Session,
@@ -65,6 +66,7 @@ fn network_error(error: reqwest::Error) -> AccountError {
 
 fn client() -> AccountResult<Client> {
     Client::builder()
+        .retry(reqwest::retry::never())
         .redirect(Policy::none())
         .no_proxy()
         .connect_timeout(Duration::from_secs(8))
@@ -207,6 +209,12 @@ fn parse_session(
 }
 
 impl Authentication for SchoolAuthentication {
+    fn refresh(&self, session: &Session, now: u64) -> AccountResult<Session> {
+        LoginProtocol {
+            origin: SCHOOL_ORIGIN,
+        }
+        .refresh(session, now)
+    }
     fn identity(
         &self,
         session: &Session,
@@ -240,6 +248,64 @@ fn login_stage(error: AccountError, code: &'static str, message: &'static str) -
 }
 
 impl LoginProtocol<'_> {
+    fn refresh(&self, session: &Session, now: u64) -> AccountResult<Session> {
+        let reply = client()?
+            .post(format!("{}auth/oauth/token", self.origin))
+            .headers(headers(&session.device_id, true)?)
+            .query(&[
+                ("grant_type", "refresh_token"),
+                ("refresh_token", session.refresh_token.as_str()),
+                ("type", "app"),
+                ("appType", "stuApp"),
+            ])
+            .body("")
+            .send()
+            .map_err(network_error)?;
+        let status = reply.status();
+        let mut body = Zeroizing::new(Vec::new());
+        reply
+            .take(MAX_RESPONSE + 1)
+            .read_to_end(&mut body)
+            .map_err(|_| AccountError::new("network_error", "续期响应读取失败，请重试。"))?;
+        if body.len() as u64 > MAX_RESPONSE {
+            return Err(AccountError::protocol());
+        }
+        let mut value: Value =
+            serde_json::from_slice(&body).map_err(|_| AccountError::protocol())?;
+        if !value.is_object() {
+            return Err(AccountError::protocol());
+        }
+        if (status.is_client_error() || status.is_success()) && value["error"] == "invalid_grant" {
+            return Err(AccountError::new(
+                "session_expired",
+                "登录凭据已失效，请重新登录。",
+            ));
+        }
+        if !status.is_success()
+            || value.get("error").is_some()
+            || value.get("code").is_some_and(|c| c != 0 && c != "0")
+        {
+            return Err(AccountError::new(
+                "refresh_failed",
+                "登录续期暂未完成，请稍后重试。",
+            ));
+        }
+        if value.get("refresh_token").is_none() {
+            value["refresh_token"] = Value::from(session.refresh_token.clone());
+        }
+        if value.get("user_id").is_none() {
+            value["user_id"] = Value::from(session.user_id.clone());
+        }
+        let mut renewed = parse_session(&value, &session.username, &session.device_id, now)?;
+        if renewed.user_id != session.user_id {
+            return Err(AccountError::protocol());
+        }
+        renewed.username = session.username.clone();
+        renewed.raw_app_id = session.raw_app_id.clone();
+        renewed.avatar_url = session.avatar_url.clone();
+        Ok(renewed)
+    }
+
     fn login(
         &self,
         username: &str,
@@ -335,6 +401,66 @@ mod tests {
             requests
         });
         (origin, worker)
+    }
+
+    #[test]
+    fn refresh_contract_rotation_and_failure_classification() {
+        let old = parse_session(&serde_json::json!({"access_token":"old", "refresh_token":"refresh +&", "token_type":"bearer", "expires_in":10, "user_id":"user"}), "name", "device", 100).expect("session");
+        for (status, body, expected) in [
+            (
+                200,
+                r#"{"access_token":"new","token_type":"bearer","expires_in":3600}"#,
+                "ok",
+            ),
+            (
+                200,
+                r#"{"access_token":"new","refresh_token":"rotated","token_type":"bearer","expires_in":3600}"#,
+                "rotated",
+            ),
+            (
+                400,
+                r#"{"error":"invalid_grant","error_description":"secret"}"#,
+                "session_expired",
+            ),
+            (401, r#"{"error":"invalid_client"}"#, "refresh_failed"),
+            (500, r#"{"error":"invalid_grant"}"#, "refresh_failed"),
+            (200, "<html>secret</html>", "invalid_response"),
+            (200, "null", "invalid_response"),
+            (200, "[]", "invalid_response"),
+            (200, "123", "invalid_response"),
+            (
+                200,
+                r#"{"access_token":"new","token_type":"bearer","expires_in":3600,"user_id":"different"}"#,
+                "invalid_response",
+            ),
+        ] {
+            let (origin, worker) = mock_server(vec![(status, body.into())]);
+            let result = LoginProtocol { origin: &origin }.refresh(&old, 200);
+            if expected == "ok" || expected == "rotated" {
+                let session = result.expect("refresh");
+                assert_eq!(session.access_token, "new");
+                assert_eq!(session.expires_at, 3800);
+                assert_eq!(
+                    session.refresh_token,
+                    if expected == "ok" {
+                        "refresh +&"
+                    } else {
+                        "rotated"
+                    }
+                );
+            } else {
+                assert_eq!(result.err().expect("failure").code, expected);
+            }
+            let requests = worker.join().expect("server");
+            let target = requests[0].split_whitespace().nth(1).expect("target");
+            let url = reqwest::Url::parse(&format!("{origin}{}", &target[1..])).expect("url");
+            let query: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
+            assert_eq!(query["grant_type"], "refresh_token");
+            assert_eq!(query["refresh_token"], "refresh +&");
+            assert_eq!(query["type"], "app");
+            assert_eq!(query["appType"], "stuApp");
+            assert!(!query.contains_key("password"));
+        }
     }
 
     #[test]
