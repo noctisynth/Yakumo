@@ -10,7 +10,7 @@ interface AccountsState extends AccountSnapshot {
   initialized: boolean;
   pending: boolean;
   error: AccountError | null;
-  load: () => Promise<boolean>;
+  load: (background?: boolean) => Promise<boolean>;
   login: (input: LoginInput) => Promise<boolean>;
   switchAccount: (id: string) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
@@ -38,15 +38,19 @@ export function createAccountsStore(service = accountService) {
   return create<AccountsState>((set, get) => {
     async function perform(
       action: () => Promise<AccountSnapshot>,
+      background = false,
     ): Promise<boolean> {
       if (get().pending) return false;
-      set({ pending: true, error: null });
+      set({ pending: true, ...(background ? {} : { error: null }) });
       try {
         const snapshot = await action();
         set({ ...snapshot, initialized: true, pending: false });
         return true;
       } catch (error) {
-        set({ error: safeError(error), pending: false });
+        set({
+          ...(background ? {} : { error: safeError(error) }),
+          pending: false,
+        });
         return false;
       }
     }
@@ -57,7 +61,7 @@ export function createAccountsStore(service = accountService) {
       initialized: false,
       pending: false,
       error: null,
-      load: () => perform(service.list),
+      load: (background = false) => perform(service.list, background),
       login: (input) => perform(() => service.login(input)),
       switchAccount: (id) => perform(() => service.switch(id)),
       remove: (id) => perform(() => service.remove(id)),

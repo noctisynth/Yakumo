@@ -38,8 +38,8 @@ pub(crate) fn h5_signature(
 pub fn upload(origin: &str, session: &Session, now: u64, data_uri: &str) -> AccountResult<()> {
     if session.expires_at <= now {
         return Err(AccountError::new(
-            "session_expired",
-            "登录已过期，请重新登录。",
+            "access_rejected",
+            "登录需要续期，请刷新账号后重试。",
         ));
     }
     if !matches!(
@@ -72,8 +72,8 @@ pub fn upload(origin: &str, session: &Session, now: u64, data_uri: &str) -> Acco
         .map_err(|_| uncertain())?;
     if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
         return Err(AccountError::new(
-            "session_expired",
-            "登录已失效，请重新登录。",
+            "access_rejected",
+            "学校暂未允许更换头像，请刷新资料后重试。",
         ));
     }
     if !response.status().is_success() {

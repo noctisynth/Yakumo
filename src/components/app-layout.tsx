@@ -1,3 +1,4 @@
+import { isTauri } from '@tauri-apps/api/core';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -9,6 +10,7 @@ import {
   UserRound,
   WandSparkles,
 } from 'lucide-react';
+import { useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { useDashboardAccount } from '@/hooks/use-dashboard-account';
@@ -36,6 +38,19 @@ const navigation = [
 ];
 
 export function AppLayout() {
+  useEffect(() => {
+    if (!isTauri()) return;
+    const refresh = () => {
+      void useAccountsStore.getState().load(true);
+    };
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+    };
+  }, []);
+
   const { active } = useDashboardAccount();
   const compact = usePreferencesStore((state) => state.compact);
   const accountError = useAccountsStore((state) => state.error);

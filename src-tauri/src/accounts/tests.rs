@@ -34,6 +34,9 @@ impl AccountStorage for TestStorage {
 
 struct TestAuthentication;
 impl Authentication for TestAuthentication {
+    fn refresh(&self, _: &Session, _: u64) -> AccountResult<Session> {
+        Err(AccountError::new("session_expired", "合成失效凭据"))
+    }
     fn identity(
         &self,
         session: &Session,
@@ -554,6 +557,9 @@ fn legacy_current_account_is_hydrated_once_and_expired_accounts_do_not_fetch() {
     use std::sync::atomic::AtomicUsize;
     struct CountingAuthentication(Arc<AtomicUsize>);
     impl Authentication for CountingAuthentication {
+        fn refresh(&self, _: &Session, _: u64) -> AccountResult<Session> {
+            Err(AccountError::new("session_expired", "合成失效凭据"))
+        }
         fn login(
             &self,
             username: &str,
@@ -608,4 +614,79 @@ fn legacy_current_account_is_hydrated_once_and_expired_accounts_do_not_fetch() {
     );
     assert!(expired.list(4000).expect("expired").accounts[0].expired);
     assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn refresh_rotates_persists_and_network_failure_preserves_session() {
+    struct Renew;
+    impl Authentication for Renew {
+        fn avatar(&self, _: &Session, _: u64) -> AccountResult<Option<String>> {
+            Ok(None)
+        }
+        fn login(&self, u: &str, p: &str, d: &str, n: u64) -> AccountResult<Session> {
+            TestAuthentication.login(u, p, d, n)
+        }
+        fn refresh(&self, old: &Session, now: u64) -> AccountResult<Session> {
+            if now == 5000 {
+                return Err(AccountError::new("network_error", "合成断网"));
+            }
+            let mut session = old.clone();
+            session.access_token = "renewed".into();
+            session.refresh_token = "rotated".into();
+            session.expires_at = now + 3600;
+            Ok(session)
+        }
+    }
+    let storage = TestStorage::default();
+    let mut app = AccountManager::new(Box::new(storage.clone()), Box::new(Renew));
+    let id = app
+        .login(input("user", "pw"), 100)
+        .expect("login")
+        .active_id
+        .expect("id");
+    assert_eq!(
+        app.active_session(&id, 4000).expect("renew").access_token,
+        "renewed"
+    );
+    assert!(!app.list(4000).expect("list").accounts[0].expired);
+    assert_eq!(
+        app.ensure_session(&id, 5000, true)
+            .err()
+            .expect("offline")
+            .code,
+        "network_error"
+    );
+    let mut restored = AccountManager::new(Box::new(storage.clone()), Box::new(Renew));
+    let saved = restored.active_session(&id, 5000).expect("saved");
+    assert_eq!(saved.refresh_token, "rotated");
+    storage.fail.store(true, Ordering::SeqCst);
+    assert!(restored.ensure_session(&id, 8000, true).is_err());
+    storage.fail.store(false, Ordering::SeqCst);
+    assert_eq!(
+        restored
+            .active_session(&id, 5000)
+            .expect("persist pending rotation without a second network request")
+            .expires_at,
+        11600
+    );
+}
+
+#[test]
+fn rejected_refresh_survives_restart_and_relogin_recovers() {
+    let storage = TestStorage::default();
+    let mut app = manager(&storage);
+    let id = app
+        .login(input("user", "pw"), 100)
+        .expect("login")
+        .active_id
+        .expect("id");
+    assert_eq!(
+        app.active_session(&id, 4000).err().expect("rejected").code,
+        "session_expired"
+    );
+    let mut restored = manager(&storage);
+    assert!(restored.list(100).expect("restart").accounts[0].expired);
+    let snapshot = restored.login(input("user", "pw"), 5000).expect("login");
+    assert_eq!(snapshot.active_id.as_deref(), Some(id.as_str()));
+    assert!(!snapshot.accounts[0].expired);
 }
