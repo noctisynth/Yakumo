@@ -1,5 +1,13 @@
 # Changelog
 
+<!-- semifold:release version=0.2.2 -->
+## v0.2.2
+
+### Bug Fixes
+
+- [`23fd3bf`](https://github.com/noctisynth/Yakumo/commit/23fd3bf1b238d12729d1ef4881e4c6454d049e45): 防止云端 Android 模拟器初始化组件遮挡发布验收，并补全失败诊断。
+<!-- semifold:release:end -->
+
 <!-- semifold:release version=0.2.1 -->
 ## v0.2.1
 
