@@ -1,34 +1,34 @@
 {
-  "version": "0.2.1",
-  "notes": "### Bug Fixes\n\n- [`b3aee3d`](https://github.com/noctisynth/Yakumo/commit/b3aee3d848a84ee51cbee70f0fa3d3b1ce0ffd65): 对齐生成、预设与提交的配速安全范围，使用提交确认弹窗并提示偏快配速的合理性风险。\n- [`b3aee3d`](https://github.com/noctisynth/Yakumo/commit/b3aee3d848a84ee51cbee70f0fa3d3b1ce0ffd65): 统一用户文案，清理防御性表达与研发术语，保留操作结果、风险和限制。",
+  "version": "0.2.2",
+  "notes": "### Bug Fixes\n\n- [`23fd3bf`](https://github.com/noctisynth/Yakumo/commit/23fd3bf1b238d12729d1ef4881e4c6454d049e45): 防止云端 Android 模拟器初始化组件遮挡发布验收，并补全失败诊断。\n- [`75d4511`](https://github.com/noctisynth/Yakumo/commit/75d45118a6d5c4459f27c510f31363be2cf983fa): 自动刷新账号令牌，仅在刷新凭据失效时要求重新登录。 ([#10](https://github.com/noctisynth/Yakumo/pull/10) by @fu050409)",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.1/Yakumo-0.2.1-windows-x64.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4RjhCZ1dhWEMxaGhTUktpMWpHUm9VWjlzdVZPMTlBZnpZS1ZTaDU5NmZGTXMvVnZsYzIrM3d3eXRWakdTWDlzMm1uaDJQYXlZMlVHVzE4bVJuby9BcGc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMzU1NDQ4CWZpbGU6WWFrdW1vLTAuMi4xLXdpbmRvd3MteDY0LmV4ZQl2ZXJzaW9uOjAuMi4xCnZFT291UElLWlRxdW9NSjIxT1JHM1FLQWNMdFlJczg4clVQQnYvMU9IczhCamh2a3VVU2FTaHF4WmphOFNHb0hlbEUrbzF2NGJESEI4NDRsOStLNUJBPT0K"
+      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.2/Yakumo-0.2.2-windows-x64.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4RnlQVmFLVGJJMGhpYzhGSGpoZmdjbTRDd2lhNlVXaXBEdUpNbDM2TkhEc0dldGhGaVBVNlJBelhSb0ljZkZJc3NkSFRQcGVrdVNrT2RHc0RuQk51NXdZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODI2MzYzCWZpbGU6WWFrdW1vLTAuMi4yLXdpbmRvd3MteDY0LmV4ZQl2ZXJzaW9uOjAuMi4yCjlxdnh3SUVFNkFiWTNLU3c5dHJRNTlicXlXT2VkaFZLSU1qUU1jNVo3Y0MwdXY1ZzRVY1dVbGU5MmlHNmhLVHdNamovWXFGTU0rRHMwWFpERE1rQUNnPT0K"
     },
     "linux-x86_64-appimage": {
-      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.1/Yakumo-0.2.1-linux-x64.AppImage",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4RjZ3U2ZvSUVnWWZLcGlOTlJWREY1aEhzcEx4UGV2UzZjL0tjcmIyZDlCblhVa1pFOFkvWmJvWEZBZTJ3em9qcTAwc1JoZHAzL2RCNWh6aUJOSFJuSndZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMzU1MzQ0CWZpbGU6WWFrdW1vLTAuMi4xLWxpbnV4LXg2NC5BcHBJbWFnZQl2ZXJzaW9uOjAuMi4xCkd4aEh6QmJUN0JPbUdGbE1SMjFzNStyL3gzVEoyVURDREl2NkhqNGJQQXlaRDk2Umw0RXdJNHBtV09qVjZqY0drcGpCbEJZekVEMFRzNFhJZ2ZxYUJ3PT0K"
+      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.2/Yakumo-0.2.2-linux-x64.AppImage",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4RjV0WlBNZmFsRW9zd3R0Uk1YbHNsVGdnSXVWYU1XRjNYek0ra0RhNlpOYnFPVGxKbHovNTc4dm8wS1plRXZmbFBxV0ZOMXFlN3g2SDJtMEJkUDdGVVFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODI2MjU5CWZpbGU6WWFrdW1vLTAuMi4yLWxpbnV4LXg2NC5BcHBJbWFnZQl2ZXJzaW9uOjAuMi4yCkl6SGY0aWlKeVhHMXpVcXB4Mis2eFliL2ZtNnVub3AvL0tWRzRHMkdQWUZqVEt2UCtaUW1yNzUyQnVUN3lYSjROdjNHTlBHSUF1K1UyclVIQk8wM0RnPT0K"
     },
     "linux-x86_64-deb": {
-      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.1/Yakumo-0.2.1-linux-x64.deb",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4RnlkaENjVUlsclVZOG00U1J2b0U0enp5UUEvcGFXaTI4OWE3SFVWWUI1TU5QNVp1UWVWN3FOSGZaSmRmUXVtSjBpV2dCdFlzMTNpUkZadlB2OVVBT1FJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMzU1MzQ0CWZpbGU6WWFrdW1vLTAuMi4xLWxpbnV4LXg2NC5kZWIJdmVyc2lvbjowLjIuMQoybTNvSmlWblZ1a2kwbktrSERTTDZRdkFjNlZBOXJTTHJXRHpsMzFmb01FenlKOENoYmZXRVptZjZxdnczWWQ2MzFMUXlVS2tmcmw5MGRKWlJ2TWVCUT09Cg=="
+      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.2/Yakumo-0.2.2-linux-x64.deb",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4RnpDTEVkWDNHZFpTcmNBWkJ3dW80TmFMREFVOGpYNkM2cjR6Z21vWnJIaTBqak9YRDIweUxqL1gyOVM3MXJCbXB6akNyRFJ3MkF3ZVRnaTBsZGJLVmdBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODI2MjU5CWZpbGU6WWFrdW1vLTAuMi4yLWxpbnV4LXg2NC5kZWIJdmVyc2lvbjowLjIuMgp2OWQ4d2Z4a2t6YjlSMVdxVG9lMUJzakJqc29GOGRqUi9Rd2dvUGhzU3RDNUcvdlhNNTdaZWsrd01wMFJZUXNmSG5kQldqOTR4N0NGOC9XNDdkU3hBZz09Cg=="
     },
     "darwin-aarch64": {
-      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.1/Yakumo-0.2.1-macos-arm64.app.tar.gz",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4RitHQjJmTmc5SmRhMGpSeGJ6cUJOWDBncWNTRUcyRkFaMjhxcVFiK1hyblNTdmQ2NU51ZkQ1dFVoV3BjaDFkb1pQbWduWWozZHY5Tnk1UlZyYThPREFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMzU1NTc1CWZpbGU6WWFrdW1vLTAuMi4xLW1hY29zLWFybTY0LmFwcC50YXIuZ3oJdmVyc2lvbjowLjIuMQpaZnVGMUhabmo5OGl2c29kdEdOVUxJL1JFNDFuM1RUWHpOTlVTejRsWDdsUWMxVjVndDRjZEE1YjErbXo3ZXlFaUFCRWZZSGRYS0pwL3dmUW5HYXBDZz09Cg=="
+      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.2/Yakumo-0.2.2-macos-arm64.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4RjdYc3VXWnFKajlkdVZDVWRaQStlWFlkUTltK2dzNFdjMzRYYzYzMWpOZXovMFVDSU5NYWJ2c2lZQkZ6ayt3cHlqYmJ1aU1MbzB6NWN0NUZhZ096eUFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODI2MjgyCWZpbGU6WWFrdW1vLTAuMi4yLW1hY29zLWFybTY0LmFwcC50YXIuZ3oJdmVyc2lvbjowLjIuMgpucy93blVCZzNwSVNTelluSkJTV25KOUpvRitKOGVya2xZTFBpcGY4U2paSGxHdkxGUlJrZW91TTBGN0lLelF5bC8remVuRHV3TjVHR1liSVdGL3dCUT09Cg=="
     },
     "darwin-x86_64": {
-      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.1/Yakumo-0.2.1-macos-x64.app.tar.gz",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4RjBhM0NSaC9KQjdiYWhEYTRpOEwwaXlpcm01WTBUWE1SSTdBZWdmbnJ2S2tBenNIb2N1UU5sMjVLZjR1dW9OclJpOUEvNjBlNTlwRjhFQmhoeC8vOEFrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMzU1MjM3CWZpbGU6WWFrdW1vLTAuMi4xLW1hY29zLXg2NC5hcHAudGFyLmd6CXZlcnNpb246MC4yLjEKNit0UURVWStsSEkveENWR2R3eDhkUUk2RXhjc2ZudmVkd3NqYitQV2NoMGNsQUN2eThTOTZmVmFLcEhiTGpRTU1sYkhBWTkrTkpXQ3BXalVRaERQQmc9PQo="
+      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.2/Yakumo-0.2.2-macos-x64.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4RjFSSUJRMW9Hc29lczl0RDc1UzFKeDNWMnM0U3hDSlpjenlLa3QvQWRJbzlPcnVud3l1U01PcVYranE4eGpUVkw0YU0vTDBwM1lTSGZlc2ZPSFVXVlE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODI2MjUzCWZpbGU6WWFrdW1vLTAuMi4yLW1hY29zLXg2NC5hcHAudGFyLmd6CXZlcnNpb246MC4yLjIKVmxjbVZnVlhCaUw5ZThNa3YvMUFDYzFaaUhPdEZnZEMrTUl4bzNpanFvK05weUkwM25DVFVNaFpsekpVdjlaTTBGVmJwMFBQTjB2OUNaOTN1RktsRHc9PQo="
     },
     "android-aarch64": {
-      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.1/Yakumo-0.2.1-android-universal.apk",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4RitOZGJQclNIa1AyQldwSmlTaUNnb0Z2THRrYkNqeC9vYnJtZ0NLcW1BUFFCWEZjTXV3YVdzQk1HNm9OcmxrSnBzQXlLUFBjUmFMd21RL1AyZUNaSXdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMzU2Njc1CWZpbGU6WWFrdW1vLTAuMi4xLWFuZHJvaWQtdW5pdmVyc2FsLmFwawl2ZXJzaW9uOjAuMi4xCnJTRGpTTXNZUThiMENIN2lPNGJzbithTEkwZnYxVEkzUk1WVXZKZThvbExETGtmWTlmV0xsWGwrbUR2eHVoc0lRdWpPZ1VHTUV6L1NqS3FyRkFsS0F3PT0K"
+      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.2/Yakumo-0.2.2-android-universal.apk",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4Ri9KdkgrdFpJY3B5UmowNktxZFpVRWhWVmlaOHI0dzlCdUh1SlpORXJtdm9TQ09HbjhtRkdVcW43QXlGYnhSaDArRU1LUENTTkx0VUlyTzduaFpIendVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODI2NjE3CWZpbGU6WWFrdW1vLTAuMi4yLWFuZHJvaWQtdW5pdmVyc2FsLmFwawl2ZXJzaW9uOjAuMi4yCkU4cjI2Y0dTbXl6TldiUVlzd2pyNlZTQm04dHVwbm1WOFJhV0dlQk5idTBFL25uSEFUOTE5YnlkYTZQcGZrTVFpUlJXMnpsUndyaENjMmhnZzVrVUNBPT0K"
     },
     "android-x86_64": {
-      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.1/Yakumo-0.2.1-android-universal.apk",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4RitOZGJQclNIa1AyQldwSmlTaUNnb0Z2THRrYkNqeC9vYnJtZ0NLcW1BUFFCWEZjTXV3YVdzQk1HNm9OcmxrSnBzQXlLUFBjUmFMd21RL1AyZUNaSXdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMzU2Njc1CWZpbGU6WWFrdW1vLTAuMi4xLWFuZHJvaWQtdW5pdmVyc2FsLmFwawl2ZXJzaW9uOjAuMi4xCnJTRGpTTXNZUThiMENIN2lPNGJzbithTEkwZnYxVEkzUk1WVXZKZThvbExETGtmWTlmV0xsWGwrbUR2eHVoc0lRdWpPZ1VHTUV6L1NqS3FyRkFsS0F3PT0K"
+      "url": "https://github.com/noctisynth/Yakumo/releases/download/yakumo-v0.2.2/Yakumo-0.2.2-android-universal.apk",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScDh4RDZaeFA4Ri9KdkgrdFpJY3B5UmowNktxZFpVRWhWVmlaOHI0dzlCdUh1SlpORXJtdm9TQ09HbjhtRkdVcW43QXlGYnhSaDArRU1LUENTTkx0VUlyTzduaFpIendVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODI2NjE3CWZpbGU6WWFrdW1vLTAuMi4yLWFuZHJvaWQtdW5pdmVyc2FsLmFwawl2ZXJzaW9uOjAuMi4yCkU4cjI2Y0dTbXl6TldiUVlzd2pyNlZTQm04dHVwbm1WOFJhV0dlQk5idTBFL25uSEFUOTE5YnlkYTZQcGZrTVFpUlJXMnpsUndyaENjMmhnZzVrVUNBPT0K"
     }
   }
 }
