@@ -1,5 +1,14 @@
 # Changelog
 
+<!-- semifold:release version=0.2.3 -->
+## v0.2.3
+
+### Bug Fixes
+
+- [`f3c2384`](https://github.com/noctisynth/Yakumo/commit/f3c2384377c1a2a20657027dbc04cb2732390fdb): 更新弹窗与设置页统一渲染 Markdown 更新说明，支持列表、链接、代码和表格并适配窄屏。
+- [`f3ed486`](https://github.com/noctisynth/Yakumo/commit/f3ed48656b909154e9c1f7c1e0e6352cdb14785e): 发现新版本时显示全局弹窗，支持稍后处理和持久跳过指定版本，并保留设置页手动更新入口。
+<!-- semifold:release:end -->
+
 <!-- semifold:release version=0.2.2 -->
 ## v0.2.2
 
