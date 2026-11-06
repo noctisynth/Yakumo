@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -33,13 +34,26 @@ const labels = {
 export function UpdateCard() {
   const state = useUpdateStore();
   const [confirm, setConfirm] = useState(false);
+  const card = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  useEffect(() => {
+    if (location.hash !== '#app-update') return;
+    card.current?.focus({ preventScroll: true });
+    card.current?.scrollIntoView({ block: 'start' });
+  }, [location]);
   const enabled = state.status?.supported && state.status.configured;
   const busy = ['checking', 'downloading', 'installing', 'installed'].includes(
     state.phase,
   );
   const android = state.status?.platform === 'android';
   return (
-    <Card className='rounded-2xl border-border/70 shadow-none'>
+    <Card
+      ref={card}
+      id='app-update'
+      tabIndex={-1}
+      aria-label='应用更新'
+      className='scroll-mt-5 rounded-2xl border-border/70 shadow-none focus-visible:outline-2 focus-visible:outline-ring'
+    >
       <CardHeader>
         <CardTitle>应用更新</CardTitle>
         <CardDescription>
@@ -59,6 +73,11 @@ export function UpdateCard() {
         {state.candidate && (
           <div className='space-y-2'>
             <p className='font-medium'>新版本 {state.candidate.version}</p>
+            {state.skippedVersions.includes(state.candidate.version) && (
+              <p className='text-xs leading-6 text-muted-foreground'>
+                已跳过此版本的自动提醒，仍可手动下载和安装。
+              </p>
+            )}
             <p className='max-h-64 overflow-auto whitespace-pre-wrap text-sm leading-6 text-muted-foreground'>
               {state.candidate.body || '此版本未提供更新说明。'}
             </p>
