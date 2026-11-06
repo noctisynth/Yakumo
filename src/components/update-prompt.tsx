@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { useNavigate } from 'react-router';
+import { LazyUpdateReleaseNotes } from '@/components/lazy-update-release-notes';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -69,9 +70,10 @@ export function UpdatePrompt() {
             可以前往设置查看并安装更新，也可以稍后再处理。
           </DialogDescription>
         </DialogHeader>
-        <p className='max-h-[min(14rem,25dvh)] overflow-y-auto whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground'>
-          {candidate.body || '此版本未提供更新说明。'}
-        </p>
+        <LazyUpdateReleaseNotes
+          body={candidate.body}
+          className='max-h-[min(14rem,25dvh)] overflow-y-auto'
+        />
         <p className='text-xs leading-6 text-muted-foreground'>
           跳过后不再提醒此版本，有更新版本时仍会提醒。你随时可以在设置中手动更新。
         </p>

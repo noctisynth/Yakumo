@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
+import { LazyUpdateReleaseNotes } from '@/components/lazy-update-release-notes';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -78,9 +79,10 @@ export function UpdateCard() {
                 已跳过此版本的自动提醒，仍可手动下载和安装。
               </p>
             )}
-            <p className='max-h-64 overflow-auto whitespace-pre-wrap text-sm leading-6 text-muted-foreground'>
-              {state.candidate.body || '此版本未提供更新说明。'}
-            </p>
+            <LazyUpdateReleaseNotes
+              body={state.candidate.body}
+              className='max-h-64 overflow-y-auto'
+            />
           </div>
         )}
         {state.phase === 'downloading' && (

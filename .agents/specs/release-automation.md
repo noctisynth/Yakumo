@@ -1,6 +1,6 @@
 # 版本管理与 GitHub 自动化
 
-文档编号：SPEC-003。状态：Active。更新：2026-10-16。
+文档编号：SPEC-003。状态：Active。更新：2026-11-06。
 依据：用户授权配置 Semifold、changeset、GitHub CI/CD，创建并推送组织内的公开仓库 Yakumo。
 
 自动更新签名、清单生成与发布后推进 update-channel 的新增门槛见 SPEC-010。正式发布缺少
@@ -87,3 +87,13 @@ Semifold 初始化和配置同步检查成功，changeset 的 status 展示符�
 0.2.1 基线及原有 Android 模拟器 changeset；原发布运行已取消，0.2.2 尚未发布。
 自动续期与此前待发布 changeset 一起由 Semifold 生成 0.2.2 发布计划；不手工消费 changeset。
 正式发布仍须通过跨平台构建、Android 验收、更新签名核验及更新通道推进。
+
+## 0.2.3 发布准备授权
+
+2026-11-06 用户要求提交并推送更新说明 Markdown 改动，确认无误后准备 0.2.3 发布。
+此次范围同时包含此前本地提交的全局更新弹窗与按版本持久跳过；两项 patch changeset 由
+Semifold 计划为 0.2.2 → 0.2.3。已核对远端 main 的 0.2.2 发布 CI 成功，正式 Release 已存在；
+前节“尚未发布”保留为当时状态，不再作为当前发布基线。
+推送后等待当前提交的质量检查与 Semifold 自动生成 release PR，再核对该 PR 的版本、锁文件、
+changelog 及质量检查。本次“准备发布”交付为验证通过的发布 PR；正式签名构建、Release 创建和
+更新通道推进由后续合并发布 PR 触发，不手工改版本、消费 changeset 或覆盖已存在的 Release。
